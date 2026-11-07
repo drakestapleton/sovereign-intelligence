@@ -1,0 +1,121 @@
+.interest-home { color: var(--on-dark); background: var(--navy); }
+.interest-home-grid {
+  padding-top: var(--section);
+  padding-bottom: var(--section);
+  display: grid;
+  grid-template-columns: .42fr .58fr;
+  gap: clamp(36px, 7vw, 96px);
+  align-items: start;
+}
+.interest-home .portrait-index { color: var(--accent-bright); }
+.interest-home h2 { color: var(--white); }
+.interest-home-grid > div:first-child p { margin: 18px 0 0; color: var(--on-dark-copy); font-size: 18px; line-height: 1.7; }
+
+.interest-page { padding-bottom: var(--section); }
+.interest-form {
+  position: relative;
+  display: grid;
+  gap: 22px;
+  padding: 28px;
+  color: var(--ink);
+  background: var(--white);
+  border: 1px solid var(--line-strong);
+}
+.interest-home .interest-form { background: var(--paper); }
+.interest-card-label,
+.interest-form label,
+.interest-more summary {
+  display: grid;
+  gap: 8px;
+  color: var(--navy);
+  font-size: 12px;
+  font-weight: 740;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+.interest-card-label { margin: 0 0 4px; color: var(--red); }
+.interest-fields { display: grid; gap: 16px; }
+.interest-form input[type="text"],
+.interest-form input[type="email"],
+.interest-form textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--line-strong);
+  color: var(--ink);
+  background: var(--white);
+  font-size: 16px;
+  line-height: 1.45;
+}
+.interest-form textarea { resize: vertical; min-height: 92px; }
+.interest-more {
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+.interest-more summary {
+  cursor: pointer;
+  list-style: none;
+  color: var(--red);
+}
+.interest-more summary::-webkit-details-marker { display: none; }
+.interest-more[open] summary { margin-bottom: 16px; }
+.interest-consent {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 10px;
+  align-items: start;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--copy);
+}
+.interest-consent input { margin-top: 3px; accent-color: var(--red); }
+.interest-form button {
+  justify-self: start;
+  padding: 13px 22px;
+  border: 0;
+  color: var(--white);
+  background: var(--red);
+  font-size: 13px;
+  font-weight: 780;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.interest-form button:hover { background: var(--red-deep); }
+.interest-honeypot {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.interest-received {
+  max-width: 640px;
+  padding: 36px 32px;
+  border: 1px solid var(--line-strong);
+  background: var(--white);
+}
+.interest-received h2 { margin: 10px 0 12px; color: var(--navy); }
+.interest-received p { margin: 0; color: var(--copy); font-size: 18px; }
+
+@media (max-width: 820px) {
+  .interest-home-grid { grid-template-columns: 1fr; }
+}
+
+@media (prefers-color-scheme: dark) {
+  .interest-form {
+    background: var(--dark-surface);
+    border-color: var(--line);
+  }
+  .interest-form label {
+    color: var(--on-dark-copy);
+  }
+  .interest-form input[type="text"],
+  .interest-form input[type="email"],
+  .interest-form textarea {
+    background: var(--paper); /* Lighter than --dark-surface */
+    border-color: var(--line-strong);
+    color: var(--on-dark);
+  }
+}

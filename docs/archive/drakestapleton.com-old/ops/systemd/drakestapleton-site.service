@@ -1,0 +1,16 @@
+[Unit]
+Description=Drake Stapleton Sovereign Full-Stack Rust Server (Axum)
+After=network.target
+
+[Service]
+Type=simple
+User=drakestapleton
+WorkingDirectory=/home/drakestapleton/workspace/drakestapleton.com
+ExecStart=/home/drakestapleton/workspace/drakestapleton.com/target/release/site-server
+Restart=always
+RestartSec=3
+Environment=PORT=18090
+Environment=DIST_DIR=/home/drakestapleton/workspace/drakestapleton.com/dist
+
+[Install]
+WantedBy=multi-user.target

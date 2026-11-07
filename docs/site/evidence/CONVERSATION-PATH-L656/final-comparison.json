@@ -1,0 +1,16 @@
+{
+  "file_membership": 83,
+  "changed": [
+    "index.html",
+    "interest/index.html"
+  ],
+  "unchanged": 81,
+  "metadata_unchanged": true,
+  "form_contract_unchanged": true,
+  "original_story_worlds_bytes_unchanged": true,
+  "matrix_states": 4,
+  "matrix_page_views": 8,
+  "matrix_cta_keyboard_activations": 12,
+  "external_delivery_tested": false,
+  "deployed": false
+}

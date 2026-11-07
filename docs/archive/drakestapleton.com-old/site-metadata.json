@@ -1,0 +1,118 @@
+{
+  "/": {
+    "title": "Drake Stapleton | Freedom Fighter, AI Architect & Operator",
+    "description": "The personal project record of Drake Stapleton, Freedom Fighter, AI Architect & Operator: model training, research, Atlas, and what our generation can build with AI."
+  },
+  "/interest": {
+    "title": "Start a Conversation | Drake Stapleton",
+    "description": "Leave Drake Stapleton a note about a question, an idea, the documented journey, or research that advances what our generation can build with AI."
+  },
+  "/software": {
+    "title": "AI Orchestration & Architecture | Drake Stapleton",
+    "description": "Drake Stapleton's AI orchestration frameworks, architectural patterns, operational methods, and verifiable systems history."
+  },
+  "/path": {
+    "title": "AI Architect Career Path | Drake Stapleton",
+    "description": "Follow Drake Stapleton's career from industrial chemist to manufacturing engineer to AI Architect through a documented personal record."
+  },
+  "/atlas": {
+    "title": "Why Atlas Exists | Drake Stapleton",
+    "description": "Explore Atlas, Drake Stapleton's personal R&D program in accountable AI architecture, continuity, model training, and orchestration."
+  },
+  "/aegis": {
+    "title": "AEGIS Defensive Atlas Extension | Drake Stapleton",
+    "description": "AEGIS extends Atlas into on-prem cyber defense for authorized networks, with containment, evidence preservation, and a verified 59 of 62 project evaluation."
+  },
+  "/aien": {
+    "title": "AIEN Sovereign Cognitive Architecture | Drake Stapleton",
+    "description": "AIEN is Drake Stapleton's compiled, zero-disk-secret sovereign cognitive architecture verified on Grace Blackwell silicon with multi-platform runtime targets."
+  },
+  "/evidence": {
+    "title": "Canonical Evidence Hub & Verified Claims | Drake Stapleton",
+    "description": "Inspect the canonical evidence hub, structured claims index, physical Grace Blackwell silicon telemetry, and historical audit packages."
+  },
+  "/what-i-learned": {
+    "title": "What I Learned | Drake Stapleton",
+    "description": "The experiences, production lessons, and disciplined returns that shaped Drake Stapleton's work as an AI operator."
+  },
+  "/symphony": {
+    "title": "Multi-Model AI Orchestration | Atlas Symphony",
+    "description": "Atlas Symphony is Drake Stapleton's operator-led process for coordinating multiple AI models through bounded work lanes and evidence-bearing reviews."
+  },
+  "/symphony/first": {
+    "title": "First Multi-Model Symphony Run | Drake Stapleton",
+    "description": "Review the first documented Atlas Symphony run, its operator, participating AI runtimes, work lanes, and independent reviewers."
+  },
+  "/symphony/workflow": {
+    "title": "AI Orchestration Workflow | Atlas Symphony",
+    "description": "Explore the Atlas Symphony command tree and operator cycle for bounded multi-model AI orchestration."
+  },
+  "/symphony/map": {
+    "title": "AI Orchestration Map | Atlas Symphony",
+    "description": "Explore a six-track operator map of Atlas development and multi-model orchestration from June through August 2026."
+  },
+  "/404": {
+    "title": "Page Directory | Drake Stapleton",
+    "description": "Choose a page from Drake Stapleton's site."
+  },
+  "/research": {
+    "title": "LLM Inference Research & Architecture | Drake Stapleton",
+    "description": "Research publication: Eliminating Software Orchestration Tax in Modern Large Language Model Inference with Native Rust ABI, Paged Unified Memory KV Cache, and Grace Blackwell Telemetry."
+  },
+  "/scholar": {
+    "title": "Scholar: Theories, Thoughts & Academic Work | Drake Stapleton",
+    "description": "Published thesis and peer-reviewed semiconductor nanorod paper from Western Kentucky University, plus the unpublished Omega framework manuscript and orchestration research hubs."
+  },
+  "/scholar/omega": {
+    "title": "The Omega Framework | Drake Stapleton",
+    "description": "An observer-dependent resolution of singularities in general relativity and quantum gravity: searchable chapters and a chat model trained on the manuscript."
+  },
+  "/dad": {
+    "title": "My Dad Was My Rock | Drake Stapleton",
+    "description": "A memorial for Russell Ballentine: the man who chose two boys, taught them how to work, survive, and love, and became their rock."
+  },
+  "/works": {
+    "title": "Works | Drake Stapleton",
+    "description": "A public catalog of Drake Stapleton's shipped systems: Atlas Symphony, Atlas Harness, MobDev and Panel Arena, DefiantMob, BeltBrain, DHG Hive, the 2025 foundations, AIEN, AEGIS, and inference research."
+  },
+  "/works/atlas-symphony": {
+    "title": "Atlas Symphony | Works by Drake Stapleton",
+    "description": "Atlas Symphony is the named process for exclusive lanes, a gatekeeper, cost-aware model routing, and an operator who still owns the final GO."
+  },
+  "/works/atlas-harness": {
+    "title": "Atlas Harness | Works by Drake Stapleton",
+    "description": "Atlas Harness is the operating desk that turns prose rules into typed policy, clear work lanes, completion checks, source records, recovery, and evaluation."
+  },
+  "/works/mobdev-panel-arena": {
+    "title": "MobDev and Panel Arena | Works by Drake Stapleton",
+    "description": "MobDev turns community tasks into build briefs, and Panel Arena runs a multi-vendor review before implementation."
+  },
+  "/works/defiantmob": {
+    "title": "DefiantMob | Works by Drake Stapleton",
+    "description": "DefiantMob is production operator software for member operations, ledgers, training-desk automation, and payout tracking."
+  },
+  "/works/beltbrain": {
+    "title": "BeltBrain | Works by Drake Stapleton",
+    "description": "BeltBrain is a local-first decision engine for planning, inventory intelligence, and execution on a durable system of record."
+  },
+  "/works/dhg-hive": {
+    "title": "DHG Hive | Works by Drake Stapleton",
+    "description": "DHG Hive is the community platform and toolbox where the hive operating pattern took shape and later settled inside Atlas."
+  },
+  "/works/foundations-2025": {
+    "title": "2025 Foundations | Works by Drake Stapleton",
+    "description": "The 2025 foundations cover the financial ledger, ParseSDS, CRM, meetings, and DMAIC systems that preceded model orchestration."
+  },
+  "/works/aien": {
+    "title": "AIEN | Works by Drake Stapleton",
+    "description": "AIEN is Drake Stapleton's compiled sovereign cognitive architecture, verified on Grace Blackwell silicon with multi-platform runtime targets."
+  },
+  "/works/aegis": {
+    "title": "AEGIS | Works by Drake Stapleton",
+    "description": "AEGIS extends Atlas into on-prem cyber defense for authorized networks, with containment, evidence preservation, and a verified project evaluation."
+  },
+  "/works/research": {
+    "title": "Inference Research | Works by Drake Stapleton",
+    "description": "This research piece records work to lower software orchestration overhead in large language model inference through a native Rust ABI, a paged unified memory KV cache, and Grace Blackwell telemetry."
+  }
+}
