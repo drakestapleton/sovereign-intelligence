@@ -8,11 +8,11 @@
 
 Inputs, all data:
 
-- `vetted.md`: the vetted public table, one Markdown row per project, `| name | RID | branch | head |`. It is copied from RadPublish's `RIDS.md` by the command below and is the single source of what may be listed.
-- `inventory.tsv`: one project per line, `name TAB rid TAB visibility TAB head TAB description`, exported from the node for the vetted RIDs only, by the command below.
+- `vetted.md`: the vetted public table, one Markdown row per project on its default branch, `| name | RID | branch | head |`. It is copied from RadPublish's `RIDS.md` by the command below and is the single source of what may be listed.
+- `inventory.tsv`: one project per line, `name TAB rid TAB visibility TAB head TAB description`, exported from the node for the vetted RIDs only, by the command below, with a curated description.
 - `order.tsv`: hand-kept. `core TAB name` lines give the core projects, in order. `deny TAB name` lines name projects that are never listed. One `lead TAB name` line names the project the README leads with.
 
-A project is listed only when its name and RID are both on a `vetted.md` row and the node calls it public. Every private or denied project is never emitted. Core projects come first, in `order.tsv` order; the rest follow in inventory order. `si` refuses, with exit 1 and nothing written, when a core project is missing, unvetted or not public, a name or RID appears twice, a field is malformed, or an inventory row is not fresh: its RID has no `vetted.md` row on branch `main`, or its head is not that row's head. The refusal names the row, so a stale export or a stale `vetted.md` cannot regenerate the front door. The output depends only on the input bytes: no clock and no environment, so two runs give identical files.
+A project is listed only when its name and RID are both on a `vetted.md` row and the node calls it public. Every private or denied project is never emitted. Core projects come first, in `order.tsv` order; the rest follow in inventory order. `si` refuses, with exit 1 and nothing written, when a core project is missing, unvetted or not public, a name or RID appears twice, a RID is on two `vetted.md` rows, a field is malformed, or an inventory row is not fresh: its RID has no `vetted.md` row, or its head is not that row's head. The refusal names the row, so a stale export or a stale `vetted.md` cannot regenerate the front door. The output depends only on the input bytes: no clock and no environment, so two runs give identical files.
 
 ## Build
 
@@ -25,12 +25,15 @@ sha256sum "$OMC"                       # must print 3ad9f10f…3194
 
 ## Export the vetted table and the inventory
 
-Run on the machine whose Radicle node holds the projects, from the repository root (it needs `rad`, `git` and `jq`). The first command copies the public rows of `RIDS.md`, stopping at its first `## ` section (WITHDRAWN, Extra branches or anything later). `si` applies the same rule to `VETTED`, so a well-formed row under any `## ` section is never listed:
+Run on the machine whose Radicle node holds the projects, from the repository root (it needs `rad`, `git` and `jq`). The first command keeps the RIDs that RadPublish's hub seed audit verified (its `OK` lines). The second copies, for those RIDs only, the rows of every `RIDS.md` section except WITHDRAWN and Extra branches, so a withdrawn project or a second branch of a project is never vetted. `si` reads `vetted.md` only up to its first `## ` line:
 
 ```sh
-{ printf '# Vetted public projects\n\n| name | RID | branch | head |\n|---|---|---|---|\n'; awk '/^## /{exit} /^\| [^|]+ \| rad:z[0-9A-Za-z]+ \| [^|]+ \| [0-9a-f]{40} \|/' /path/to/RIDS.md | awk -F'|' '{print "|" $2 "|" $3 "|" $4 "|" $5 "|"}'; } > compiler/vetted.md
+awk '$1 == "OK" {print $2}' /path/to/seed-audit.out > hub.rids
+{ printf '# Vetted public projects\n\n| name | RID | branch | head |\n|---|---|---|---|\n'; awk '/^## /{s = $0} s !~ /^## (WITHDRAWN|Extra branches)/ && /^\| [^|]+ \| rad:z[0-9A-Za-z]+ \| [^|]+ \| [0-9a-f]{40} \|/' /path/to/RIDS.md | awk -F'|' 'NR == FNR {ok[$0]; next} {r = $3; gsub(/ /, "", r)} r in ok {print "|" $2 "|" $3 "|" $4 "|" $5 "|"}' hub.rids -; } > compiler/vetted.md
 grep '^| [^|]* | rad:z' compiler/vetted.md | cut -d'|' -f3 | tr -d ' ' | while read -r rid; do id="${rid#rad:}"; p="$(rad inspect "$rid" --payload)" || continue; br="$(printf '%s' "$p" | jq -r '."xyz.radicle.project".defaultBranch')"; printf '%s\t%s\t%s\t%s\t%s\n' "$(printf '%s' "$p" | jq -r '."xyz.radicle.project".name')" "$rid" "$(rad inspect "$rid" --visibility | sed -n '1{s/ .*//;p;}')" "$(git --git-dir="$HOME/.radicle/storage/$id" rev-parse "refs/heads/$br")" "$(printf '%s' "$p" | jq -r '."xyz.radicle.project".description')"; done | LC_ALL=C sort > compiler/inventory.tsv
 ```
+
+The description column is then curated. A project already listed keeps its committed description. A new project gets the first sentence of its own README at that head. That sentence is replaced by `Source repository; see its README.` when there is none, when it is not a description (a byline, a list of languages, a process note), or when it fails the screen: performance or replacement claims, the words we, our or us, hardware or vendor names, secrets, tokens, e-mail addresses, private paths, URLs, or the name of a withdrawn crypto project.
 
 ## Regenerate
 

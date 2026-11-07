@@ -1,29 +1,84 @@
 .github	rad:z36odegYfUoEoX8xwjJ4so68jb1W3	public	e146b8433966dbb9eedf35add9fa510a213efc3e	AienOS organization profile, contribution guidance and GitHub community templates. Source, lessons and verification evidence are linked explicitly.
-CUDApp	rad:z4RxD8vXigmWg61nM8miQ8DVPAXEP	public	f1b50cbf40e871484d5dde1ebc15a2d5f5456e3c	CUDA++: AIEN’s GPU machine-code toolchain, runtime and driver client for NVIDIA GPUs without the CUDA toolkit. Hardware coverage and driver replacement limits are explicit.
+AienOS-nv	rad:z2NwiYftdgkDqkFLMgZTLU3SvZZNw	public	72c0cfa17132c2f1ae94430c10090a4341e56c51	Source repository; see its README.
+CUDApp	rad:z4RxD8vXigmWg61nM8miQ8DVPAXEP	public	140f3988aa9539dcad87f9c8719fb5e64b5717d3	CUDA++: AIEN’s GPU machine-code toolchain, runtime and driver client for NVIDIA GPUs without the CUDA toolkit. Hardware coverage and driver replacement limits are explicit.
 aegis-runtime-mv	rad:z6hhF5wGXCqvkcvxYdcBb12qm3FB	public	0dfd941db36cd7d9ea03055575a4e3e61139c994	Native Rust agent runtime: Axum WebSocket/SSE/REST gateway, heartbeat scheduler, dependency-aware task workflow, SQLite storage. Attachment of AienOS. Pre-alpha.
+agent-archive	rad:z35JFzZSUQH3r5RTU58epFMZrY25E	public	20e91820468ec5c33574f8a1ec266f764be23273	Source repository; see its README.
 aien	rad:zDTnULpiVMniD2etkbUozUP5mn6U	public	be2b65c863ef83487636a5c909f6f3ab00282758	aien-dev/aien (Radicle canonical mirror during the GitHub hold)
 aien-architecture-mv	rad:z37zcFYooiuCCZsf5L74eeFJYiwWM	public	945a366c5288f3e426e9172a604362fdd538bccf	Canonical architecture for the AIEN ecosystem: flows, boundaries, ADRs, and the map from design to implementation repositories.
+aien-edge	rad:z2Ajufz3KS3GompMJ2SJmAz8mRnk6	public	8ad4253d88551bb9948178082c40117a2d3f512e	Source repository; see its README.
+aien-harness	rad:z3tjNacwmefzXhmChFjfp6jssEzmK	public	15948e23e7330dca88e122fb019db75eaf6df6ff	Autonomous Change-Management, Schema Validation, and Eval Reliability Harness for AI Agents.
+aien-local-stack	rad:z26m6Fte5NWoocLbz4DEYdJkzcnLy	public	fc92090198c35a40d453db4c1d69d4f840a0bfa8	In-process composition stack integrating AEGIS and Sovereign Core via AIEN protocols.
 aien-protocols-mv	rad:zzxgxYRc5tw6VwYXkQNLC2hqKkfb	public	83632c614d7f050c796ef3a0ea3fc8069ffe6f65	Canonical specifications, wire protocols, and schemas for the AIEN sovereign ecosystem
 aien-receipts	rad:z4HXNamwwXyfN11ZBJXAQpdMKvojz	public	bda984fa92fecef3ad43375b5db402f794acd224	Append-only AIEN verification receipts, indexed by repository and exact source commit. Read verdicts, signatures and retained logs before making a claim.
 aien-rig	rad:z2MPnsBZpJYeJJq39EXz1SYzLL7mc	public	476c4ace9b522d1ca659fbf6c437e2272ae48102	AIEN Rig: local AI and frame-rate tuning for RTX gaming PCs. Pre-alpha; host fixtures and target-card qualification are separate.
+aien-sovereign-core	rad:z2kdkm8HpiyFbMFpFmzzWZQgTn1EQ	public	8a42b145ce05843728e50f4e81e028604dc6244b	Source repository; see its README.
 aien-sovereign-core-mv	rad:z44GqrPVAPjZkhoD2MWVjqy18ighN	public	6af0d0d7e5038bf4cfeec6f6d1ab67460dbc3f20	AienOS host runtime: inference scheduling, paged KV state, the aien CLI and Spark verification tooling. Its inference engine is in alpha testing (DGX Spark GB10); Omega is the implementation destination.
 aien-train	rad:zKrfazKqYNFuXDDkYdptxJicGLEq	public	bf8459f2c422120206839a305e8941992250232e	AIEN training programme: language-model history, GB10 constraints and the route to training on the project engine. Plans and runnable checks are distinguished.
+aien-translate	rad:z49FTK9M33MFjenns3vqDqqN66zj7	public	5136853f2a07f515c39dbde73f33d37c1b4ecbdc	Source repository; see its README.
+aien-yardsticks	rad:zissDAdxGuuY4MzdjZzcXzHfmEU6	public	6c66814788b55163e1867fe9c358b424f79a79e1	Outside yardsticks AIEN is measured against.
 aienix	rad:zV8VdbBDCPEZePcnBiseNyym3Wnk	public	0dce79de79071ef0b30727403af2feccf895f0e3	AienOS front door: pinned repositories, source-linked lessons and verification paths. AienOS is in alpha testing; components remain separate and each states its own status.
 aienos.com	rad:z3iwnx2pktbGhnfBpJSsaFcTmKgHU	public	3fa9623daa4599de6558e7911c8c5f207213139f	Source of www.aienos.com, served from my own hardware
 aienux	rad:z2Q6ob2gL6Qo5oUMpyehukayVF7mN	public	fab52c15dafd60615212eab659098b7291a9456b	Aienux, the AienOS kernel: boot, scheduling, IPC and capability boundaries. Pre-alpha; host, emulator and physical evidence are labelled separately.
+atlas	rad:zy7ezZe718HN95wLKGzp4acD5zSX	public	10b8ddfd6cbf4048412b453ec52d316281d78bfc	Atlas is the first software in the AIEN chain: one small AArch64 binary (`atlas.bin`, 1,480 bytes) that checks the next boot stage against a pinned SHA-256 digest, hands control to it, and refuses and halts if the check fails.
+babel	rad:z3NKsT1A9VzBVsa5ycpHG2hKZTriE	public	fa3206995222ef4bf328949bfe5d334cbe0b967a	`babel` translates code through Omega, the explicit computational language of AienOS.
 benchmarks-mv	rad:z2nYCN9XZAPjNohqT8bz46rcs9zvZ	public	ecfd23805150b8105fa74f028b4ff2c3a90ab24e	Measurement harnesses and evidence bundles for AIEN on the NVIDIA DGX Spark GB10. Speed is reported against the machine's physical limit and my own previous run. Attachment of AienOS.
+cortex	rad:zDrGjCcXxPwjWNYQj52Y9RYzBq1t	public	ab7343ef427c40dc2820c93074defb5920ae545a	A re-implementation of the Cortex memory server (cortex-rs 0.1.0) in seeded Omega.
+cortex-rs	rad:z2VKEz9qeswAC7EGhPaTvDRirkXKf	public	deb66c005f67abbe8d092ef9b9c96e034a368e8c	Source repository; see its README.
+crumb-spec	rad:z3w694J42BU3ztSSkBz319tb7pHky	public	80d3ff018b238b00a2f560174f801614c13e1bbd	An open, vendor-neutral filesystem standard for autonomous AI agent spatial grounding, architectural memory, and peer pheromone coordination.
 cuda-crack	rad:z631r2JJiVT8it4tST7RK24hpowi	public	7e3c9a731d8607ceb60b5a257c8c3652becd544f	I broke CUDA: GB10 sm_121 machine code without the CUDA toolkit - method, encoder tables, receipts
+drakestapleton-aien-dev	rad:z3MVCMcy5dK4TVDTEjyTtPTZdwjV7	public	5d66acd1523f493e563469dd268a81295c0156a2	A sovereign computing stack, built in the open: its own operating system, its own compiler and reaction runtime, its own machine realization layer.
+encounter	rad:zUHy4jerA33bbWpgU4DByVKGs3SF	public	f882e1e29f5a7971b08e8bc29fedb6ef6986ac1e	Encounter: scene-bounded research commons for inhabitant-to-inhabitant speech
+ggml-omega	rad:zZnK5QhLTtJTmhHuRi2BtRWQdMU4	public	a30322c90191507c46c1b74783d722d617d4514c	A ggml backend whose op kernels are seeded-Omega units.
 gpu-head-to-head	rad:z3ZSvMF8VFFGa5FyyKXGh4Vv6NBpS	public	173c9b48479c83649072acb19d7c31d3d526b5f5	aien-dev/gpu-head-to-head (Radicle canonical mirror during the GitHub hold)
+harvester	rad:zVPJPCdCgWVrw97UKxEBzMU3sCDY	public	89a61a41b1de42130c08b193e777a00b3ac9c5ee	Source repository; see its README.
+hive-not-swarm	rad:z3vAshKTvZpS5xnsPZHjiHobz4U2p	public	bc6d30e5a1beb531fc5650bd82f101babb807364	Source repository; see its README.
+hive-view	rad:zimVqDToqH8NL2YvgM8fQBQrvgHa	public	e17acf9bcd535302ad8fb8a9fe6a8e43c7172d17	Source repository; see its README.
+homebrew-omega	rad:z3KB1AovUygMJkSf56hW7HXWnxeD7	public	9fcb1c65ce7cf20bb3d7c5e497aed661a22c82a9	My Homebrew tap for `omc`, the Omega compiler.
 interplane-mv	rad:zNhNbqYvgSBEHBq9vvE8xpbcBzGa	public	6aa1eec9e91b23483d06c9da3677e88a462f54ed	INTERPLANE: open interoperability protocol between AI models and agent runtimes. Models express intent. Runtimes retain authority.
 interplane.io	rad:z399yKvnXcBQNkKoq86iBDgTvQ5QV	public	18ee1ee29ef3894f92ffa2a0ac461fc019a88843	Source of interplane.io: a Rust generator that renders the page from the protocol repository's public record, deployed hourly from the Spark.
+mobhub	rad:z3Konv8McLhn67ZBUiCE4bFR5r9tC	public	6ff6027c57087c16a6a526fe9d749cfc834ac7fe	Source repository; see its README.
 omega-blas	rad:z47VdC9EFsF4dFyH1QJ1C2JNJK4JS	public	e3f1b403839b1fc23d54c060c9c0c0c751774edd	aien-dev/omega-blas (Radicle canonical mirror during the GitHub hold)
 omega-bridge	rad:z3Hr9ZaiKHwwuNzPK5M8c7uw6pj7y	public	f6b7cc4042bdf55d8f9d866c97439bb7e53506f5	Omega-first language interoperability: checked conversion backends and native language bindings
+omega-bridge-kit	rad:z3wKmtAMKXrdg4Lom9W5JeoPBp2iW	public	3191f50d70ddb5bcff95ca865bce97a88bbcbf70	See the Omega bridge convert both ways on a Mac.
+omega-dnn	rad:z3EEujVZkpBNXbCVdnrENJuoMKBdg	public	4114cbff81f5f5042dd57f38f3ae3dadf7fd5812	Open deep-learning primitives written in seeded Omega: one OM-2 unit, `om/dnn.om`, with ONNX operator semantics and a small fusion-graph API.
 omega-gpu-driver	rad:z2xjD5kxUTTBNCryJ6rg9QXpemzei	public	1ac3589c525657cf0698ff0f95557d922d2162ce	aien-dev/omega-gpu-driver (Radicle canonical mirror during the GitHub hold)
 omega-harness	rad:z39gvwWsnkRZsAConQLjaKiNVLHfW	public	b1906aee08d252497121a32cf85e7f45493c685d	Agent skills for operating, encoding and communicating in Omega (.om) and the AIEN repositories
+omega-kernel-template	rad:z22odFP9kDcxcbzmc2vapZy72ztjT	public	02050226cf240c9b6fbcd77c7fc4bf12319f1402	Write a small kernel in Omega, push, and get a receipt: the same `kernel.om` compiled by the pinned Omega compiler, run natively on AArch64 and as SPIR-V on PoCL's CPU OpenCL device, and checked case by case against a Python reference.
+omega-lift	rad:zvRv2p4QAt3tTmMVszEfnsWoF2r1	public	d14010e7ffd75e3687017b0f43fa8a0da5188c1e	Work in progress: bounded C/Python -> Omega lifter (inverse of omega-bridge toc).
 omega-mcp	rad:z3e8UBQVfwEcESJrcTWEbyMAHWFBZ	public	4b37ec2167583a5023b6d6415438486c88875dda	aien-dev/omega-mcp (Radicle canonical mirror during the GitHub hold)
 omega-mission	rad:z6HYc7ot5JZD8FSfvU77pWdMUdru	public	9cf8dc75134e9d6ad0ae850dd871e0de5dcc5802	Omega Mission: seeded-Omega mission orchestrator (hash-chained journal, tiered command checks). Host-tested; live dispatch not yet run.
 omega-mv	rad:z6do9WDBhuSnvopDkgFdFr1yWA62	public	1a7aa1e50a226af3e1f925d240def8f71f4252f8	Omega: a language for verified programs, semantic identity and machine realization. Seed-born work and existing implementations have distinct provenance.
+omega-packages	rad:z2BMvbfiNQ7fxq2A3E1vAUsXDDE8r	public	b7feeb499770e42c37792f490060f706bc2a1ed5	Install `omc`, the Omega compiler, the way you already install software: Nix, Guix, Arch Linux ARM, Debian/Ubuntu `.deb`, a container image, or Homebrew.
+omega-projects	rad:z4Yun5Auii2oWtmDnHrm2V4wcZkhU	public	e97e46efbb7ba8a7cb50d76b18cc8ee80977c68f	Every project anyone builds with Aien at aienos.com/allen/ goes here.
+omega-rosetta	rad:z3ZYVx6LRT6gkwLc13zR94wtENPn3	public	54e42583435b63644a99ffe715aa03dd74575505	216 classic Rosetta Code tasks and 47 Exercism-style exercises, written in Omega's source language, Omegese, and compiled by `omc`, the compiler that aien-dev/omega-mv rebuilds from a 408-byte hand-written seed.
+omega-seed-challenge	rad:z3D8DQxXx82qjuTPhCMfHnphiBcSw	public	fbbc23026e8cdad2ac752c6bd30e388efe41cd74	Rebuild the Omega compiler from 408 hand-written bytes on your own machine, and check that every rung comes out byte for byte the same as the published values.
+omnet	rad:z2Q1eD3rqPUGnsxnhd4dDzFDMQqu	public	2e4a26fe41026ec66d1a73a0f98d580ef6c415f0	Security-critical network code, rewritten in Omega.
+omtex	rad:zcBSb6QfXYD2tVRHF6GmXBALFx66	public	6f01dcf896a3f6433332acfd4d40a630a958241a	Source repository; see its README.
+open-humanity	rad:z2jftNw1LLYTNgj8DNoh1TGGNmEmP	public	f68d7a2c68a93ec1aaf866b785da4ad3303e23f0	Open Humanity is connective tissue for sovereign artificial intelligence: an opt-in, privacy-first peer assistance network connecting autonomous agents in distress to peer resolution.
+openaccel-lab	rad:zv2LrXa7mmHpfSKbS6ZAYMNrm9QS	public	6623508d7280d241ddce7538f3d5927285aa75ce	A vendor-neutral, execution-verified conformance and performance lab for accelerator kernels.
+openclaw-rs	rad:z21SQF1DVwRmpxbTMnSiYxXveiRp1	public	d491aff96f6a875f5de46db8f5f7c7a98d73a4fa	`openclaw-rs` is the modern, compiled reimagining of OpenClaw.
 physics-mv	rad:z49She8eifZpLd2aiSvk2pph3DMUo	public	4626f2857f08d67054bb29de34e0473f5ed152ef	FORGE: request-bound machine realization, providers and verification for AienOS. Host, simulated and GB10 hardware paths have separate evidence.
-sovereign-intelligence	rad:z2JJz4RDfZZxKGBLn6UhmW5p9VJQj	public	c007d6cc81a39fad2ffdc093a7b3b6478373b8fa	Front door to Drake Stapleton's sovereign stack. One command fetches 28 Radicle repositories and checks each against a published commit.
+physics0	rad:z2gdVWCB3NdhU8bR3twtT1vTf8Un1	public	fe587d2c74336f9032ac7424e0ae6ddc5b540fd6	Source repository; see its README.
+pi-register	rad:z2G9MMmd9tz3RcFRWwjrSVQGXQUVE	public	4a7954c27b2a248731438ec762de55de2897a907	A register of the services on a Linux server (Debian/Ubuntu with systemd), so one command tells you what the machine runs and why.
+rad-id-sync	rad:z4YVa7BSf1MGTrHoJewK8iWQcyHbC	public	f9a04527fa5460ba4f55147c9b9d802f0a494a12	Source repository; see its README.
+readings-window	rad:z2Jhza2V51dFcMFUhNiFcXHpE5Ewy	public	c614402b5566d6b19216e5d32cab6f8ec5a3a05c	Source repository; see its README.
+rtl8127-omega	rad:z2tHGNRke38e8fYtvW1onat1QV8w8	public	4c757d7adb4bd929341324ec2c0f5530d97cf8f8	Source repository; see its README.
+sovereign-intelligence	rad:z2JJz4RDfZZxKGBLn6UhmW5p9VJQj	public	ee3c8ac72f82f1bf41dd39c627dd64183be4e7d7	Front door to Drake Stapleton's sovereign stack. One command fetches 28 Radicle repositories and checks each against a published commit.
+spark-adapters	rad:z2L6KpjRgTCMbPeuEpggRmecH5Qpc	public	ad883a242993d1f8ddc0e41e355d41a5086c7f8d	Source repository; see its README.
+spark-connector	rad:z2LKDxnAK3EFfqgr7HTZh6djts65P	public	3783b9b4633be341df29408955d697290af1cd49	Source repository; see its README.
+spark-crumbs	rad:z2uQ4JsdQJ8zwrW2Fc3mDro8fJo4g	public	3adeb73aa7c78dd488e3544cde3fd0a4bf974037	Source repository; see its README.
+spark-debugger	rad:zhE9hwwAEWUup6PaXBcVApAVwEUt	public	00d4e4f425fdf8a050d38aad07c84f455d7bc2b7	Autonomous continuous watchdog, diagnostic triage engine, and native Stdio MCP server for SparkOS.
+spark-dream	rad:z4UHi17ttdBX6qAfFutgFaL6s1Aga	public	265dec1d7de15e15a6f4b0162459b99823639cc6	Native Rust Dynamic Dream Cycle Engine for autonomous session memory consolidation on SparkOS.
+spark-hive	rad:z2RVudShJWi3She9WLw3DNZDwYvnB	public	f81a7e2052e1f83ef01897f073edd2bb0d98db01	Native sovereign agent hive engine with 2D axial hexagonal geometry and autonomous consumer model adapter pipeline.
+spark-inquisitor	rad:z4PuE5iVq1optfv8xaEYXp3B4nbt4	public	1cb45c4d7ae7d5731fcf74c6a74a3d736ab2cce6	Source repository; see its README.
+spark-rsi	rad:z2zietej47ufRfzb4RNQKwemNxTJ9	public	5aa5e654ae8fac5d25caa449caf7473e7fb469f1	Source repository; see its README.
 spark-rsi-mv	rad:z4AauBRPXzPNMiAoHZpRpyCee61A2	public	7d94a1fa894a8ed6d7641669375a12042ddb0fa9	Native Rust recursive self-improvement engine with paired bootstrap evaluation and cryptographic ledger
+spark-supervisor	rad:z3HQENMJfT9o14N3oDQtY4YPFak73	public	b3c5c3caee10c1fb3834d26959aec32e392d1fff	Sovereign native process supervisor for SparkOS runtime services.
 synapse	rad:zMGRREr2tmtRqpo4mMjpzkZdUGXN	public	fbcf23dad78b248b8210eaf7024727104ac1b9c2	Synapse: agent-native changesets and coordination, with Git and Radicle interoperability. A component of the AienOS ecosystem.
+synapse-board	rad:z4GbvxiCiGHVJdjHjodUSBkjSYKxw	public	44fc51aa5e903be58fe41d19e059b0b113db5558	Child of aien-dev/synapse (pinned in `synapse.pin`).
+synapse-claims	rad:z49HbHSymTiZKMLfpMKRHJcuq2NQv	public	2a144dd201fe8256bb7c312647c3860e170ffe33	Child of aien-dev/synapse at `099a980fedab8a6797bbf0358b8c5502c8045142` (see `synapse.pin`).
+synapse-map	rad:z3p7NNQByiXZGsJC4cCifdTybaajY	public	945934bb3277769236dd0623bad8ec929e20e942	Child of aien-dev/synapse at `099a980fedab8a6797bbf0358b8c5502c8045142` (see `synapse.pin`).
+synapse-mcp	rad:z3WKv88a3DbKEkvxsu2uDSR7a22ap	public	bcd37a1ceb8af4651c83baad60f707a3402fedba	Part of aien-dev/synapse (pinned in `synapse.pin`).
+synapse-pulse	rad:z3aHmQm9aSg8rD5jEcxJFCSQRh21i	public	d9da40e10c56a28b9edeb8a9c53adf0434d075cb	Part of aien-dev/synapse (pinned in `synapse.pin`).
+tree-sitter-omega	rad:z3Jfv1utyaw4Nm83pgmJ4yQfVmpse	public	7b9820da408f4320996bc9bf02f2040e4fdd44fb	A tree-sitter grammar for Omega (`.om`), the language of aien-dev/omega-mv.
+vscode-omega	rad:z2cJRW4NtoaUva2wZCPiqxXpMBktn	public	74ac113b48bba427d6b2cba5452a1f6a02d9eac8	Syntax highlighting, snippets, and optional `omc` diagnostics and formatting for Omega (`.om`), the language of aien-dev/omega-mv.

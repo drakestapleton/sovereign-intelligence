@@ -7,9 +7,10 @@ note Run:
 note   si INVENTORY ORDER VETTED README REPOS SISH
 note   INVENTORY  read: one project per line, name TAB rid TAB visibility TAB head TAB description,
 note              exported from my Radicle node by the one command in compiler/README.md
-note   VETTED     read: the vetted public table, Markdown rows "| name | rid | branch | head |";
-note              RadPublish's RIDS.md or its committed copy compiler/vetted.md. Other lines
-note              (headings, prose, rows whose RID or head is not well formed) are ignored
+note   VETTED     read: the vetted public table, Markdown rows "| name | rid | branch | head |",
+note              one row per RID on the project's default branch: compiler/vetted.md, the
+note              public rows of RadPublish's RIDS.md. Other lines (headings, prose, rows
+note              whose RID or head is not well formed) are ignored; a RID on two rows refuses
 note   ORDER      read: "core TAB name" lines give the core projects in order,
 note              "deny TAB name" lines name projects that are never listed,
 note              one optional "lead TAB name" line names the project the README leads with
@@ -20,7 +21,7 @@ note Only projects whose name and RID are both on a VETTED row are listed: anyth
 note the node, and every private or denied project, is never emitted. Core projects come
 note first, in ORDER's order; the rest follow in inventory order. A missing, unvetted or
 note non-public core project, a duplicate name or RID, a malformed field, or an inventory row
-note whose RID has no VETTED main row or whose head is not that row's head makes si refuse
+note whose RID has no VETTED row or whose head is not that row's head makes si refuse
 note with exit 1 and write nothing. The output depends only on the input bytes: no clock,
 note no environment.
 
@@ -74,9 +75,9 @@ text tdupr "duplicate RID: "
 text tcmiss "core project is not in the inventory: "
 text tcpriv "core project is private, denied, not vetted or listed twice: "
 text tmvet "more than 1024 vetted rows at: "
-text tfrid "inventory RID has no vetted main row: "
-text tfhead "inventory head is not the vetted main head: "
-text tmain "main"
+text tfrid "inventory RID has no vetted row: "
+text tfhead "inventory head is not the vetted head: "
+text tdupv "RID on two vetted rows: "
 text tnomark "README lacks <!-- si:lead:begin -->, <!-- si:lead:end -->, <!-- si:agent:begin -->, <!-- si:agent:end -->, <!-- si:index:begin --> and <!-- si:index:end -->, in that order"
 text tdot "."
 text tdotdot ".."
@@ -109,7 +110,7 @@ text ag3 "`'s agent prompt link appears here as soon as it is on Radicle.\n"
 text tsec "## "
 text ix1 "**"
 text ix2 " public projects**, "
-text ix3 " of them core, listed by `compiler/si.om` from my Radicle node's inventory. Each project's home is its own Radicle repository; this table only links to them. Clone one peer-to-peer with `rad clone`, or read-only with `git clone` from its mirror on my own seed. Full commit ids are in [`repos.tsv`](repos.tsv).\n\n| # | Project | Radicle ID | Get it | Head | About |\n|---:|---|---|---|---|---|\n"
+text ix3 " of them core, listed by `compiler/si.om` from my Radicle node's inventory. Each project's home is its own Radicle repository; this table only links to them. Clone one peer-to-peer with `rad clone`, or read-only with `git clone` from its mirror on my own seed. A plain `git clone` of the mirror gets the project's Radicle default branch. Every other branch and tag, including those carried over from GitHub, is served at the mirror URL with my node ID appended. That URL has no default branch, so give `--branch` a short branch or tag name, not `refs/heads/...`:\n\n```sh\ngit clone --branch <branch-or-tag> https://www.aienos.com/rad/<RID>.git/z6MkfZDue1TbaNFi3ZzcD9uiTeduPLC52ucdFVuLKZwexxhK/ <dir>\n```\n\nFull commit ids are in [`repos.tsv`](repos.tsv).\n\n| # | Project | Radicle ID | Get it | Head | About |\n|---:|---|---|---|---|---|\n"
 text ix4 "| "
 text ix5 " | **"
 text ix6 "**"
@@ -531,8 +532,22 @@ p = add q 1
 end
 end
 
+note vetdup: is RID [ro, ro+rn) already on a kept VETTED row
+fn vetdup ro ulong rn ulong to bool
+nv = get nvet 0
+for j ulong nv
+vo = get vet add mul j 8 2
+vn = get vet add mul j 8 3
+if eqs ro rn vo vn
+ret true
+end
+end
+ret false
+end
+
 note vet_row: one VETTED line [p, q); "| name | rid | branch | head |" with a good name,
-note RID and 40-digit head is kept with its branch, any other line is ignored
+note RID and 40-digit head is kept with its branch, any other line is ignored; a RID already
+note kept refuses, so each RID has one vetted head
 fn vet_row p ulong q ulong to void
 if lt sub q p 8
 ret
@@ -571,6 +586,9 @@ end
 k = get nvet 0
 if ge k 1024
 die tmvet p sub q p
+end
+if vetdup c sub d c
+die tdupv p sub q p
 end
 put nvet 0 add k 1
 k = mul k 8
@@ -622,16 +640,13 @@ end
 ret false
 end
 
-note freshness: 0 when no VETTED main row has RID [ro, ro+rn), 1 when one has it with another
-note head, 2 when one has it with head [ho, ho+hn)
+note freshness: 0 when no VETTED row has RID [ro, ro+rn), 1 when its row has another head, 2 when
+note its row has head [ho, ho+hn)
 fn freshness ro ulong rn ulong ho ulong hn ulong to ulong
 v = ulong 0
 nv = get nvet 0
 for j ulong nv
 b = mul j 8
-vo = get vet add b 4
-vn = get vet add b 5
-if eqt vo vn tmain
 vo = get vet add b 2
 vn = get vet add b 3
 if eqs ro rn vo vn
@@ -645,11 +660,10 @@ v = 2
 end
 end
 end
-end
 ret v
 end
 
-note check_fresh: every inventory row's RID must have a VETTED main row and its head must be
+note check_fresh: every inventory row's RID must have a VETTED row and its head must be
 note that row's head, so a stale or unvetted inventory is refused, never rendered; the refusal
 note names the row (name, rid, visibility, head)
 fn check_fresh to void
