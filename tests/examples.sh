@@ -36,8 +36,10 @@
 # examples/hello) for confirmed divergences. A listed case that fails prints KNOWN; one that
 # passes prints FIXED and fails the run, so the list is pruned; a line naming no case fails too.
 #
-# EXAMPLES_ONLY=a64 or EXAMPLES_ONLY=x86 runs one target. Exit 0 when nothing FAILs, 1 on any
-# FAIL or FIXED, 2 on a usage error.
+# EXAMPLES_ONLY=a64 or EXAMPLES_ONLY=x86 runs one target. EXAMPLES_ROOT=DIR reads DIR/examples/*.om
+# and DIR/skills/*/examples/*.om instead of the harness (default harness/; tests/omc holds the examples
+# of compiler words that are not in the imported harness). Exit 0 when nothing FAILs, 1 on any FAIL or
+# FIXED, 2 on a usage error.
 set -u
 
 usage() { echo "usage: sh $0 OMC_A64 OMC_X86 [QEMU_A64]" >&2; exit 2; }
@@ -54,7 +56,8 @@ ONLY=${EXAMPLES_ONLY:-}
 case $ONLY in ''|a64|x86) ;; *) usage ;; esac
 
 here=$(cd "$(dirname "$0")" && pwd)
-root=$(dirname "$here")/harness
+root=${EXAMPLES_ROOT:-$(dirname "$here")/harness}
+root=$(cd "$root" 2>/dev/null && pwd) || { echo "examples: no directory ${EXAMPLES_ROOT:-harness}" >&2; exit 2; }
 known=$here/examples.known
 [ -d "$root/examples" ] || { echo "examples: no $root/examples" >&2; exit 2; }
 

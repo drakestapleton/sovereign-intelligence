@@ -1,0 +1,11 @@
+note count_err30_contract: a contract clause takes integer words on parameters only; count is error 30
+om2
+fn f a view uchar * n ulong to ulong
+requires eq count a 0 n 10 0
+ret n
+end
+fn main to int
+b = new uchar 4 0
+r = f b 2
+ret 0
+end

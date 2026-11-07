@@ -320,15 +320,9 @@ s = add d 1
 ret catof add o s sub n s
 end
 
-note nlines: the newline bytes among the first m bytes of fb
+note nlines: the newline bytes among the first m bytes of fb (count checks m against fb, trap 3)
 fn nlines m ulong to ulong
-c = ulong 0
-for i ulong m bound 1048576
-if eq get fb i 10
-c = add c 1
-end
-end
-ret c
+ret count fb 0 m 10
 end
 
 note countf: open the path at inp[o, o+n) and add its file, bytes and lines to cur

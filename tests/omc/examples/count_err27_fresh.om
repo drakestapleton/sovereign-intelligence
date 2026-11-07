@@ -1,0 +1,10 @@
+note count_err27_fresh: count reads its slice, so a tracked fresh array leaves the analysis, error 27, as in read and write
+om2
+fn f s edit uchar 8 fresh to ulong
+ret count s 0 8 10
+end
+fn main to int
+b = new uchar 8 0
+r = f b
+ret 0
+end

@@ -1,0 +1,7 @@
+note count_err07_element: count counts uchar elements only; a uint array is error 7, as read and write refuse it
+om2
+fn main to int
+a = new uint 4 0
+n = count a 0 4 10
+ret 0
+end

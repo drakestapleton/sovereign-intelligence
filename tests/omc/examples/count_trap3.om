@@ -1,0 +1,11 @@
+note count_trap3: count checks its slice as read and write do, n <= len A and off <= len A - n, before it
+note reads a byte; here off 5 and n 4 end one past an 8-byte array, so it traps 3, exit 103, whatever v is
+om2
+text before "before\n"
+fn main to int
+k = write 1 before 0 len before
+a = new uchar 8 10
+o = ulong 5
+n = count a o 4 10
+ret int n
+end

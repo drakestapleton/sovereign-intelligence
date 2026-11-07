@@ -29,6 +29,9 @@
 #      receipt's sha256, and its four planted bugs, made by check/mutate.om, are each caught
 #   9. tools/forkpush.om, built for both targets, must print tests/forkpush/expected.sh, refuse every
 #      tests/forkpush/bad/*.tsv, and write the same out/fork-push.sh from stack/FORKS.tsv
+#  10. the examples of compiler words beyond the imported harness (tests/omc), on both targets
+#  11. control: omc.om with count's slice check deleted must build a compiler that fails both trap-3
+#      examples of count on every target that runs, while count_word still passes
 # Last line: RC=0 when every step passed.
 set -eu
 R=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
@@ -300,5 +303,28 @@ fi
 sh -n $O/fork-push-a64.sh || fail "forkpush: the generated fork-push.sh does not parse"
 cp $O/fork-push-a64.sh $O/fork-push.sh
 pass "forkpush: out/fork-push.sh from stack/FORKS.tsv, $(grep -c "^fp '" $O/fork-push.sh) branches to push, sha256 $(sha $O/fork-push.sh)"
+# 10. The examples of words this repository adds to the compiler (seed/PROVENANCE.md), on both targets.
+EXAMPLES_ROOT=tests/omc sh tests/examples.sh "$O/omc" "$O/omc-x86" ${A64:+"$A64"} || fail "tests/omc examples"
+pass "tests/omc examples"
+
+# 11. Control: count without its slice check must be caught by the trap-3 examples.
+awk '/^fn / { f = ($2 == "cnt_word") } f && $0 == "vs_chk e ro rn" { f = 0; next } { print }' $S/omc/omc.om > $B/omc.nochk.om
+[ "$(wc -l < $B/omc.nochk.om)" -eq "$(($(wc -l < $S/omc/omc.om) - 1))" ] || fail "control: cnt_word's vs_chk line was not deleted exactly once"
+a64 $O/omc < $B/omc.nochk.om > $B/omc-nochk || fail "control: the compiler without count's check does not build"
+mk $B/omc-nochk
+{ printf 'target x86linux\n'; cat $B/omc.nochk.om; } | a64 $O/omc > $B/omc-x86-nochk || fail "control: omc-x86 without count's check does not build"
+mk $B/omc-x86-nochk
+[ "$(sha $B/omc-nochk)" != "$(sha $O/omc)" ] || fail "control: deleting count's check did not change omc"
+if EXAMPLES_ROOT=tests/omc sh tests/examples.sh $B/omc-nochk $B/omc-x86-nochk ${A64:+"$A64"} > $B/nochk.log; then
+  fail "control: the compiler without count's slice check passed tests/omc"
+fi
+for t in a64 x86; do
+  if grep -q "^NOT_RUN $t " $B/nochk.log; then note "NOT_RUN control on $t"; continue; fi
+  for c in count_trap3 count_trap3_wrap; do
+    grep -q "^FAIL $t examples/$c: exit " $B/nochk.log || fail "control: $t examples/$c did not catch the missing check"
+  done
+  grep -qx "PASS $t examples/count_word" $B/nochk.log || fail "control: $t count_word failed for another reason"
+done
+pass "control: count without its slice check fails count_trap3 and count_trap3_wrap; count_word still passes"
 
 printf 'RC=0\n'
