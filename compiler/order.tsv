@@ -1,0 +1,15 @@
+# order.tsv: hand-kept input to compiler/si.om
+# core TAB name   the core projects, listed first, in this order
+# deny TAB name   never listed, whatever the inventory says
+core	aienux
+core	omega-mv
+core	aien-sovereign-core-mv
+core	physics-mv
+core	aien-architecture-mv
+core	aien-train
+core	CUDApp
+# crypto work stays on my machines only; it is not on Radicle
+deny	omega-pearl
+deny	aien-crypto
+# upstream Radicle source, seeded by my node but not my project
+deny	heartwood
