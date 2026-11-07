@@ -4,7 +4,7 @@
 |---|---|---|---|
 | aien-sovereign-core-mv | rad:z44GqrPVAPjZkhoD2MWVjqy18ighN | main | 6af0d0d7e5038bf4cfeec6f6d1ab67460dbc3f20 |
 | omega-mv | rad:z6do9WDBhuSnvopDkgFdFr1yWA62 | main | 1a7aa1e50a226af3e1f925d240def8f71f4252f8 |
-| omega-harness | rad:z39gvwWsnkRZsAConQLjaKiNVLHfW | main | b1906aee08d252497121a32cf85e7f45493c685d |
+| omega-harness | rad:z39gvwWsnkRZsAConQLjaKiNVLHfW | main | ac9299bd49230287a23738acd606fc885325fc5d |
 | aien-architecture-mv | rad:z37zcFYooiuCCZsf5L74eeFJYiwWM | main | 945a366c5288f3e426e9172a604362fdd538bccf |
 | omega-bridge | rad:z3Hr9ZaiKHwwuNzPK5M8c7uw6pj7y | main | f6b7cc4042bdf55d8f9d866c97439bb7e53506f5 |
 | aien-train | rad:zKrfazKqYNFuXDDkYdptxJicGLEq | main | bf8459f2c422120206839a305e8941992250232e |
@@ -20,10 +20,10 @@
 | interplane.io | rad:z399yKvnXcBQNkKoq86iBDgTvQ5QV | main | 18ee1ee29ef3894f92ffa2a0ac461fc019a88843 |
 | interplane-mv | rad:zNhNbqYvgSBEHBq9vvE8xpbcBzGa | main | 6aa1eec9e91b23483d06c9da3677e88a462f54ed |
 | physics-mv | rad:z49She8eifZpLd2aiSvk2pph3DMUo | main | 4626f2857f08d67054bb29de34e0473f5ed152ef |
-| sovereign-intelligence | rad:z2JJz4RDfZZxKGBLn6UhmW5p9VJQj | main | ee3c8ac72f82f1bf41dd39c627dd64183be4e7d7 |
+| sovereign-intelligence | rad:z2JJz4RDfZZxKGBLn6UhmW5p9VJQj | main | 486e91806e7d2d1f56b8489e917eafe6d2791e52 |
 | spark-rsi-mv | rad:z4AauBRPXzPNMiAoHZpRpyCee61A2 | main | 7d94a1fa894a8ed6d7641669375a12042ddb0fa9 |
 | synapse | rad:zMGRREr2tmtRqpo4mMjpzkZdUGXN | main | fbcf23dad78b248b8210eaf7024727104ac1b9c2 |
-| CUDApp | rad:z4RxD8vXigmWg61nM8miQ8DVPAXEP | main | 140f3988aa9539dcad87f9c8719fb5e64b5717d3 |
+| CUDApp | rad:z4RxD8vXigmWg61nM8miQ8DVPAXEP | main | 291c7a58bd53eff4cb544ec0a91eecf63b95cdaa |
 | .github | rad:z36odegYfUoEoX8xwjJ4so68jb1W3 | main | e146b8433966dbb9eedf35add9fa510a213efc3e |
 | gpu-head-to-head | rad:z3ZSvMF8VFFGa5FyyKXGh4Vv6NBpS | main | 173c9b48479c83649072acb19d7c31d3d526b5f5 |
 | omega-blas | rad:z47VdC9EFsF4dFyH1QJ1C2JNJK4JS | main | e3f1b403839b1fc23d54c060c9c0c0c751774edd |

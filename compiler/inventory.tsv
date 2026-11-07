@@ -1,6 +1,6 @@
 .github	rad:z36odegYfUoEoX8xwjJ4so68jb1W3	public	e146b8433966dbb9eedf35add9fa510a213efc3e	AienOS organization profile, contribution guidance and GitHub community templates. Source, lessons and verification evidence are linked explicitly.
 AienOS-nv	rad:z2NwiYftdgkDqkFLMgZTLU3SvZZNw	public	72c0cfa17132c2f1ae94430c10090a4341e56c51	Source repository; see its README.
-CUDApp	rad:z4RxD8vXigmWg61nM8miQ8DVPAXEP	public	140f3988aa9539dcad87f9c8719fb5e64b5717d3	CUDA++: AIEN’s GPU machine-code toolchain, runtime and driver client for NVIDIA GPUs without the CUDA toolkit. Hardware coverage and driver replacement limits are explicit.
+CUDApp	rad:z4RxD8vXigmWg61nM8miQ8DVPAXEP	public	291c7a58bd53eff4cb544ec0a91eecf63b95cdaa	CUDA++: AIEN’s GPU machine-code toolchain, runtime and driver client for NVIDIA GPUs without the CUDA toolkit. Hardware coverage and driver replacement limits are explicit.
 aegis-runtime-mv	rad:z6hhF5wGXCqvkcvxYdcBb12qm3FB	public	0dfd941db36cd7d9ea03055575a4e3e61139c994	Native Rust agent runtime: Axum WebSocket/SSE/REST gateway, heartbeat scheduler, dependency-aware task workflow, SQLite storage. Attachment of AienOS. Pre-alpha.
 agent-archive	rad:z35JFzZSUQH3r5RTU58epFMZrY25E	public	20e91820468ec5c33574f8a1ec266f764be23273	Source repository; see its README.
 aien	rad:zDTnULpiVMniD2etkbUozUP5mn6U	public	be2b65c863ef83487636a5c909f6f3ab00282758	aien-dev/aien (Radicle canonical mirror during the GitHub hold)
@@ -42,7 +42,7 @@ omega-bridge	rad:z3Hr9ZaiKHwwuNzPK5M8c7uw6pj7y	public	f6b7cc4042bdf55d8f9d866c97
 omega-bridge-kit	rad:z3wKmtAMKXrdg4Lom9W5JeoPBp2iW	public	3191f50d70ddb5bcff95ca865bce97a88bbcbf70	See the Omega bridge convert both ways on a Mac.
 omega-dnn	rad:z3EEujVZkpBNXbCVdnrENJuoMKBdg	public	4114cbff81f5f5042dd57f38f3ae3dadf7fd5812	Open deep-learning primitives written in seeded Omega: one OM-2 unit, `om/dnn.om`, with ONNX operator semantics and a small fusion-graph API.
 omega-gpu-driver	rad:z2xjD5kxUTTBNCryJ6rg9QXpemzei	public	1ac3589c525657cf0698ff0f95557d922d2162ce	aien-dev/omega-gpu-driver (Radicle canonical mirror during the GitHub hold)
-omega-harness	rad:z39gvwWsnkRZsAConQLjaKiNVLHfW	public	b1906aee08d252497121a32cf85e7f45493c685d	Agent skills for operating, encoding and communicating in Omega (.om) and the AIEN repositories
+omega-harness	rad:z39gvwWsnkRZsAConQLjaKiNVLHfW	public	ac9299bd49230287a23738acd606fc885325fc5d	Agent skills for operating, encoding and communicating in Omega (.om) and the AIEN repositories
 omega-kernel-template	rad:z22odFP9kDcxcbzmc2vapZy72ztjT	public	02050226cf240c9b6fbcd77c7fc4bf12319f1402	Write a small kernel in Omega, push, and get a receipt: the same `kernel.om` compiled by the pinned Omega compiler, run natively on AArch64 and as SPIR-V on PoCL's CPU OpenCL device, and checked case by case against a Python reference.
 omega-lift	rad:zvRv2p4QAt3tTmMVszEfnsWoF2r1	public	d14010e7ffd75e3687017b0f43fa8a0da5188c1e	Work in progress: bounded C/Python -> Omega lifter (inverse of omega-bridge toc).
 omega-mcp	rad:z3e8UBQVfwEcESJrcTWEbyMAHWFBZ	public	4b37ec2167583a5023b6d6415438486c88875dda	aien-dev/omega-mcp (Radicle canonical mirror during the GitHub hold)
@@ -63,7 +63,7 @@ pi-register	rad:z2G9MMmd9tz3RcFRWwjrSVQGXQUVE	public	4a7954c27b2a248731438ec762d
 rad-id-sync	rad:z4YVa7BSf1MGTrHoJewK8iWQcyHbC	public	f9a04527fa5460ba4f55147c9b9d802f0a494a12	Source repository; see its README.
 readings-window	rad:z2Jhza2V51dFcMFUhNiFcXHpE5Ewy	public	c614402b5566d6b19216e5d32cab6f8ec5a3a05c	Source repository; see its README.
 rtl8127-omega	rad:z2tHGNRke38e8fYtvW1onat1QV8w8	public	4c757d7adb4bd929341324ec2c0f5530d97cf8f8	Source repository; see its README.
-sovereign-intelligence	rad:z2JJz4RDfZZxKGBLn6UhmW5p9VJQj	public	ee3c8ac72f82f1bf41dd39c627dd64183be4e7d7	Front door to Drake Stapleton's sovereign stack. One command fetches 28 Radicle repositories and checks each against a published commit.
+sovereign-intelligence	rad:z2JJz4RDfZZxKGBLn6UhmW5p9VJQj	public	486e91806e7d2d1f56b8489e917eafe6d2791e52	Front door to Drake Stapleton's sovereign stack. One command fetches 28 Radicle repositories and checks each against a published commit.
 spark-adapters	rad:z2L6KpjRgTCMbPeuEpggRmecH5Qpc	public	ad883a242993d1f8ddc0e41e355d41a5086c7f8d	Source repository; see its README.
 spark-connector	rad:z2LKDxnAK3EFfqgr7HTZh6djts65P	public	3783b9b4633be341df29408955d697290af1cd49	Source repository; see its README.
 spark-crumbs	rad:z2uQ4JsdQJ8zwrW2Fc3mDro8fJo4g	public	3adeb73aa7c78dd488e3544cde3fd0a4bf974037	Source repository; see its README.
