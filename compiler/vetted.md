@@ -3,8 +3,8 @@
 | name | RID | branch | head |
 |---|---|---|---|
 | aien-sovereign-core-mv | rad:z44GqrPVAPjZkhoD2MWVjqy18ighN | main | 086315afa8bd8c56ff619ddc229e7b120db38141 |
-| omega-mv | rad:z6do9WDBhuSnvopDkgFdFr1yWA62 | main | 6fbc6cbe4bfa4092608e2b5f06d2e8f537893992 |
-| omega-harness | rad:z39gvwWsnkRZsAConQLjaKiNVLHfW | main | c38640db4fe8ee49eff589123415d4a1ba80567a |
+| omega-mv | rad:z6do9WDBhuSnvopDkgFdFr1yWA62 | main | 3c2ebe4dc6aeb97069d3d282824a71703eba0b87 |
+| omega-harness | rad:z39gvwWsnkRZsAConQLjaKiNVLHfW | main | bbb1e6182f26dda3a0cc2516b6871df59e5e52c6 |
 | aien-architecture-mv | rad:z37zcFYooiuCCZsf5L74eeFJYiwWM | main | 945a366c5288f3e426e9172a604362fdd538bccf |
 | omega-bridge | rad:z3Hr9ZaiKHwwuNzPK5M8c7uw6pj7y | main | f6b7cc4042bdf55d8f9d866c97439bb7e53506f5 |
 | aien-train | rad:zKrfazKqYNFuXDDkYdptxJicGLEq | main | bf8459f2c422120206839a305e8941992250232e |
@@ -20,9 +20,9 @@
 | interplane.io | rad:z399yKvnXcBQNkKoq86iBDgTvQ5QV | main | 18ee1ee29ef3894f92ffa2a0ac461fc019a88843 |
 | interplane-mv | rad:zNhNbqYvgSBEHBq9vvE8xpbcBzGa | main | 43cd1d754532e1c57c8afaeb51adbb354d82da53 |
 | physics-mv | rad:z49She8eifZpLd2aiSvk2pph3DMUo | main | 56d02ae50de6c6be46d6b23380eb7ec5edcca787 |
-| sovereign-intelligence | rad:z2JJz4RDfZZxKGBLn6UhmW5p9VJQj | main | 3c37e6fb5a177875bd4637f33cfee56811080990 |
+| sovereign-intelligence | rad:z2JJz4RDfZZxKGBLn6UhmW5p9VJQj | main | 3610fe81ef55b58be35e719468f63dbc4c29beb0 |
 | spark-rsi-mv | rad:z4AauBRPXzPNMiAoHZpRpyCee61A2 | main | 505c75dedac8796f4fa16f5376db13e9bd0f7d84 |
-| synapse | rad:zMGRREr2tmtRqpo4mMjpzkZdUGXN | main | 01a4de3333753dc28595a4ba73903707628a6a77 |
+| synapse | rad:zMGRREr2tmtRqpo4mMjpzkZdUGXN | main | fbcf23dad78b248b8210eaf7024727104ac1b9c2 |
 | CUDApp | rad:z4RxD8vXigmWg61nM8miQ8DVPAXEP | main | f1b50cbf40e871484d5dde1ebc15a2d5f5456e3c |
 | .github | rad:z36odegYfUoEoX8xwjJ4so68jb1W3 | main | e146b8433966dbb9eedf35add9fa510a213efc3e |
 | gpu-head-to-head | rad:z3ZSvMF8VFFGa5FyyKXGh4Vv6NBpS | main | 173c9b48479c83649072acb19d7c31d3d526b5f5 |
