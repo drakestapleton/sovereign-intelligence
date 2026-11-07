@@ -24,6 +24,5 @@ omega-bridge	rad:z3Hr9ZaiKHwwuNzPK5M8c7uw6pj7y	d8174eddf953ad53e16f19eb5841459df
 omega-gpu-driver	rad:z2xjD5kxUTTBNCryJ6rg9QXpemzei	1ac3589c525657cf0698ff0f95557d922d2162ce	rest	aien-dev/omega-gpu-driver (Radicle canonical mirror during the GitHub hold)
 omega-harness	rad:z39gvwWsnkRZsAConQLjaKiNVLHfW	c38640db4fe8ee49eff589123415d4a1ba80567a	rest	Agent skills for operating, encoding and communicating in Omega (.om) and the AIEN repositories
 omega-mcp	rad:z3e8UBQVfwEcESJrcTWEbyMAHWFBZ	4b37ec2167583a5023b6d6415438486c88875dda	rest	aien-dev/omega-mcp (Radicle canonical mirror during the GitHub hold)
-sovereign-intelligence	rad:z2JJz4RDfZZxKGBLn6UhmW5p9VJQj	3aa265026fee307e5e936b0b881feab5d8e36f11	rest	Front door to Drake Stapleton's sovereign stack. One command fetches 28 Radicle repositories and checks each against a published commit.
 spark-rsi-mv	rad:z4AauBRPXzPNMiAoHZpRpyCee61A2	505c75dedac8796f4fa16f5376db13e9bd0f7d84	rest	Native Rust recursive self-improvement engine with paired bootstrap evaluation and cryptographic ledger
 synapse	rad:zMGRREr2tmtRqpo4mMjpzkZdUGXN	01a4de3333753dc28595a4ba73903707628a6a77	rest	Synapse: agent-native changesets and coordination, with Git and Radicle interoperability. A component of the AienOS ecosystem.

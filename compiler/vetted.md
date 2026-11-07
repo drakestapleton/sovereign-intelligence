@@ -28,5 +28,5 @@
 | gpu-head-to-head | rad:z3ZSvMF8VFFGa5FyyKXGh4Vv6NBpS | main | 173c9b48479c83649072acb19d7c31d3d526b5f5 |
 | omega-blas | rad:z47VdC9EFsF4dFyH1QJ1C2JNJK4JS | main | e3f1b403839b1fc23d54c060c9c0c0c751774edd |
 | omega-gpu-driver | rad:z2xjD5kxUTTBNCryJ6rg9QXpemzei | main | 1ac3589c525657cf0698ff0f95557d922d2162ce |
-| cuda-crack | rad:z631r2JJiVT8it4tST7RK24hpowi | main | 043f993fab0b263eb0edd1a367fee8fee8f6a79b |
+| cuda-crack | rad:z631r2JJiVT8it4tST7RK24hpowi | main | 0b53fd2d3e8f79d8dcf4baa72bf8fbc0d3dc7f5a |
 | omega-mcp | rad:z3e8UBQVfwEcESJrcTWEbyMAHWFBZ | main | 4b37ec2167583a5023b6d6415438486c88875dda |

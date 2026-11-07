@@ -15,3 +15,5 @@ deny	omega-pearl
 deny	aien-crypto
 # upstream Radicle source, seeded by my node but not my project
 deny	heartwood
+# this repo: the installer must not pin its own commit
+deny	sovereign-intelligence
