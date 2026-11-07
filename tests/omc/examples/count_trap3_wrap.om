@@ -1,0 +1,11 @@
+note count_trap3_wrap: off + n is never formed, so it cannot wrap: off 2^64-1 and n 2 would sum to 1,
+note inside a 16-byte array, but off > len A - n, so count traps 3, exit 103
+om2
+text before "before\n"
+fn main to int
+k = write 1 before 0 len before
+a = new uchar 16 10
+o = ulong 18446744073709551615
+n = count a o 2 10
+ret int n
+end

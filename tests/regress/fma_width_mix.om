@@ -1,0 +1,6 @@
+note Regression, 2026-11-07: fma operands of different float widths are a type error (error 7) on
+note every target; x86 used to report its fma refusal (error 9) first.
+fn main to int
+x = fma 1.0f32 2.0f32 3.0f64
+ret 0
+end

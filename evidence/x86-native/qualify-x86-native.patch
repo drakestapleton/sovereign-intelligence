@@ -1,0 +1,212 @@
+diff --git a/seed/omc/qualify-x86.py b/seed/omc/qualify-x86.py
+index 9e5bf897..76e4a826 100755
+--- a/seed/omc/qualify-x86.py
++++ b/seed/omc/qualify-x86.py
+@@ -4,6 +4,10 @@
+ Run on Linux AArch64, from any directory:
+   python3 seed/omc/qualify-x86.py --compiler /absolute/path/to/omc
+ Requires Python 3.10+, qemu-x86_64 and GNU x86-64 objdump or llvm-objdump.
++Or run on Linux x86-64 with --host x86-native: x86-64 programs run directly and
++AArch64 programs run under qemu-aarch64, which needs an enabled binfmt_misc entry
++for AArch64 ELF executables with flag P (Ubuntu: qemu-user-static's
++/usr/lib/binfmt.d/qemu-aarch64.conf). The assertions are the same in both modes.
+ Use --inventory for corpus categorization without compiling/running anything.
+ 
+ All outputs go to stdout and a new TemporaryDirectory, removed on exit. Existing
+@@ -69,6 +73,29 @@ QEMU_IOCTL_EXCERPT = b"""        if (ie->target_cmd == 0) {
+             return -TARGET_ENOTTY;
+         }
+ """
++# --host x86-native: the reviewed qemu-aarch64, Ubuntu 24.04 qemu-user-static 1:8.2.2+ds-0ubuntu1.18.
++# Its linux-user/syscall.c (the orig tarball with the package's patch series applied; three
++# patches touch it, none near do_ioctl) holds QEMU_IOCTL_EXCERPT byte for byte at lines 5601-5605.
++QEMU_A64_ORACLE_SHA256 = "e4f8d99e9ff69c3cefffab71cee358ce2af1ecba1282d04c3eeb44ef76f5a71e"
++QEMU_ATTRIBUTION = {
++    QEMU_ORACLE_SHA256: {
++        "upstream_source": QEMU_IOCTL_URL,
++        "upstream_source_sha256": QEMU_SYSCALL_SHA256,
++        "upstream_checked_source_path": "/home/drakestapleton/work/bridge-x86/build/qemu-oracle/qemu-10.0.14/linux-user/syscall.c",
++        "upstream_source_archive": "https://download.qemu.org/qemu-10.0.14.tar.xz",
++        "upstream_source_archive_sha256": QEMU_SOURCE_ARCHIVE_SHA256},
++    QEMU_A64_ORACLE_SHA256: {
++        "upstream_source": "qemu_8.2.2+ds-0ubuntu1.18 linux-user/syscall.c#L5601-L5605, patch series applied",
++        "upstream_source_sha256": "f50db23a66cf8e9af73725c27b6dae09db2dbe3c1bbc3dcf5f50942d14bc6873",
++        "upstream_checked_source_path": "qemu-8.2.2/linux-user/syscall.c",
++        "upstream_source_archive": "http://archive.ubuntu.com/ubuntu/pool/main/q/qemu/qemu_8.2.2+ds.orig.tar.xz",
++        "upstream_source_archive_sha256": "5e692dd20950a819ff6550cd3974e00319a93f47c0a15f808c58df1a9e4d2478",
++        "upstream_patch_archive": "http://archive.ubuntu.com/ubuntu/pool/main/q/qemu/qemu_8.2.2+ds-0ubuntu1.18.debian.tar.xz",
++        "upstream_patch_archive_sha256": "7f1993808bbe15fee04c13aeb8ab5bc4f011b0b3b3a15d511c19d8956b34dc48"},
++}
++# --host x86-native: the x86 arm's launcher slot, where an AArch64 host names qemu-x86_64.
++X86_DIRECT = "x86-64-direct"
++HOST = {"mode": "aarch64"}  # set once by main()
+ 
+ # Inspected host fixtures at the source revision below. These are not authority
+ # to run a changed fixture: hashes pin exact reviewed effects. Drivers use local
+@@ -809,12 +836,59 @@ def limits(cpu_seconds=None, nofile=256):
+         resource.setrlimit(resource.RLIMIT_CPU, (cpu_seconds, cpu_seconds + 2))
+ 
+ 
++def launch(command):
++    """Popen argv and executable. The x86 arm's [X86_DIRECT, "-0", argv0, program, *args] or
++    [X86_DIRECT, program, *args] runs program directly with the argv qemu-x86_64 would give it.
++    AArch64 programs, the corpus's own exec children included, reach qemu-aarch64 through the
++    binfmt_misc entry a64_binfmt() verified. Every other command is unchanged."""
++    if not command or command[0] != X86_DIRECT:
++        return command, None
++    if command[1] == "-0":
++        return [command[2], *command[4:]], command[3]
++    return list(command[1:]), command[1]
++
++
++def a64_binfmt(qemu):
++    """--host x86-native: the one enabled binfmt_misc entry that hands AArch64 ELF executables to
++    qemu with argv[0] kept (flag P), and no entry that would take an x86-64 ELF away from the kernel."""
++    def header(machine):  # ELF64, little-endian, version 1, System V, ET_EXEC, e_machine
++        return b"\x7fELF\x02\x01\x01" + bytes(9) + b"\x02\x00" + machine
++    found = []
++    for entry in sorted(Path("/proc/sys/fs/binfmt_misc").iterdir()):
++        if entry.name in ("register", "status"):
++            continue
++        text = entry.read_text()
++        lines = text.splitlines()
++        fields = dict(line.split(" ", 1) for line in lines[1:] if " " in line)
++        if lines[:1] != ["enabled"] or "magic" not in fields or fields.get("offset") != "0":
++            continue
++        magic = bytes.fromhex(fields["magic"])
++        mask = bytes.fromhex(fields.get("mask", "ff" * len(magic)))
++        def matches(image):
++            return all(a & m == b & m for a, b, m in zip(image, magic, mask))
++        if matches(header(b"\x3e\x00")):
++            raise Failure(f"binfmt_misc entry {entry.name} would run x86-64 programs through {fields.get('interpreter')}")
++        if matches(header(b"\xb7\x00")):
++            found.append((entry, text, fields))
++    if len(found) != 1:
++        raise Failure(f"--host x86-native needs exactly one enabled AArch64 binfmt_misc entry, found {len(found)}")
++    entry, text, fields = found[0]
++    if os.path.realpath(fields["interpreter"]) != os.path.realpath(qemu) or "P" not in fields.get("flags:", ""):
++        raise Failure(f"binfmt_misc {entry.name} must name {qemu} with flag P: {text!r}")
++    return {"binfmt_entry": str(entry), "binfmt": text}
++
++
+ def run(command, data, cwd, timeout, *, extra_env=None, cpu_seconds=None, nofile=256):
+     # Regular-file stdin matches seekable-input fixtures; no shell interpolation.
+     with tempfile.TemporaryFile() as inp, tempfile.TemporaryFile() as out, tempfile.TemporaryFile() as err:
+         inp.write(data)
+         inp.seek(0)
+-        process = subprocess.Popen(command, stdin=inp, stdout=out, stderr=err, cwd=cwd,
++        command, executable = launch(command)
++        hard = resource.getrlimit(resource.RLIMIT_NOFILE)[1]
++        if hard != resource.RLIM_INFINITY and nofile > hard:
++            # Without CAP_SYS_RESOURCE no child here can get more descriptors than this hard limit.
++            raise Failure(f"BLOCKED_ON host RLIMIT_NOFILE: hard limit {hard}, the fixture needs {nofile}")
++        process = subprocess.Popen(command, executable=executable, stdin=inp, stdout=out, stderr=err, cwd=cwd,
+                                    env={"LC_ALL": "C", "PATH": os.defpath, "HOME": ".", "OMTEST": "hello", **(extra_env or {})},
+                                    start_new_session=True, preexec_fn=lambda: limits(cpu_seconds, nofile))
+         try:
+@@ -1136,7 +1210,10 @@ def ioctl_emulator_artifact(case, driver, arun, xrun, qemu, argv0, args, cwd, ti
+     # QEMU's own tracer, after the pinned native fixture has passed its EBADF
+     # assertions. Unknown ioctls are rejected before host ioctl(fd,cmd,arg).
+     request = {"devcall": 3223340587, "uvmctl": 805306369}.get(driver)
+-    if digest(Path(qemu).read_bytes()) != QEMU_ORACLE_SHA256:
++    # --host x86-native passes the x86 run as arun and the qemu-aarch64 run as xrun.
++    qemu_sha256 = digest(Path(qemu).read_bytes())
++    attribution = QEMU_ATTRIBUTION.get(qemu_sha256)
++    if attribution is None:
+         return None  # No source attribution for an unreviewed QEMU executable.
+     if request is None or arun[0] != 0 or xrun != (80, b"", b""):
+         return None
+@@ -1155,12 +1232,8 @@ def ioctl_emulator_artifact(case, driver, arun, xrun, qemu, argv0, args, cwd, ti
+                         "request": request, "native_required_errno": "EBADF",
+                         "qemu_observed_errno": "ENOTTY", "qemu_trace_line": line.decode(),
+                         "qemu_trace_sha256": digest(trace[2]),
+-                        "upstream_source": QEMU_IOCTL_URL,
+-                        "upstream_source_sha256": QEMU_SYSCALL_SHA256,
+-                        "upstream_checked_source_path": "/home/drakestapleton/work/bridge-x86/build/qemu-oracle/qemu-10.0.14/linux-user/syscall.c",
+-                        "upstream_source_archive": "https://download.qemu.org/qemu-10.0.14.tar.xz",
+-                        "upstream_source_archive_sha256": QEMU_SOURCE_ARCHIVE_SHA256,
+-                        "qemu_binary_sha256": QEMU_ORACLE_SHA256,
++                        **attribution,
++                        "qemu_binary_sha256": qemu_sha256,
+                         "upstream_excerpt": QEMU_IOCTL_EXCERPT.decode(),
+                         "upstream_excerpt_sha256": digest(QEMU_IOCTL_EXCERPT)}
+     return None
+@@ -1378,7 +1451,8 @@ def _exercise_bridge(plan, compiler, qemu, options, scratch, state):
+         raise Failure("BLOCKED_ON BridgeX86: baseline compiler hash does not match its exact seeded generator pin")
+     if selected_sha != digest(Path(compiler).read_bytes()):
+         raise Failure("BLOCKED_ON BridgeX86: bridge compiler does not match selected qualification candidate")
+-    native_cc, x86_cc = shutil.which("cc"), shutil.which("x86_64-linux-gnu-gcc")
++    native_cc = shutil.which("aarch64-linux-gnu-gcc" if HOST["mode"] == "x86-native" else "cc")
++    x86_cc = shutil.which("x86_64-linux-gnu-gcc")
+     nm = shutil.which("nm")
+     if not native_cc or not x86_cc or not nm:
+         raise Failure("BLOCKED_ON BridgeX86: native cc, x86_64-linux-gnu-gcc and nm are required")
+@@ -1492,6 +1566,10 @@ def main():
+     parser.add_argument("--compiler", type=Path)
+     parser.add_argument("--x86-compiler", type=Path, help="optional x86-hosted paired compiler; otherwise built once from exact current seeded source")
+     parser.add_argument("--qemu", default="qemu-x86_64")
++    parser.add_argument("--host", choices=("aarch64", "x86-native"), default="aarch64",
++                        help="x86-native: on Linux x86-64, run x86-64 programs directly and AArch64 programs under --qemu-aarch64")
++    parser.add_argument("--qemu-aarch64", default="qemu-aarch64-static",
++                        help="--host x86-native: the qemu-aarch64 that the AArch64 binfmt_misc entry names")
+     parser.add_argument("--bridge", type=Path, help="reviewed x86-capable omega-bridge executable for external ABI drivers")
+     parser.add_argument("--bridge-baseline-compiler", type=Path, default=Path("/tmp/bridge-x86-baseline-omc"),
+                         help="exact 734f0a39 seeded compiler required by the bridge generator")
+@@ -1532,18 +1610,38 @@ def main():
+     if not options.inventory:
+         if not options.compiler or not options.compiler.is_file():
+             parser.error("--compiler must name an existing compiler")
+-        if platform.system() != "Linux" or platform.machine() not in ("aarch64", "arm64"):
++        if options.host == "x86-native":
++            if platform.system() != "Linux" or platform.machine() not in ("x86_64", "amd64"):
++                parser.error("--host x86-native requires Linux x86-64")
++            qemu_a64 = shutil.which(options.qemu_aarch64)
++            if not qemu_a64:
++                parser.error("--host x86-native requires qemu-aarch64 (--qemu-aarch64)")
++            try:
++                binfmt = a64_binfmt(qemu_a64)
++            except (OSError, ValueError, Failure) as error:
++                parser.error(str(error))
++            HOST.update(mode="x86-native", qemu_aarch64=qemu_a64)
++            qemu = X86_DIRECT
++            cpu = re.search(r"(?m)^model name\s*:\s*(.*)$", Path("/proc/cpuinfo").read_text())
++            emulation = {"host": "x86-native", "x86_64_execution": "NATIVE", "aarch64_execution": "EMULATED",
++                         "qemu_aarch64": qemu_a64, "qemu_aarch64_sha256": digest(Path(qemu_a64).read_bytes()),
++                         "qemu_aarch64_version": run([qemu_a64, "--version"], b"", ROOT, options.timeout)[1].decode().strip(),
++                         **binfmt, "cpu_model": cpu[1] if cpu else None,
++                         "kernel": " ".join(platform.uname()[2:4])}
++        elif platform.system() != "Linux" or platform.machine() not in ("aarch64", "arm64"):
+             parser.error("native default baseline requires Linux AArch64")
++        else:
++            qemu = shutil.which(options.qemu)
++            emulation = {"qemu": qemu, "qemu_sha256": digest(Path(qemu).read_bytes()) if qemu else None,
++                         "qemu_version": run([qemu, "--version"], b"", ROOT, options.timeout)[1].decode().strip() if qemu else None}
+         compiler = str(options.compiler.resolve())
+-        qemu = shutil.which(options.qemu)
+         objdump = shutil.which(options.objdump) if options.objdump else next(
+             (p for name in ("x86_64-linux-gnu-objdump", "llvm-objdump", "objdump") if (p := shutil.which(name))), None)
+         if not qemu or not objdump:
+             parser.error("qemu-x86_64 and an x86-64-capable GNU/LLVM objdump are required")
+         llvm = "llvm" in Path(objdump).name
+         print(json.dumps({"compiler": compiler, "compiler_sha256": digest(Path(compiler).read_bytes()),
+-                          "qemu": qemu, "qemu_sha256": digest(Path(qemu).read_bytes()),
+-                          "qemu_version": run([qemu, "--version"], b"", ROOT, options.timeout)[1].decode().strip(),
++                          **emulation,
+                           "objdump": objdump, "platform": platform.platform(), "timeout_seconds": options.timeout,
+                           "bridge_big_timeout_seconds": options.bridge_big_timeout}))
+     cache = OrderedDict()
+@@ -1965,8 +2063,12 @@ def main():
+                             (driver == "cpu-limit" and arun[0] == xrun[0] == case.expected_exit == -signal.SIGXCPU)):
+                         raise Failure(f"runtime signal: default={arun[0]} x86={xrun[0]}")
+                 if arun != xrun:
+-                    artifact = ioctl_emulator_artifact(case, driver, arun, xrun, qemu, argv0,
+-                                                      args, emulated, options.timeout)
++                    if HOST["mode"] == "x86-native":  # here the AArch64 arm is the emulated one
++                        artifact = ioctl_emulator_artifact(case, driver, xrun, arun, HOST["qemu_aarch64"], argv0,
++                                                          args, native, options.timeout)
++                    else:
++                        artifact = ioctl_emulator_artifact(case, driver, arun, xrun, qemu, argv0,
++                                                          args, emulated, options.timeout)
+                     if artifact:
+                         record("NOT_RUN", case.name, "EMULATOR_ARTIFACT: exact invalid-fd ioctl returned QEMU ENOTTY instead of native EBADF",
+                                source_sha256=key, evidence=case.evidence, emulator_artifact=artifact,

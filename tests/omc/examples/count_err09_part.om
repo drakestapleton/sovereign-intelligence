@@ -1,0 +1,7 @@
+note count_err09_part: part is only an argument of a call; as count's A it is error 9. Fix: count a o n v
+om2
+fn main to int
+a = new uchar 4 0
+n = count part a 0 2 0 2 0
+ret 0
+end

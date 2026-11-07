@@ -1,0 +1,7 @@
+note count_err16_statement: count is a value, not a statement; a bare count line is error 16. Fix: n = count ...
+om2
+fn main to int
+a = new uchar 4 0
+count a 0 4 10
+ret 0
+end
