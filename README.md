@@ -21,11 +21,12 @@ sh build.sh
 | A one-word edit of the seed, and a one-line edit of the compiler, each change what is born, and the pins catch both. | HOST_TESTED, 2026-11-07 | step 4 |
 | The front-door generator, [`compiler/si.om`](compiler/si.om), built for both targets, regenerates this README's generated blocks and [`repos.tsv`](repos.tsv) byte for byte. Both builds write the same `si.sh`, the one www.aienos.com/si served on 2026-11-07 (sha256 `d939d394…a48f`). | HOST_TESTED, 2026-11-07 | step 5 |
 | The stack ledger, [`tools/ledger.om`](tools/ledger.om), gives the same counts on both targets as an independent oracle, over 68,575 files and 954,659,395 bytes of the recovered stack. | HOST_TESTED, 2026-11-07 | step 6 (fixture); [`stack/LEDGER.tsv`](stack/LEDGER.tsv) |
-| All 110 worked examples of the Omega harness pass on AArch64 and on native x86-64: compile status, exit status, stdout and refusal line. | HOST_TESTED, 2026-11-07 | step 7, [`tests/examples.sh`](tests/examples.sh) |
+| All 110 worked examples of the Omega harness, and the 3 compiler regressions in [`tests/regress/`](tests/regress/), pass on AArch64 and on native x86-64: compile status, exit status, stdout and refusal line. | HOST_TESTED, 2026-11-07 | step 7, [`tests/examples.sh`](tests/examples.sh) |
+| omega-mv's whole FR-9 x86 corpus ran with its x86-64 programs native for the first time: 16,179 rows, 15,499 PASS, 232 FAIL, 32 NOT_RUN, 30 MISSING_IMPLEMENTATION, 75 BLOCKED, 311 EXCLUDED. No FAIL is an x86 miscompile. 150 need om2 candidate compilers whose commits are not published; 46 are omega-bridge refusing the compiler's hash (all 49 bridge rows pass when that one pin is moved); 36 pin the AArch64 bytes of an older omc. The run also found a cross-target bug in omc, fixed in [`seed/LOCAL.patch`](seed/LOCAL.patch). | HOST_TESTED, 2026-11-07, native x86-64; the AArch64 side under qemu-aarch64 8.2.2 | [`evidence/x86-native/`](evidence/x86-native/) |
 
-The whole gate takes 8.4 s on a 4-vCPU x86-64 cloud machine. There, omc-x86 compiles the 331,163-byte compiler in 0.14 s natively.
+The whole gate takes 5.8 s on a 4-vCPU x86-64 cloud machine. There, omc-x86 compiles the 331,307-byte compiler in 0.09 s natively.
 
-omega-mv records its x86-64 backend as a draft that has never run on x86-64 hardware (`docs/X86-LINUX.md`, FR-9). These are its first native runs: one cloud x86-64 host, covering the compiler itself and the programs above, not omega-mv's full fixture corpus. Nothing here has run on a GPU.
+omega-mv records its x86-64 backend as a draft that has never run on x86-64 hardware (`docs/X86-LINUX.md`, FR-9). These are its first native runs: one cloud x86-64 host, covering the compiler itself, the programs above and omega-mv's full FR-9 fixture corpus. The oracle's verdict is still FAIL, and the reasons are in [`evidence/x86-native/`](evidence/x86-native/). Native x86 code is correct there but slow: omega-mv's SHA-256 runs at 20.6 MB/s on x86-64, against 57 MB/s for the AArch64 build under emulation, because the x86 backend keeps its values in memory. Nothing here has run on a GPU.
 
 ## One repository
 
@@ -36,7 +37,8 @@ omega-mv records its x86-64 backend as a draft that has never run on x86-64 hard
 | [`compiler/`](compiler/) | `si.om`, the front-door generator |
 | [`tools/`](tools/) | `ledger.om`, the stack ledger |
 | [`harness/`](harness/) | the Omega harness: agent skills for writing correct Omega; `.claude/skills` points at it |
-| [`tests/`](tests/) | the ledger fixture and the example runner |
+| [`tests/`](tests/) | the ledger fixture, the example runner and the compiler regressions |
+| [`evidence/`](evidence/) | receipts of runs made from this repository, starting with the native x86-64 corpus run |
 | [`stack/`](stack/) | the 44 recovered projects, what each is made of, and the order they move in |
 
 ## The stack
