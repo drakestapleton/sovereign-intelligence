@@ -1,0 +1,6 @@
+note count_err16_name: count is reserved in an OM-2 unit; as a name it is error 16
+om2
+fn main to int
+count = ulong 1
+ret 0
+end

@@ -1,0 +1,7 @@
+note count_err07_offset: off and n are ulong; a uint offset is error 7. Fix: ulong o
+om2
+fn main to int
+a = new uchar 4 0
+n = count a uint 0 4 10
+ret 0
+end

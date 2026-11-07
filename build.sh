@@ -24,6 +24,9 @@
 #      byte for byte, and both builds must write the same si.sh
 #   6. tools/ledger.om, built for both targets, must print tests/ledger/expected.tsv
 #   7. the Omega harness examples, on both targets (tests/examples.sh)
+#   8. the examples of compiler words beyond the imported harness (tests/omc), on both targets
+#   9. control: omc.om with count's slice check deleted must build a compiler that fails both trap-3
+#      examples of count on every target that runs, while count_word still passes
 # Last line: RC=0 when every step passed.
 set -eu
 R=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
@@ -175,5 +178,29 @@ done
 # 7. The Omega harness examples, on both targets.
 sh tests/examples.sh "$O/omc" "$O/omc-x86" ${A64:+"$A64"} || fail "harness examples"
 pass "harness examples"
+
+# 8. The examples of words this repository adds to the compiler (seed/PROVENANCE.md), on both targets.
+EXAMPLES_ROOT=tests/omc sh tests/examples.sh "$O/omc" "$O/omc-x86" ${A64:+"$A64"} || fail "tests/omc examples"
+pass "tests/omc examples"
+
+# 9. Control: count without its slice check must be caught by the trap-3 examples.
+awk '/^fn / { f = ($2 == "cnt_word") } f && $0 == "vs_chk e ro rn" { f = 0; next } { print }' $S/omc/omc.om > $B/omc.nochk.om
+[ "$(wc -l < $B/omc.nochk.om)" -eq "$(($(wc -l < $S/omc/omc.om) - 1))" ] || fail "control: cnt_word's vs_chk line was not deleted exactly once"
+a64 $O/omc < $B/omc.nochk.om > $B/omc-nochk || fail "control: the compiler without count's check does not build"
+mk $B/omc-nochk
+{ printf 'target x86linux\n'; cat $B/omc.nochk.om; } | a64 $O/omc > $B/omc-x86-nochk || fail "control: omc-x86 without count's check does not build"
+mk $B/omc-x86-nochk
+[ "$(sha $B/omc-nochk)" != "$(sha $O/omc)" ] || fail "control: deleting count's check did not change omc"
+if EXAMPLES_ROOT=tests/omc sh tests/examples.sh $B/omc-nochk $B/omc-x86-nochk ${A64:+"$A64"} > $B/nochk.log; then
+  fail "control: the compiler without count's slice check passed tests/omc"
+fi
+for t in a64 x86; do
+  if grep -q "^NOT_RUN $t " $B/nochk.log; then note "NOT_RUN control on $t"; continue; fi
+  for c in count_trap3 count_trap3_wrap; do
+    grep -q "^FAIL $t examples/$c: exit " $B/nochk.log || fail "control: $t examples/$c did not catch the missing check"
+  done
+  grep -qx "PASS $t examples/count_word" $B/nochk.log || fail "control: $t count_word failed for another reason"
+done
+pass "control: count without its slice check fails count_trap3 and count_trap3_wrap; count_word still passes"
 
 printf 'RC=0\n'

@@ -1,0 +1,7 @@
+note count_err07_scalar: A must name an array; a scalar name is error 7
+om2
+fn main to int
+x = ulong 3
+n = count x 0 4 10
+ret 0
+end
