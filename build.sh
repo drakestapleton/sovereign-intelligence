@@ -24,6 +24,11 @@
 #      byte for byte, and both builds must write the same si.sh
 #   6. tools/ledger.om, built for both targets, must print tests/ledger/expected.tsv
 #   7. the Omega harness examples, on both targets (tests/examples.sh)
+#   8. gpu/cuda-crack, on both targets: its Omega table generator regenerates isa/sm121-forms.txt, its
+#      Omega reencoder rebuilds the 70 kernels that ran on the GB10 from the tables to the chip
+#      receipt's sha256, and its four planted bugs, made by check/mutate.om, are each caught
+#   9. tools/forkpush.om, built for both targets, must print tests/forkpush/expected.sh, refuse every
+#      tests/forkpush/bad/*.tsv, and write the same out/fork-push.sh from stack/FORKS.tsv
 # Last line: RC=0 when every step passed.
 set -eu
 R=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
@@ -175,5 +180,125 @@ done
 # 7. The Omega harness examples, on both targets.
 sh tests/examples.sh "$O/omc" "$O/omc-x86" ${A64:+"$A64"} || fail "harness examples"
 pass "harness examples"
+
+# 8. gpu/cuda-crack: the sm_121 tables and the 70 kernels that ran on the GB10, checked on the CPU.
+# This is check/check.sh and gen/run.sh of cuda-crack, on both targets; their planted bugs are made
+# by check/mutate.om, which must equal check.sh's own awk and od one-liners (ccmut) byte for byte.
+C=gpu/cuda-crack
+E3=$C/receipts/cudapp/evidence/CUDAPP-OM-ENCODER/chip-20261027T080240Z
+T=$C/isa/sm121-forms.txt
+(cd $C && sha256sum -c --quiet SHA256SUMS) || fail "cuda-crack: a file differs from gpu/cuda-crack/SHA256SUMS"
+(cd $C/receipts && sha256sum -c --quiet SHA256SUMS) || fail "cuda-crack: a receipt differs from receipts/SHA256SUMS"
+[ "$(sha $C/gen/bw_enc_sm121.om)" = fe16b024c3242d12c7c8ef759d84c34a22c7d21cba676cd987f4f3a1ff56ba86 ] \
+  || fail "cuda-crack: gen/bw_enc_sm121.om is not the encoder of CUDApp b774723f"
+pass "cuda-crack: $(wc -l < $C/SHA256SUMS | tr -d ' ') imported files and $(wc -l < $C/receipts/SHA256SUMS | tr -d ' ') receipts match their sha256 sums; the encoder is CUDApp b774723f's"
+omb() { # omb TARGET OUT UNIT...: compile the units, one after another, for TARGET
+  ot=$1; oo=$2; shift 2
+  if [ "$ot" = a64 ]; then cat "$@" | a64 $O/omc > "$oo"
+  else { printf 'target x86linux\n'; cat "$@"; } | x86 $O/omc-x86 > "$oo"; fi
+  mk "$oo"
+}
+ccmut() { # ccmut MODE FILE: the planted bug MODE of check/check.sh at cuda-crack 7e3c9a73, verbatim
+  case $1 in
+    1) nop=$(awk '$1=="F" && $3==255 {print $5,$6,$7,$8,$9,$10}' "$2")
+       awk -v key="$nop" '$1=="F" && ($5" "$6" "$7" "$8" "$9" "$10)==key {if ($5 % 2 == 1) $5 = $5 - 1; else $5 = $5 + 1} {print}' "$2" ;;
+    2) b0=$(od -An -tu1 -N1 "$2" | tr -d ' '); printf "$(printf '\\%03o' $((b0 ^ 1)))"; tail -c +2 "$2" ;;
+    3) awk 'd == 0 && $1=="D" && $8 > 1 {$8 = $8 - 1; d = 1} {print}' "$2" ;;
+    4) awk 'd == 0 && $1=="D" && $8 > 0 {w = int($7 / 32); $(4 + w) = $(4 + w) - 2 ^ ($7 % 32); d = 1} {print}' "$2" ;;
+  esac
+}
+tchk() { # tchk TABLE: reencode's exit status on TABLE's D records against its F records
+  rc=0
+  { cat "$1"; printf 'E\n'; } | $t $w/reencode > /dev/null 2>&1 || rc=$?
+  echo $rc
+}
+rebuild() { # rebuild TABLE DIR: rebuild every chip kernel from TABLE into DIR; prints "kernels instructions unmatched"
+  mkdir -p "$2"
+  n=0; i=0; u=0
+  for k in $E3/kernels-om/*.bin; do
+    { cat "$1"; printf 'E\n'; cat "$k"; } | $t $w/reencode > "$2/$(basename "$k")" 2> $w/err || true
+    read ni nu < $w/err || true
+    case "$ni:$nu" in *[!0-9:]*|:*|*:) echo "bad bad bad"; return ;; esac
+    n=$((n + 1)); i=$((i + ni)); u=$((u + nu))
+  done
+  echo "$n $i $u"
+}
+tail -n +5 $T > $O/cc-forms.body
+k1=$(ls $E3/kernels-om/*.bin | head -1)
+for t in a64 x86; do
+  if [ $t = x86 ] && [ "$X86" = none ]; then note "NOT_RUN cuda-crack on x86-64"; continue; fi
+  w=$O/cc-$t
+  mkdir -p $w
+  omb $t $w/isa-gen $C/gen/bw_enc_sm121.om $C/gen/isa.om
+  $t $w/isa-gen > $w/forms.body || fail "cuda-crack ($t): gen/isa.om failed"
+  cmp -s $w/forms.body $O/cc-forms.body || fail "cuda-crack ($t): gen/isa.om does not regenerate isa/sm121-forms.txt"
+  pass "cuda-crack ($t): gen/isa.om probes the Omega encoder and regenerates all $(grep -c '^F' $O/cc-forms.body) forms of isa/sm121-forms.txt byte for byte"
+  omb $t $w/reencode $C/check/reencode.om
+  [ "$(tchk $T)" = 0 ] || fail "cuda-crack ($t): the D records of isa/sm121-forms.txt disagree with its F records"
+  set -- $(rebuild $T $w/k)
+  [ "$*" = "70 13520 0" ] || fail "cuda-crack ($t): rebuilt kernels, instructions, unmatched: $*; wanted 70 13520 0"
+  (cd $w/k && sha256sum *.bin) > $w/k.sha256
+  cmp -s $w/k.sha256 $E3/kernels-om.sha256 || fail "cuda-crack ($t): kernels rebuilt from the tables differ from the chip receipt kernels-om.sha256"
+  pass "cuda-crack ($t): the tables' field records are consistent, and all 70 chip kernels (13520 instructions) rebuilt from the tables alone match the chip receipt"
+  omb $t $w/mutate $C/check/mutate.om
+  for f in $T $C/check/mutate-tests/*.txt; do
+    for m in 1 3 4; do
+      $t $w/mutate $m < "$f" > $w/mut.om.out || fail "cuda-crack ($t): mutate $m refused $f"
+      ccmut $m "$f" > $w/mut.sh.out
+      cmp -s $w/mut.om.out $w/mut.sh.out || fail "cuda-crack ($t): check/mutate.om mode $m differs from check.sh's awk on $f"
+    done
+  done
+  for k in $E3/kernels-om/*.bin; do
+    $t $w/mutate 2 < "$k" > $w/mut.om.out || fail "cuda-crack ($t): mutate 2 refused $k"
+    ccmut 2 "$k" > $w/mut.sh.out
+    cmp -s $w/mut.om.out $w/mut.sh.out || fail "cuda-crack ($t): check/mutate.om mode 2 differs from check.sh's od and printf on $k"
+  done
+  set +e
+  $t $w/mutate 2 < /dev/null > $w/mut.om.out 2> /dev/null; rc=$?
+  set -e
+  [ $rc = 1 ] && [ ! -s $w/mut.om.out ] || fail "control: mutate 2 accepted an empty kernel (exit $rc)"
+  pass "cuda-crack ($t): check/mutate.om makes check.sh's four planted bugs byte for byte (the table, $(ls $C/check/mutate-tests/*.txt | wc -l | tr -d ' ') edge cases, all 70 kernels) and refuses an empty kernel"
+  for m in 1 3 4; do $t $w/mutate $m < $T > $w/mut$m.txt; done
+  $t $w/mutate 2 < $k1 > $w/mut2.bin
+  set -- $(rebuild $w/mut1.txt $w/m1)
+  (cd $w/m1 && sha256sum *.bin) > $w/m1.sha256
+  bad=$(diff $w/m1.sha256 $E3/kernels-om.sha256 | grep -c '^<' || true)
+  [ "$3:$bad" = "540:67" ] || fail "control ($t): a flipped fixed bit left $3 instructions unmatched and $bad kernels wrong; check/CHECK.txt has 540 and 67"
+  rc=0
+  { cat $T; printf 'E\n'; cat $w/mut2.bin; } | $t $w/reencode > /dev/null 2>&1 || rc=$?
+  [ $rc = 4 ] || fail "control ($t): a corrupted instruction was accepted (reencode exit $rc, wanted 4)"
+  [ "$(tchk $w/mut3.txt)" = 7 ] || fail "control ($t): a field width off by one was accepted"
+  [ "$(tchk $w/mut4.txt)" = 7 ] || fail "control ($t): a field mask missing one bit was accepted"
+  pass "cuda-crack ($t) controls, as check/CHECK.txt: a flipped fixed bit fails 67 kernels, a corrupted instruction matches no form, a short field width and a short field mask are refused"
+done
+note "NOT_RUN cuda-crack on the GB10: running these kernels needs the chip; see gpu/cuda-crack/REPRODUCE.md"
+
+# 9. The fork-push generator: the script that sends my personal forks' branches to Radicle.
+for t in a64 x86; do
+  if [ $t = x86 ] && [ "$X86" = none ]; then note "NOT_RUN forkpush on x86-64"; continue; fi
+  if [ $t = a64 ]; then
+    a64 $O/omc < tools/forkpush.om > $O/forkpush-a64
+  else
+    { printf 'target x86linux\n'; cat tools/forkpush.om; } | x86 $O/omc-x86 > $O/forkpush-x86
+  fi
+  mk $O/forkpush-$t
+  $t $O/forkpush-$t tests/forkpush/forks.tsv $O/fp-fixture-$t.sh || fail "forkpush ($t) refused tests/forkpush/forks.tsv"
+  cmp -s $O/fp-fixture-$t.sh tests/forkpush/expected.sh || fail "forkpush ($t) differs from tests/forkpush/expected.sh"
+  nbad=0
+  for b in tests/forkpush/bad/*.tsv; do
+    rm -f $O/fp-bad.sh
+    if $t $O/forkpush-$t "$b" $O/fp-bad.sh 2>/dev/null; then fail "forkpush ($t) accepted $b"; fi
+    [ ! -e $O/fp-bad.sh ] || fail "forkpush ($t) wrote output for $b"
+    nbad=$((nbad + 1))
+  done
+  $t $O/forkpush-$t stack/FORKS.tsv $O/fork-push-$t.sh || fail "forkpush ($t) refused stack/FORKS.tsv"
+  pass "forkpush ($t) prints tests/forkpush/expected.sh and refuses all $nbad bad manifests"
+done
+if [ -f $O/fork-push-x86.sh ]; then
+  cmp -s $O/fork-push-a64.sh $O/fork-push-x86.sh || fail "forkpush: the AArch64 and x86-64 builds write different fork-push.sh"
+fi
+sh -n $O/fork-push-a64.sh || fail "forkpush: the generated fork-push.sh does not parse"
+cp $O/fork-push-a64.sh $O/fork-push.sh
+pass "forkpush: out/fork-push.sh from stack/FORKS.tsv, $(grep -c "^fp '" $O/fork-push.sh) branches to push, sha256 $(sha $O/fork-push.sh)"
 
 printf 'RC=0\n'

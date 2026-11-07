@@ -6,8 +6,9 @@ From now on there is one repository, this one, and one language, Omega. Each pro
 
 ## Files
 
-- `STACK.tsv`: the 44 projects: name, Radicle ID, the head recovered on 2026-11-07, subsystem, whether the front door (`compiler/vetted.md`) lists it, visibility and description. 27 are listed by the front door; 17 are public on Radicle but not vetted for the front door, so `compiler/si.om` still does not list them.
+- `STACK.tsv`: the 44 projects: name, Radicle ID, the head recovered on 2026-11-07, subsystem, whether the front door (`compiler/vetted.md`) lists it, visibility, description, and `moved_to`: the directory a moved project now lives in, `-` while it has not moved. 27 are listed by the front door; 17 are public on Radicle but not vetted for the front door, so `compiler/si.om` still does not list them.
 - `LEDGER.tsv`: what each project is made of, in lines of Omega and of foreign code, written by `tools/ledger.om` (seeded Omega) from the recovered checkouts. Rebuild it with `tools/ledger-refresh.sh` (its header gives the command). `om_permille` is the share of code lines already in Omega.
+- `FORKS.tsv`: every branch in my personal GitHub account whose work is on no Radicle project, 78 in all, with its head, length, date and destination. `radicle` (30): pushed to its project as `fork/<branch>` by `out/fork-push.sh`, which `build.sh` generates with `tools/forkpush.om`; run it where `rad` holds my key. `private` (2): the aienos in-house crypto branches, kept off Radicle and out of this repository. `si` (45): branches of the three repositories imported into `docs/`.
 
 ## Subsystems
 
@@ -35,7 +36,7 @@ From now on there is one repository, this one, and one language, Omega. Each pro
 The compiler comes first, because everything else is built with it. After it come the projects that are already mostly Omega, smallest first, and then the large foreign code bases in the order the runtime needs them:
 
 1. compiler: `seed/` and `harness/` are in. Next is omega-mv's own example and test gates, run by `build.sh`.
-2. gpu: cuda-crack, then omega-gpu-driver, omega-blas, CUDApp.
+2. gpu: cuda-crack is in, at `gpu/cuda-crack/`; `build.sh` step 8 runs its checks on both targets. Its shell that is orchestration or network work stays until the Omega pieces it needs move here; `gpu/cuda-crack/PROVENANCE.md` lists them. Next: omega-gpu-driver, omega-blas, CUDApp.
 3. train and evidence: aien-train, benchmarks-mv, aien-receipts.
 4. runtime and os: aien-sovereign-core-mv, aienux, physics-mv.
 5. the Rust services in `agents/`, `protocol/` and `runtime/`, each a rewrite in Omega against its own tests.
