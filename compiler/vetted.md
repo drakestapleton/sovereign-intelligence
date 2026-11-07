@@ -4,7 +4,7 @@
 |---|---|---|---|
 | aien-sovereign-core-mv | rad:z44GqrPVAPjZkhoD2MWVjqy18ighN | main | 086315afa8bd8c56ff619ddc229e7b120db38141 |
 | omega-mv | rad:z6do9WDBhuSnvopDkgFdFr1yWA62 | main | 3c2ebe4dc6aeb97069d3d282824a71703eba0b87 |
-| omega-harness | rad:z39gvwWsnkRZsAConQLjaKiNVLHfW | main | bbb1e6182f26dda3a0cc2516b6871df59e5e52c6 |
+| omega-harness | rad:z39gvwWsnkRZsAConQLjaKiNVLHfW | main | b1906aee08d252497121a32cf85e7f45493c685d |
 | aien-architecture-mv | rad:z37zcFYooiuCCZsf5L74eeFJYiwWM | main | 945a366c5288f3e426e9172a604362fdd538bccf |
 | omega-bridge | rad:z3Hr9ZaiKHwwuNzPK5M8c7uw6pj7y | main | f6b7cc4042bdf55d8f9d866c97439bb7e53506f5 |
 | aien-train | rad:zKrfazKqYNFuXDDkYdptxJicGLEq | main | bf8459f2c422120206839a305e8941992250232e |
@@ -20,7 +20,7 @@
 | interplane.io | rad:z399yKvnXcBQNkKoq86iBDgTvQ5QV | main | 18ee1ee29ef3894f92ffa2a0ac461fc019a88843 |
 | interplane-mv | rad:zNhNbqYvgSBEHBq9vvE8xpbcBzGa | main | 43cd1d754532e1c57c8afaeb51adbb354d82da53 |
 | physics-mv | rad:z49She8eifZpLd2aiSvk2pph3DMUo | main | 56d02ae50de6c6be46d6b23380eb7ec5edcca787 |
-| sovereign-intelligence | rad:z2JJz4RDfZZxKGBLn6UhmW5p9VJQj | main | 3610fe81ef55b58be35e719468f63dbc4c29beb0 |
+| sovereign-intelligence | rad:z2JJz4RDfZZxKGBLn6UhmW5p9VJQj | main | 34ba03fcf3fbddee408ec10cdb67aa0606ce30cd |
 | spark-rsi-mv | rad:z4AauBRPXzPNMiAoHZpRpyCee61A2 | main | 505c75dedac8796f4fa16f5376db13e9bd0f7d84 |
 | synapse | rad:zMGRREr2tmtRqpo4mMjpzkZdUGXN | main | fbcf23dad78b248b8210eaf7024727104ac1b9c2 |
 | CUDApp | rad:z4RxD8vXigmWg61nM8miQ8DVPAXEP | main | f1b50cbf40e871484d5dde1ebc15a2d5f5456e3c |
@@ -30,4 +30,4 @@
 | omega-gpu-driver | rad:z2xjD5kxUTTBNCryJ6rg9QXpemzei | main | 1ac3589c525657cf0698ff0f95557d922d2162ce |
 | cuda-crack | rad:z631r2JJiVT8it4tST7RK24hpowi | main | 7e3c9a731d8607ceb60b5a257c8c3652becd544f |
 | omega-mcp | rad:z3e8UBQVfwEcESJrcTWEbyMAHWFBZ | main | 4b37ec2167583a5023b6d6415438486c88875dda |
-| omega-mission | rad:z6HYc7ot5JZD8FSfvU77pWdMUdru | main | 16218733bb47648b4478f28af1eb7894b5debec5 |
+| omega-mission | rad:z6HYc7ot5JZD8FSfvU77pWdMUdru | main | 9cf8dc75134e9d6ad0ae850dd871e0de5dcc5802 |

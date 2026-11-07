@@ -146,9 +146,9 @@ rad clone rad:z2JJz4RDfZZxKGBLn6UhmW5p9VJQj   # sovereign-intelligence, the DGX 
 | 21 | **omega-blas** | `rad:z47VdC9EFsF4dFyH1QJ1C2JNJK4JS` | `e3f1b40` | aien-dev/omega-blas (Radicle canonical mirror during the GitHub hold) |
 | 22 | **omega-bridge** | `rad:z3Hr9ZaiKHwwuNzPK5M8c7uw6pj7y` | `f6b7cc4` | Omega-first language interoperability: checked conversion backends and native language bindings |
 | 23 | **omega-gpu-driver** | `rad:z2xjD5kxUTTBNCryJ6rg9QXpemzei` | `1ac3589` | aien-dev/omega-gpu-driver (Radicle canonical mirror during the GitHub hold) |
-| 24 | **omega-harness** | `rad:z39gvwWsnkRZsAConQLjaKiNVLHfW` | `bbb1e61` | Agent skills for operating, encoding and communicating in Omega (.om) and the AIEN repositories |
+| 24 | **omega-harness** | `rad:z39gvwWsnkRZsAConQLjaKiNVLHfW` | `b1906ae` | Agent skills for operating, encoding and communicating in Omega (.om) and the AIEN repositories |
 | 25 | **omega-mcp** | `rad:z3e8UBQVfwEcESJrcTWEbyMAHWFBZ` | `4b37ec2` | aien-dev/omega-mcp (Radicle canonical mirror during the GitHub hold) |
-| 26 | **omega-mission** | `rad:z6HYc7ot5JZD8FSfvU77pWdMUdru` | `1621873` | Omega Mission: seeded-Omega mission orchestrator (hash-chained journal, tiered command checks). Host-tested; live dispatch not yet run. |
+| 26 | **omega-mission** | `rad:z6HYc7ot5JZD8FSfvU77pWdMUdru` | `9cf8dc7` | Omega Mission: seeded-Omega mission orchestrator (hash-chained journal, tiered command checks). Host-tested; live dispatch not yet run. |
 | 27 | **spark-rsi-mv** | `rad:z4AauBRPXzPNMiAoHZpRpyCee61A2` | `505c75d` | Native Rust recursive self-improvement engine with paired bootstrap evaluation and cryptographic ledger |
 | 28 | **synapse** | `rad:zMGRREr2tmtRqpo4mMjpzkZdUGXN` | `fbcf23d` | Synapse: agent-native changesets and coordination, with Git and Radicle interoperability. A component of the AienOS ecosystem. |
 <!-- si:index:end -->
