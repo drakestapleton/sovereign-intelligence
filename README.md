@@ -76,7 +76,7 @@ The script is served from my own server, not from GitHub. It:
 1. prints what it is about to do;
 2. makes one directory, `./sovereign-intelligence` (set `SI_DIR` to choose another), and touches nothing else. It needs no sudo and refuses to run as root;
 3. fetches each project with `rad clone <RID>` when you have Radicle, peer-to-peer from whichever seed has it. Without Radicle it uses a read-only `git clone` from my seed at `https://www.aienos.com/rad/`, then from the public Radicle seed `rosa.radicle.network`;
-4. checks every checkout against the commit in the table below and prints `OK` or `MISMATCH`. Any mismatch makes it exit with an error.
+4. checks out the commit the table below names for each project, so you get exactly what I published even when a project has moved on since, and prints `OK` or `MISMATCH`. A missing commit is a mismatch and makes it exit with an error.
 
 If a project cannot be fetched, it prints the project's Radicle ID and Radicle's official installer, `curl -sSf https://radicle.xyz/install | sh`. It runs that installer only if you set `SI_INSTALL_RAD=1`.
 
