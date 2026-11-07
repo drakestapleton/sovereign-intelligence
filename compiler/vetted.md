@@ -20,7 +20,7 @@
 | interplane.io | rad:z399yKvnXcBQNkKoq86iBDgTvQ5QV | main | 3b79aaaaf4738f8227dc523d7f74b7d9d57be57e |
 | interplane-mv | rad:zNhNbqYvgSBEHBq9vvE8xpbcBzGa | main | e0d6863e2598a147babbf8b707b88c2aedba0872 |
 | physics-mv | rad:z49She8eifZpLd2aiSvk2pph3DMUo | main | 56d02ae50de6c6be46d6b23380eb7ec5edcca787 |
-| sovereign-intelligence | rad:z2JJz4RDfZZxKGBLn6UhmW5p9VJQj | main | 320c1bb34283ef532086c0c98413f972a1825a02 |
+| sovereign-intelligence | rad:z2JJz4RDfZZxKGBLn6UhmW5p9VJQj | main | 3aa265026fee307e5e936b0b881feab5d8e36f11 |
 | spark-rsi-mv | rad:z4AauBRPXzPNMiAoHZpRpyCee61A2 | main | 505c75dedac8796f4fa16f5376db13e9bd0f7d84 |
 | synapse | rad:zMGRREr2tmtRqpo4mMjpzkZdUGXN | main | 01a4de3333753dc28595a4ba73903707628a6a77 |
 | CUDApp | rad:z4RxD8vXigmWg61nM8miQ8DVPAXEP | main | b774723f537cec16a359fe082b8100317a5b5490 |
@@ -28,5 +28,5 @@
 | gpu-head-to-head | rad:z3ZSvMF8VFFGa5FyyKXGh4Vv6NBpS | main | 173c9b48479c83649072acb19d7c31d3d526b5f5 |
 | omega-blas | rad:z47VdC9EFsF4dFyH1QJ1C2JNJK4JS | main | e3f1b403839b1fc23d54c060c9c0c0c751774edd |
 | omega-gpu-driver | rad:z2xjD5kxUTTBNCryJ6rg9QXpemzei | main | 1ac3589c525657cf0698ff0f95557d922d2162ce |
-| cuda-crack | rad:z631r2JJiVT8it4tST7RK24hpowi | main | c17646e7bc4215aa413a8acfb66fa9dd3794062c |
+| cuda-crack | rad:z631r2JJiVT8it4tST7RK24hpowi | main | 043f993fab0b263eb0edd1a367fee8fee8f6a79b |
 | omega-mcp | rad:z3e8UBQVfwEcESJrcTWEbyMAHWFBZ | main | 4b37ec2167583a5023b6d6415438486c88875dda |

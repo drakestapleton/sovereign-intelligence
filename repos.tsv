@@ -15,7 +15,7 @@ aien-rig	rad:z2MPnsBZpJYeJJq39EXz1SYzLL7mc	476c4ace9b522d1ca659fbf6c437e2272ae48
 aienix	rad:zV8VdbBDCPEZePcnBiseNyym3Wnk	0dce79de79071ef0b30727403af2feccf895f0e3	rest	AienOS front door: pinned repositories, source-linked lessons and verification paths. AienOS is in alpha testing; components remain separate and each states its own status.
 aienos.com	rad:z3iwnx2pktbGhnfBpJSsaFcTmKgHU	6d614cbac4b8c7945b83db859de6f6e9d778f571	rest	Source of www.aienos.com, built by a Rust generator and served by GitHub Pages
 benchmarks-mv	rad:z2nYCN9XZAPjNohqT8bz46rcs9zvZ	ecfd23805150b8105fa74f028b4ff2c3a90ab24e	rest	Measurement harnesses and evidence bundles for AIEN on the NVIDIA DGX Spark GB10. Speed is reported against the machine's physical limit and my own previous run. Attachment of AienOS.
-cuda-crack	rad:z631r2JJiVT8it4tST7RK24hpowi	c17646e7bc4215aa413a8acfb66fa9dd3794062c	rest	I broke CUDA: GB10 sm_121 machine code without the CUDA toolkit - method, encoder tables, receipts
+cuda-crack	rad:z631r2JJiVT8it4tST7RK24hpowi	0b53fd2d3e8f79d8dcf4baa72bf8fbc0d3dc7f5a	rest	I broke CUDA: GB10 sm_121 machine code without the CUDA toolkit - method, encoder tables, receipts
 gpu-head-to-head	rad:z3ZSvMF8VFFGa5FyyKXGh4Vv6NBpS	173c9b48479c83649072acb19d7c31d3d526b5f5	rest	aien-dev/gpu-head-to-head (Radicle canonical mirror during the GitHub hold)
 interplane-mv	rad:zNhNbqYvgSBEHBq9vvE8xpbcBzGa	e0d6863e2598a147babbf8b707b88c2aedba0872	rest	INTERPLANE: open interoperability protocol between AI models and agent runtimes. Models express intent. Runtimes retain authority.
 interplane.io	rad:z399yKvnXcBQNkKoq86iBDgTvQ5QV	3b79aaaaf4738f8227dc523d7f74b7d9d57be57e	rest	Source of interplane.io: a Rust generator that renders the page from the protocol repository's public record, deployed hourly from the Spark.
@@ -24,6 +24,6 @@ omega-bridge	rad:z3Hr9ZaiKHwwuNzPK5M8c7uw6pj7y	d8174eddf953ad53e16f19eb5841459df
 omega-gpu-driver	rad:z2xjD5kxUTTBNCryJ6rg9QXpemzei	1ac3589c525657cf0698ff0f95557d922d2162ce	rest	aien-dev/omega-gpu-driver (Radicle canonical mirror during the GitHub hold)
 omega-harness	rad:z39gvwWsnkRZsAConQLjaKiNVLHfW	c38640db4fe8ee49eff589123415d4a1ba80567a	rest	Agent skills for operating, encoding and communicating in Omega (.om) and the AIEN repositories
 omega-mcp	rad:z3e8UBQVfwEcESJrcTWEbyMAHWFBZ	4b37ec2167583a5023b6d6415438486c88875dda	rest	aien-dev/omega-mcp (Radicle canonical mirror during the GitHub hold)
-sovereign-intelligence	rad:z2JJz4RDfZZxKGBLn6UhmW5p9VJQj	320c1bb34283ef532086c0c98413f972a1825a02	rest	Sovereign Intelligence: one command turns a DGX Spark into your own AI. Allen, Omega, science tools, no NVIDIA user-space software. Alpha testing.
+sovereign-intelligence	rad:z2JJz4RDfZZxKGBLn6UhmW5p9VJQj	3aa265026fee307e5e936b0b881feab5d8e36f11	rest	Front door to Drake Stapleton's sovereign stack. One command fetches 28 Radicle repositories and checks each against a published commit.
 spark-rsi-mv	rad:z4AauBRPXzPNMiAoHZpRpyCee61A2	505c75dedac8796f4fa16f5376db13e9bd0f7d84	rest	Native Rust recursive self-improvement engine with paired bootstrap evaluation and cryptographic ledger
 synapse	rad:zMGRREr2tmtRqpo4mMjpzkZdUGXN	01a4de3333753dc28595a4ba73903707628a6a77	rest	Synapse: agent-native changesets and coordination, with Git and Radicle interoperability. A component of the AienOS ecosystem.
