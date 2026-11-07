@@ -1,0 +1,11 @@
+--- a/seed/omc/qualify-x86.py
++++ b/seed/omc/qualify-x86.py
+@@ -1732,6 +1732,8 @@
+             return frontend_compiler
+ 
+         for index, case in enumerate(expanded_cases(files, record)):
++            if not case.bridge:
++                continue
+             frontend_mode = bool(MODE.match(case.source))
+             key = digest(case.source)
+             driver = case.driver or HOST_DRIVERS.get(key)

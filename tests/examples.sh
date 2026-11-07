@@ -2,8 +2,9 @@
 # tests/examples.sh OMC_A64 OMC_X86 [QEMU_A64]
 #
 # Compiles and runs every worked example of the Omega harness (harness/examples/*.om and
-# harness/skills/*/examples/*.om) on two targets, against the same NAME.expect files that
-# harness/examples/gate.sh reads, with the same meaning:
+# harness/skills/*/examples/*.om), and this repository's compiler regressions (tests/regress/*.om),
+# on two targets, against the same NAME.expect files that harness/examples/gate.sh reads, with the
+# same meaning:
 #   compile N         required; the compiler's exit status
 #   stderr LINE       required when N is not 0; the compiler's whole stderr is exactly LINE
 #   exit N            required when N is 0; the program's exit status
@@ -37,9 +38,9 @@
 # passes prints FIXED and fails the run, so the list is pruned; a line naming no case fails too.
 #
 # EXAMPLES_ONLY=a64 or EXAMPLES_ONLY=x86 runs one target. EXAMPLES_ROOT=DIR reads DIR/examples/*.om
-# and DIR/skills/*/examples/*.om instead of the harness (default harness/; tests/omc holds the examples
-# of compiler words that are not in the imported harness). Exit 0 when nothing FAILs, 1 on any FAIL or
-# FIXED, 2 on a usage error.
+# and DIR/skills/*/examples/*.om instead of the harness and tests/regress (default harness/; tests/omc
+# holds the examples of compiler words that are not in the imported harness). Exit 0 when nothing FAILs,
+# 1 on any FAIL or FIXED, 2 on a usage error.
 set -u
 
 usage() { echo "usage: sh $0 OMC_A64 OMC_X86 [QEMU_A64]" >&2; exit 2; }
@@ -58,6 +59,8 @@ case $ONLY in ''|a64|x86) ;; *) usage ;; esac
 here=$(cd "$(dirname "$0")" && pwd)
 root=${EXAMPLES_ROOT:-$(dirname "$here")/harness}
 root=$(cd "$root" 2>/dev/null && pwd) || { echo "examples: no directory ${EXAMPLES_ROOT:-harness}" >&2; exit 2; }
+# The compiler regressions run with the harness only, not with another EXAMPLES_ROOT.
+if [ -z "${EXAMPLES_ROOT:-}" ]; then regress=$here/regress; else regress=$here/regress.none; fi
 known=$here/examples.known
 [ -d "$root/examples" ] || { echo "examples: no $root/examples" >&2; exit 2; }
 
@@ -118,6 +121,7 @@ one() {
     tgt=$1 src=$2
     base=${src%.om}
     nm=${base#"$root"/}
+    nm=${nm#"$here"/}
     if [ "$tgt" = a64 ]; then omc=$A64 emu=$arun not=$anot; else omc=$X86 emu=$xrun not=$xnot; fi
     if [ -n "$not" ]; then report "$tgt" "$nm" NOT_RUN "$not"; return; fi
     if [ ! -f "$base.expect" ]; then report "$tgt" "$nm" FAIL "no $nm.expect"; return; fi
@@ -227,11 +231,11 @@ one() {
 for tgt in a64 x86; do
     [ -z "$ONLY" ] || [ "$ONLY" = "$tgt" ] || continue
     # An expectation without its program is a silent loss of coverage, so it fails.
-    for f in "$root"/examples/*.expect "$root"/skills/*/examples/*.expect; do
+    for f in "$root"/examples/*.expect "$root"/skills/*/examples/*.expect "$regress"/*.expect; do
         [ -e "$f" ] || continue
-        [ -e "${f%.expect}.om" ] || report "$tgt" "$(printf '%s' "${f%.expect}" | sed "s|^$root/||")" FAIL "expect file without its .om"
+        [ -e "${f%.expect}.om" ] || report "$tgt" "$(printf '%s' "${f%.expect}" | sed "s|^$root/||; s|^$here/||")" FAIL "expect file without its .om"
     done
-    for src in "$root"/examples/*.om "$root"/skills/*/examples/*.om; do
+    for src in "$root"/examples/*.om "$root"/skills/*/examples/*.om "$regress"/*.om; do
         [ -e "$src" ] || continue
         one "$tgt" "$src"
     done

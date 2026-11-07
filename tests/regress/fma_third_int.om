@@ -1,0 +1,7 @@
+note Regression, 2026-11-07, first native x86-64 run of omega-mv's FR-9 corpus: an ill-typed fma
+note gets the same error on every target. omc used to refuse fma for x86 (error 9: no FMA3, no
+note unfused fallback) before typing the operands, so here x86 said 9 where AArch64 says 7.
+fn main to int
+x = fma 1.0f64 2.0f64 3
+ret 0
+end

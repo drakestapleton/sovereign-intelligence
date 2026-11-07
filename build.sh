@@ -23,7 +23,8 @@
 #   5. compiler/si.om, built for both targets, must regenerate the committed README.md and repos.tsv
 #      byte for byte, and both builds must write the same si.sh
 #   6. tools/ledger.om, built for both targets, must print tests/ledger/expected.tsv
-#   7. the Omega harness examples, on both targets (tests/examples.sh)
+#   7. the Omega harness examples and the compiler regressions in tests/regress, on both targets
+#      (tests/examples.sh)
 #   8. gpu/cuda-crack, on both targets: its Omega table generator regenerates isa/sm121-forms.txt, its
 #      Omega reencoder rebuilds the 70 kernels that ran on the GB10 from the tables to the chip
 #      receipt's sha256, and its four planted bugs, made by check/mutate.om, are each caught
@@ -181,8 +182,8 @@ for t in a64 x86; do
 done
 
 # 7. The Omega harness examples, on both targets.
-sh tests/examples.sh "$O/omc" "$O/omc-x86" ${A64:+"$A64"} || fail "harness examples"
-pass "harness examples"
+sh tests/examples.sh "$O/omc" "$O/omc-x86" ${A64:+"$A64"} || fail "harness examples and regressions"
+pass "harness examples and regressions"
 
 # 8. gpu/cuda-crack: the sm_121 tables and the 70 kernels that ran on the GB10, checked on the CPU.
 # This is check/check.sh and gen/run.sh of cuda-crack, on both targets; their planted bugs are made
@@ -303,6 +304,7 @@ fi
 sh -n $O/fork-push-a64.sh || fail "forkpush: the generated fork-push.sh does not parse"
 cp $O/fork-push-a64.sh $O/fork-push.sh
 pass "forkpush: out/fork-push.sh from stack/FORKS.tsv, $(grep -c "^fp '" $O/fork-push.sh) branches to push, sha256 $(sha $O/fork-push.sh)"
+
 # 10. The examples of words this repository adds to the compiler (seed/PROVENANCE.md), on both targets.
 EXAMPLES_ROOT=tests/omc sh tests/examples.sh "$O/omc" "$O/omc-x86" ${A64:+"$A64"} || fail "tests/omc examples"
 pass "tests/omc examples"
