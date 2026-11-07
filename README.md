@@ -112,7 +112,7 @@ rad clone rad:z2JJz4RDfZZxKGBLn6UhmW5p9VJQj   # sovereign-intelligence, the DGX 
 | # | Project | Radicle ID | Head | About |
 |---:|---|---|---|---|
 | 1 | **aienux** (core) | `rad:z2Q6ob2gL6Qo5oUMpyehukayVF7mN` | `2fc6207` | Aienux, the AienOS kernel: boot, scheduling, IPC and capability boundaries. Pre-alpha; host, emulator and physical evidence are labelled separately. |
-| 2 | **omega-mv** (core) | `rad:z6do9WDBhuSnvopDkgFdFr1yWA62` | `943d955` | Omega: a language for verified programs, semantic identity and machine realization. Seed-born work and existing implementations have distinct provenance. |
+| 2 | **omega-mv** (core) | `rad:z6do9WDBhuSnvopDkgFdFr1yWA62` | `6efc457` | Omega: a language for verified programs, semantic identity and machine realization. Seed-born work and existing implementations have distinct provenance. |
 | 3 | **aien-sovereign-core-mv** (core) | `rad:z44GqrPVAPjZkhoD2MWVjqy18ighN` | `9d7b343` | AienOS host runtime: inference scheduling, paged KV state, the aien CLI and Spark verification tooling. Its inference engine is in alpha testing (DGX Spark GB10); Omega is the implementation destination. |
 | 4 | **physics-mv** (core) | `rad:z49She8eifZpLd2aiSvk2pph3DMUo` | `56d02ae` | FORGE: request-bound machine realization, providers and verification for AienOS. Host, simulated and GB10 hardware paths have separate evidence. |
 | 5 | **aien-architecture-mv** (core) | `rad:z37zcFYooiuCCZsf5L74eeFJYiwWM` | `4c19564` | Canonical architecture for the AIEN ecosystem: flows, boundaries, ADRs, and the map from design to implementation repositories. |
@@ -133,7 +133,7 @@ rad clone rad:z2JJz4RDfZZxKGBLn6UhmW5p9VJQj   # sovereign-intelligence, the DGX 
 | 20 | **omega-blas** | `rad:z47VdC9EFsF4dFyH1QJ1C2JNJK4JS` | `e3f1b40` | aien-dev/omega-blas (Radicle canonical mirror during the GitHub hold) |
 | 21 | **omega-bridge** | `rad:z3Hr9ZaiKHwwuNzPK5M8c7uw6pj7y` | `d8174ed` | Omega-first language interoperability: checked conversion backends and native language bindings |
 | 22 | **omega-gpu-driver** | `rad:z2xjD5kxUTTBNCryJ6rg9QXpemzei` | `1ac3589` | aien-dev/omega-gpu-driver (Radicle canonical mirror during the GitHub hold) |
-| 23 | **omega-harness** | `rad:z39gvwWsnkRZsAConQLjaKiNVLHfW` | `bd107ca` | Agent skills for operating, encoding and communicating in Omega (.om) and the AIEN repositories |
+| 23 | **omega-harness** | `rad:z39gvwWsnkRZsAConQLjaKiNVLHfW` | `6b45035` | Agent skills for operating, encoding and communicating in Omega (.om) and the AIEN repositories |
 | 24 | **sovereign-intelligence** | `rad:z2JJz4RDfZZxKGBLn6UhmW5p9VJQj` | `320c1bb` | Sovereign Intelligence: one command turns a DGX Spark into your own AI. Allen, Omega, science tools, no NVIDIA user-space software. Alpha testing. |
 | 25 | **spark-rsi-mv** | `rad:z4AauBRPXzPNMiAoHZpRpyCee61A2` | `505c75d` | Native Rust recursive self-improvement engine with paired bootstrap evaluation and cryptographic ledger |
 | 26 | **synapse** | `rad:zMGRREr2tmtRqpo4mMjpzkZdUGXN` | `01a4de3` | Synapse: agent-native changesets and coordination, with Git and Radicle interoperability. A component of the AienOS ecosystem. |

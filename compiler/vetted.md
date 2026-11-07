@@ -3,8 +3,8 @@
 | name | RID | branch | head |
 |---|---|---|---|
 | aien-sovereign-core-mv | rad:z44GqrPVAPjZkhoD2MWVjqy18ighN | main | 9d7b3433c9b2af99e64bd818f1b3ffb4ff7bd2a4 |
-| omega-mv | rad:z6do9WDBhuSnvopDkgFdFr1yWA62 | main | 943d955531b9d4d9f70deb41756c0b46441dd5e0 |
-| omega-harness | rad:z39gvwWsnkRZsAConQLjaKiNVLHfW | main | bd107ca15c40b6cdfef0f23afb03a884fe3c8086 |
+| omega-mv | rad:z6do9WDBhuSnvopDkgFdFr1yWA62 | main | 6efc45728d5080b0fc5d74016a00ba8bbfcf9698 |
+| omega-harness | rad:z39gvwWsnkRZsAConQLjaKiNVLHfW | main | 6b4503595fc06b72f523d52560bf5deb230ec32d |
 | aien-architecture-mv | rad:z37zcFYooiuCCZsf5L74eeFJYiwWM | main | 4c195641588b356bbf698942f1994e13b3c44370 |
 | omega-bridge | rad:z3Hr9ZaiKHwwuNzPK5M8c7uw6pj7y | main | d8174eddf953ad53e16f19eb5841459df99e24bb |
 | aien-train | rad:zKrfazKqYNFuXDDkYdptxJicGLEq | main | 0518c915dea370b3bffbb90d579b1daa5ba8b8f5 |
