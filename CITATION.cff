@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this work, please cite the paper below."
-title: "Sovereign Intelligence: one repository for my sovereign AI stack, written in Omega and grown from a 408-byte hand-written seed"
+title: "Sovereign Intelligence: Omega's compiler grown from a 408-byte hand-written seed, and the front door to my Radicle repositories"
 type: software
 authors:
   - family-names: Stapleton
