@@ -1,0 +1,484 @@
+om2
+note tools/ledger.om: the stack ledger, in pure seeded Omega.
+note
+note It counts what every recovered project is written in, so the migration to Omega is
+note measured, not guessed. Build with the seed-born compiler:
+note   omc < tools/ledger.om > ledger && chmod +x ledger
+note   { printf 'target x86linux\n'; cat tools/ledger.om; } | omc > ledger   (native x86-64)
+note Run:
+note   ledger < LIST > LEDGER.tsv
+note   LIST    stdin, at most 16 MiB: one file per line, "project TAB path". The path is opened
+note           as given, relative to the current directory; everything after the first TAB is the
+note           path. All lines of one project are contiguous. tools/ledger-refresh.sh writes it.
+note For each path it opens the file read-only and counts its bytes and its newline bytes
+note (the count wc -l prints). The category comes from the extension, the bytes after the last
+note dot of the final path component (none without a dot):
+note   om -> om; rs -> rust; c h -> c; sh -> sh; py -> py;
+note   cpp cc hpp cu go ts tsx js mjs swift zig s S -> other;
+note   anything else is not code: it counts in files and bytes only.
+note stdout: the header line
+note   project files bytes om rust c sh py other foreign om_permille   (TAB-separated)
+note then one row per project in input order, then a TOTAL row. Line counts per category;
+note foreign = rust + c + sh + py + other; om_permille = floor(om * 1000 / (om + foreign)),
+note 0 when both are 0. All numbers in decimal.
+note Refusals, each with one stderr line "ledger: ..." and exit 1, and nothing on stdout (the
+note output is buffered and written only at the end): a blank line or a line without
+note "project TAB path"; a path over 4095 bytes; a file that cannot be opened or read; a project
+note whose lines are not contiguous; more than 1024 projects; input over 16 MiB.
+note The output depends only on the input list and the files' bytes: no clock, no environment.
+
+note standard input
+global inp uchar 16777216
+global inn ulong 1
+note one read of a file
+global fb uchar 1048576
+note the path being opened
+global pb uchar 4096
+note the output, written once at the end
+global ob uchar 4194304
+global obn ulong 1
+note projects seen so far: name offset and length in inp
+global seen ulong 2048
+global nseen ulong 1
+note counters of the current project and the totals:
+note 0 files, 1 bytes, 2 om, 3 rust, 4 c, 5 sh, 6 py, 7 other (lines)
+global cur ulong 8
+global tot ulong 8
+
+text tpre "ledger: "
+text tnl "\n"
+text ttab "\t"
+text tusage "usage: ledger < LIST   (LIST: one \"project TAB path\" line per file)\n"
+text tbig "input over the 16 MiB buffer"
+text tread "cannot read standard input"
+text tline "line needs project TAB path: "
+text tlong "path over 4095 bytes: "
+text topen "cannot open "
+text tfread "cannot read "
+text tsplit "project lines are not contiguous: "
+text tmany "more than 1024 projects at: "
+text toverf "output is over the 4 MiB buffer"
+text twrite "cannot write standard output"
+text thead "project\tfiles\tbytes\tom\trust\tc\tsh\tpy\tother\tforeign\tom_permille\n"
+text ttotal "TOTAL"
+text xom "om"
+text xrs "rs"
+text xc "c"
+text xh "h"
+text xsh "sh"
+text xpy "py"
+text xcpp "cpp"
+text xcc "cc"
+text xhpp "hpp"
+text xcu "cu"
+text xgo "go"
+text xts "ts"
+text xtsx "tsx"
+text xjs "js"
+text xmjs "mjs"
+text xswift "swift"
+text xzig "zig"
+text xas "s"
+text xbs "S"
+
+note die: report m and up to 4096 bytes of inp from o on stderr, then exit 1
+fn die m view uchar * o ulong n ulong to void
+k = n
+if gt k 4096
+k = 4096
+end
+w = write 2 tpre 0 len tpre
+w = write 2 m 0 len m
+if gt k 0
+w = write 2 inp o k
+end
+w = write 2 tnl 0 len tnl
+exit 1
+end
+
+note em: append a text to ob
+fn em t view uchar * to void
+p = get obn 0
+n = len t
+if gt n sub 4194304 p
+die toverf 0 0
+end
+for i ulong n
+put ob add p i get t i
+end
+put obn 0 add p n
+end
+
+note emi: append n bytes of inp from o to ob
+fn emi o ulong n ulong to void
+p = get obn 0
+if gt n sub 4194304 p
+die toverf 0 0
+end
+for i ulong n bound 4194304
+put ob add p i get inp add o i
+end
+put obn 0 add p n
+end
+
+note emb: append one byte to ob
+fn emb c uchar to void
+p = get obn 0
+if ge p 4194304
+die toverf 0 0
+end
+put ob p c
+put obn 0 add p 1
+end
+
+note emu: append v in decimal to ob
+fn emu v ulong to void
+d = new uchar 20 0
+x = v
+put d 0 uchar add rem x 10 48
+k = ulong 1
+x = div x 10
+while gt x 0 bound 20
+put d k uchar add rem x 10 48
+k = add k 1
+x = div x 10
+end
+while gt k 0 bound 20
+k = sub k 1
+emb get d k
+end
+end
+
+note wout: write ob to standard output
+fn wout to void
+n = get obn 0
+p = ulong 0
+while lt p n bound 4194305
+k = write 1 ob p sub n p
+if le k 0
+die twrite 0 0
+end
+p = add p ulong k
+end
+end
+
+note loadin: read all of standard input into inp
+fn loadin to void
+t = new uchar 1 0
+p = ulong 0
+going = true
+note every pass but the last reads at least one byte of a 16 MiB buffer
+while going bound 16777218
+k = read 0 inp p sub 16777216 p
+if lt k 0
+die tread 0 0
+end
+if eq k 0
+going = false
+else
+p = add p ulong k
+if eq p 16777216
+going = false
+end
+end
+end
+if eq p 16777216
+k = read 0 t 0 1
+if ne k 0
+die tbig 0 0
+end
+end
+put inn 0 p
+end
+
+note eqx: do the n bytes of inp at o equal the text t
+fn eqx o ulong n ulong t view uchar * to bool
+if ne n len t
+ret false
+end
+for i ulong n
+if ne get inp add o i get t i
+ret false
+end
+end
+ret true
+end
+
+note eqs: are two slices of inp equal
+fn eqs a ulong an ulong b ulong bn ulong to bool
+if ne an bn
+ret false
+end
+for i ulong an bound 16777216
+if ne get inp add a i get inp add b i
+ret false
+end
+end
+ret true
+end
+
+note eol: the end of the line that starts at p (its newline, or e)
+fn eol p ulong e ulong to ulong
+q = p
+while lt q e bound 16777217
+if eq get inp q 10
+ret q
+end
+q = add q 1
+end
+ret e
+end
+
+note isoth: is the extension at inp[o, o+n) one of the other code languages
+fn isoth o ulong n ulong to bool
+if eqx o n xcpp
+ret true
+end
+if eqx o n xcc
+ret true
+end
+if eqx o n xhpp
+ret true
+end
+if eqx o n xcu
+ret true
+end
+if eqx o n xgo
+ret true
+end
+if eqx o n xts
+ret true
+end
+if eqx o n xtsx
+ret true
+end
+if eqx o n xjs
+ret true
+end
+if eqx o n xmjs
+ret true
+end
+if eqx o n xswift
+ret true
+end
+if eqx o n xzig
+ret true
+end
+if eqx o n xas
+ret true
+end
+ret eqx o n xbs
+end
+
+note catof: the category of the extension at inp[o, o+n): 0 not code, 1 om, 2 rust, 3 c,
+note 4 sh, 5 py, 6 other
+fn catof o ulong n ulong to ulong
+if eqx o n xom
+ret 1
+end
+if eqx o n xrs
+ret 2
+end
+if eqx o n xc
+ret 3
+end
+if eqx o n xh
+ret 3
+end
+if eqx o n xsh
+ret 4
+end
+if eqx o n xpy
+ret 5
+end
+if isoth o n
+ret 6
+end
+ret 0
+end
+
+note extcat: the category of the path at inp[o, o+n), from the bytes after the last dot of
+note its final component; 0 when that component has no dot
+fn extcat o ulong n ulong to ulong
+d = n
+i = n
+while gt i 0 bound 4096
+i = sub i 1
+c = get inp add o i
+if eq c 47
+break
+end
+if eq c 46
+d = i
+break
+end
+end
+if eq d n
+ret 0
+end
+s = add d 1
+ret catof add o s sub n s
+end
+
+note nlines: the newline bytes among the first m bytes of fb (count checks m against fb, trap 3)
+fn nlines m ulong to ulong
+ret count fb 0 m 10
+end
+
+note countf: open the path at inp[o, o+n) and add its file, bytes and lines to cur
+fn countf o ulong n ulong to void
+if gt n 4095
+die tlong o n
+end
+for i ulong n bound 4095
+put pb i get inp add o i
+end
+fd = fopen pb 0 n 0 0
+if lt fd 0
+die topen o n
+end
+by = ulong 0
+nl = ulong 0
+going = true
+note every pass but the last reads at least one byte; no file here reaches 2^40 bytes
+while going bound 1099511627776
+k = read int fd fb 0 1048576
+if lt k 0
+die tfread o n
+end
+if eq k 0
+going = false
+else
+m = ulong k
+by = add by m
+nl = add nl nlines m
+end
+end
+c = fclose int fd
+cat = extcat o n
+put cur 0 add get cur 0 1
+put cur 1 add get cur 1 by
+if gt cat 0
+j = add cat 1
+put cur j add get cur j nl
+end
+end
+
+note cell: counter k of the current project (w 0) or of the totals (w 1)
+fn cell w ulong k ulong to ulong
+if eq w 0
+ret get cur k
+end
+ret get tot k
+end
+
+note emnums: the eight counters, foreign and om_permille of w (see cell), then the newline
+fn emnums w ulong to void
+for k ulong 8
+em ttab
+emu cell w k
+end
+fo = ulong 0
+for j ulong 5
+fo = add fo cell w add j 3
+end
+em ttab
+emu fo
+om = cell w 2
+pm = ulong 0
+if gt add om fo 0
+pm = div mul om 1000 add om fo
+end
+em ttab
+emu pm
+em tnl
+end
+
+note flush: emit the current project's row, add it to the totals and zero it
+fn flush to void
+k = get nseen 0
+if eq k 0
+ret
+end
+r = sub k 1
+emi get seen mul r 2 get seen add mul r 2 1
+emnums 0
+for i ulong 8
+put tot i add get tot i get cur i
+put cur i 0
+end
+end
+
+note startp: begin the project named inp[po, po+pn); refuse a name seen before
+fn startp po ulong pn ulong to void
+k = get nseen 0
+for i ulong k bound 1024
+if eqs get seen mul i 2 get seen add mul i 2 1 po pn
+die tsplit po pn
+end
+end
+if ge k 1024
+die tmany po pn
+end
+put seen mul k 2 po
+put seen add mul k 2 1 pn
+put nseen 0 add k 1
+end
+
+note iscur: is inp[po, po+pn) the name of the current project
+fn iscur po ulong pn ulong to bool
+k = get nseen 0
+if eq k 0
+ret false
+end
+r = sub k 1
+a = get seen mul r 2
+an = get seen add mul r 2 1
+ret eqs a an po pn
+end
+
+note doline: one LIST line [p, q): "project TAB path"
+fn doline p ulong q ulong to void
+t = p
+while lt t q bound 16777217
+if eq get inp t 9
+break
+end
+t = add t 1
+end
+if or eq t q eq t p
+die tline p sub q p
+end
+o = add t 1
+if eq o q
+die tline p sub q p
+end
+pn = sub t p
+if not iscur p pn
+flush
+startp p pn
+end
+countf o sub q o
+end
+
+fn main to int
+if ne argcnt 1
+w = write 2 tusage 0 len tusage
+ret 2
+end
+loadin
+em thead
+e = get inn 0
+p = ulong 0
+note every pass consumes at least one byte of the input
+while lt p e bound 16777217
+q = eol p e
+doline p q
+p = add q 1
+end
+flush
+em ttotal
+emnums 1
+wout
+ret 0
+end

@@ -1,0 +1,10 @@
+note decl_order: text, const and global come before the function that names them; only functions may be named before their line
+const K int 7
+global g uchar 4
+fn main to int
+put g 0 uchar K
+ret add f int get g 0
+end
+fn f to int
+ret 1
+end

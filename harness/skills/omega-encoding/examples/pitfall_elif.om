@@ -1,0 +1,14 @@
+note There is no elif. A line NAME VALUE assigns, so elif eq k 1 makes a local bool named elif
+note and the next line runs for every k. pick 0 should be 10 and returns 20 (exit 20).
+fn pick k ulong to ulong
+r = ulong 0
+if eq k 0
+r = ulong 10
+elif eq k 1
+r = ulong 20
+end
+ret r
+end
+fn main to int
+ret int pick 0
+end

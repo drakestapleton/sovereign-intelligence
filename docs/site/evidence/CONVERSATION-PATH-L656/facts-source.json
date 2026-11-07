@@ -1,0 +1,132 @@
+{
+  "generated_at": "2026-10-22T12:19:24Z",
+  "components": [
+    {
+      "key": "aienos",
+      "name": "AIENOS",
+      "repo": "aien-dev/aienos",
+      "role": "The operating system. Agent-first; the model is never the kernel.",
+      "url": "https://github.com/aien-dev/aienos",
+      "pushed_at": "2026-10-22T11:42:54Z",
+      "open_prs": 22,
+      "last_merge": {
+        "number": 437,
+        "title": "AIENOS-VERIFY-ALL passes on the Spark judge: own target dir, 60m, no-sudo kernel copy, sbin on PATH",
+        "merged_at": "2026-10-19T16:43:53Z",
+        "url": "https://github.com/aien-dev/aienux/pull/437"
+      }
+    },
+    {
+      "key": "omega",
+      "name": "Omega",
+      "repo": "aien-dev/omega",
+      "role": "AIEN's language for all computing, GPU to CPU. On the GPU it is the replacement for CUDA.",
+      "url": "https://github.com/aien-dev/omega",
+      "pushed_at": "2026-10-22T11:43:33Z",
+      "open_prs": 63,
+      "last_merge": {
+        "number": 357,
+        "title": "test(osh-host): make SIGTSTP check independent of orphaned process groups",
+        "merged_at": "2026-10-09T21:52:19Z",
+        "url": "https://github.com/aien-dev/omega-mv/pull/357"
+      }
+    },
+    {
+      "key": "sovereign-core",
+      "name": "Sovereign core",
+      "repo": "aien-dev/aien-sovereign-core",
+      "role": "Host runtime, inference ABI, and the pipeline that judges every change.",
+      "url": "https://github.com/aien-dev/aien-sovereign-core",
+      "pushed_at": "2026-10-22T12:11:46Z",
+      "open_prs": 56,
+      "last_merge": {
+        "number": 669,
+        "title": "Long conversations keep the operator's words; Allen's own material folds into one recap",
+        "merged_at": "2026-10-20T20:54:47Z",
+        "url": "https://github.com/aien-dev/aien-sovereign-core-mv/pull/669"
+      }
+    },
+    {
+      "key": "architecture",
+      "name": "Architecture",
+      "repo": "aien-dev/aien-architecture",
+      "role": "Flows, boundaries, decision records, execution plan.",
+      "url": "https://github.com/aien-dev/aien-architecture",
+      "pushed_at": "2026-10-22T08:52:11Z",
+      "open_prs": 5,
+      "last_merge": {
+        "number": 237,
+        "title": "ADR 0030 amendment A: Anthropic provider policy matrix (PROPOSED)",
+        "merged_at": "2026-10-20T15:34:14Z",
+        "url": "https://github.com/aien-dev/aien-architecture-mv/pull/237"
+      }
+    },
+    {
+      "key": "protocols",
+      "name": "Protocols",
+      "repo": "aien-dev/aien-protocols",
+      "role": "Specifications, wire protocols, schemas.",
+      "url": "https://github.com/aien-dev/aien-protocols",
+      "pushed_at": "2026-10-20T13:13:38Z",
+      "open_prs": 2,
+      "last_merge": {
+        "number": 47,
+        "title": "docs: README matches main on 2026-10-19",
+        "merged_at": "2026-10-19T13:11:26Z",
+        "url": "https://github.com/aien-dev/aien-protocols-mv/pull/47"
+      }
+    },
+    {
+      "key": "physics",
+      "name": "Physics",
+      "repo": "aien-dev/physics",
+      "role": "The FORGE realization layer and the boot artefacts for the GB10.",
+      "url": "https://github.com/aien-dev/physics",
+      "pushed_at": "2026-10-21T15:03:51Z",
+      "open_prs": 0,
+      "last_merge": {
+        "number": 73,
+        "title": "docs: README matches main on 2026-10-19",
+        "merged_at": "2026-10-19T13:11:18Z",
+        "url": "https://github.com/aien-dev/physics-mv/pull/73"
+      }
+    }
+  ],
+  "decisions": [
+    {
+      "id": "0038",
+      "title": "Names: Aienux is the kernel, AienOS is the operating system, Aienix is...",
+      "url": "https://github.com/aien-dev/aien-architecture-mv/blob/main/docs/adr/0038-names-aienux-kernel-aienos-system.md"
+    },
+    {
+      "id": "0037",
+      "title": "Who signs native slot images: Owner Root directly, or a Release Signer...",
+      "url": "https://github.com/aien-dev/aien-architecture-mv/blob/main/docs/adr/0037-native-image-slot-signing-roles.md"
+    },
+    {
+      "id": "0036",
+      "title": "Release v1 memory owner (lane L3 of the release-readiness program)",
+      "url": "https://github.com/aien-dev/aien-architecture-mv/blob/main/docs/adr/0036-release-v1-memory-owner.md"
+    },
+    {
+      "id": "0035",
+      "title": "Persistent Cognitive Entity Boundary (ALLEN)",
+      "url": "https://github.com/aien-dev/aien-architecture-mv/blob/main/docs/adr/0035-persistent-cognitive-entity-boundary-allen.md"
+    },
+    {
+      "id": "0034",
+      "title": "Physical-Form Realization IR",
+      "url": "https://github.com/aien-dev/aien-architecture-mv/blob/main/docs/adr/0034-physical-form-realization-ir.md"
+    }
+  ],
+  "receipt": {
+    "repo": "aien-dev/aien-sovereign-core",
+    "sha": "1e6ae85c977b628fa26a8c84c8b16194e78e67e2",
+    "commit_title": "kv concurrency test counts a step only after the storage worker settles (random 'no progress' failure under load) (#697)",
+    "committed_at": "2026-10-20T14:24:50Z",
+    "state": "failure",
+    "description": "BLOCKED FAIL SC-TEST:rc_nonzero",
+    "target_url": "https://github.com/aien-dev/aien-sovereign-core/commit/1e6ae85c977b628fa26a8c84c8b16194e78e67e2",
+    "updated_at": "2026-10-20T15:54:12Z"
+  }
+}

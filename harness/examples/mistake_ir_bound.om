@@ -1,0 +1,9 @@
+ir
+note mistake_ir_bound: IR mode keeps the C oracle's loop range: a bound is 1..1000000, so 1000001 is error 8
+fn main to int
+i = ulong 0
+while lt i 3 bound 1000001
+i = add i 1
+end
+ret 0
+end

@@ -1,0 +1,7 @@
+note count_err07_value: v is a uchar; an int value is error 7. Fix: uchar v, or a bare number
+om2
+fn main to int
+a = new uchar 4 0
+n = count a 0 4 int 10
+ret 0
+end

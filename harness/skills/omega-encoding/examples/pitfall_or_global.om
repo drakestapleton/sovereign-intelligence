@@ -1,0 +1,9 @@
+note Four ne get G i v terms on a global in one or chain exhaust the register pool (error 12);
+note three terms, a local array, or two bool locals combined with one or all compile.
+global hdr uchar 16
+fn main to int
+if or or or ne get hdr 0 1 ne get hdr 1 2 ne get hdr 2 3 ne get hdr 3 4
+ret 9
+end
+ret 0
+end

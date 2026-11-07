@@ -1,0 +1,30 @@
+{
+  "name": "drakestapleton.com",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "The personal project record of Drake Stapleton, Freedom Fighter, AI Architect & Operator.",
+  "scripts": {
+    "dev": "vite --mode portfolio",
+    "dev:portfolio": "vite --mode portfolio",
+    "build": "tsc --noEmit && vite build --mode portfolio && vite build --ssr src/entry-server.tsx --outDir dist-ssr && node scripts/spa-fallback.mjs portfolio && node scripts/verify-build.mjs portfolio",
+    "build:portfolio": "tsc --noEmit && vite build --mode portfolio && vite build --ssr src/entry-server.tsx --outDir dist-ssr && node scripts/spa-fallback.mjs portfolio && node scripts/verify-build.mjs portfolio",
+    "build:rust": "cargo run --release --manifest-path crates/site-builder/Cargo.toml -- dist",
+    "check:copy": "node scripts/check-copy.mjs",
+    "preview": "vite preview",
+    "test:waitlist": "python3 -m unittest discover -s server -p 'test_*.py'",
+    "typecheck": "tsc --noEmit --pretty false"
+  },
+  "dependencies": {
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-router-dom": "^7.8.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.10",
+    "@types/react-dom": "^19.1.7",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.2"
+  }
+}

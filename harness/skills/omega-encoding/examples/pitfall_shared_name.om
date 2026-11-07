@@ -1,0 +1,14 @@
+note Units concatenated into one input share one namespace: the local sh below names the
+note global array sh of the unit above it, so the assignment is a type error (error 7).
+global sh uchar 4
+fn seta to void
+put sh 0 uchar 5
+end
+fn helpb x ulong to ulong
+sh = add x 1
+ret sh
+end
+fn main to int
+seta
+ret int add ulong get sh 0 helpb 1
+end

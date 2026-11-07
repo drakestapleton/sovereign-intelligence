@@ -1,0 +1,93 @@
+[
+  {
+    "viewport": "phone",
+    "javascript": true,
+    "home": {
+      "url": "http://127.0.0.1:18731/",
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "qa": {
+        "errors": [],
+        "messages": []
+      },
+      "ctas": [
+        {
+          "name": "Start a conversation",
+          "href": "/interest",
+          "rect": {
+            "x": 20,
+            "y": 500.734375,
+            "width": 190.734375,
+            "height": 40.0625,
+            "top": 500.734375,
+            "right": 210.734375,
+            "bottom": 540.796875,
+            "left": 20
+          }
+        },
+        {
+          "name": "Begin the journey",
+          "href": "#w-home",
+          "rect": {
+            "x": 20,
+            "y": 551.984375,
+            "width": 170.28125,
+            "height": 40.0625,
+            "top": 551.984375,
+            "right": 190.28125,
+            "bottom": 592.046875,
+            "left": 20
+          }
+        },
+        {
+          "name": "Jump to the machine",
+          "href": "#w-aien",
+          "rect": {
+            "x": 20,
+            "y": 603.234375,
+            "width": 193.046875,
+            "height": 40.0625,
+            "top": 603.234375,
+            "right": 213.046875,
+            "bottom": 643.296875,
+            "left": 20
+          }
+        }
+      ]
+    },
+    "interest": {
+      "url": "http://127.0.0.1:18731/interest/",
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "qa": {
+        "errors": [],
+        "messages": []
+      },
+      "h1": "Start a Conversation",
+      "h2Font": "21.6px",
+      "forms": 1,
+      "valid": false,
+      "labels": [
+        {
+          "name": "name",
+          "label": "YOUR NAME",
+          "required": true
+        },
+        {
+          "name": "email",
+          "label": "YOUR EMAIL",
+          "required": true
+        },
+        {
+          "name": "message",
+          "label": "MESSAGE",
+          "required": true
+        }
+      ],
+      "disclosure": "This form sends your name, email and message to FormSubmit for email forwarding. Do not include passwords, private keys or other secrets. You can also email me directly."
+    },
+    "keyboard_enter_navigated": true
+  }
+]

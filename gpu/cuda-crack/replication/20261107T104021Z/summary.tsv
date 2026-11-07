@@ -1,0 +1,28 @@
+1.1-preflight	HOST_TESTED	0	PASS	0	req	
+2.1-clone	HOST_TESTED	0	PASS	13	req	
+2.2-pins	HOST_TESTED	0	PASS	4	req	
+3.1-seed-f4df8239	HOST_TESTED	0	PASS	1	req	
+3.2-sha-f4df8239	HOST_TESTED	0	PASS	1	req	
+3.3-seed-e5b32567	HOST_TESTED	0	PASS	0	req	
+3.4-sha-e5b32567	HOST_TESTED	0	PASS	1	req	
+3.5-neg-seed-byte	HOST_TESTED	126	PASS	7	req	control failed as it must (exit 126)
+3.6-neg-compiler-source	HOST_TESTED	1	PASS	1	req	control failed as it must (exit 1)
+4.1-crack-receipts	HOST_TESTED	0	PASS	0	req	
+4.2-crack-gen	HOST_TESTED	0	PASS	1	req	
+4.3-crack-check	HOST_TESTED	0	PASS	1	req	
+4.4-same-encoder	HOST_TESTED	0	PASS	0	req	
+4.5-neg-tampered-receipt	HOST_TESTED	1	PASS	0	req	control failed as it must (exit 1)
+5.1-om-encoder	HOST_TESTED	0	PASS	80	req	
+5.3-neg-mutants-unpinned	HOST_TESTED	2	PASS	8	req	control failed as it must (exit 2)
+5.4-om-encoder-mutants	HOST_TESTED	0	PASS	10	req	
+5.5-hello-sim	SIMULATED	0	PASS	75	req	
+6.1-E2-hello-receipt	receipt verified	0	PASS	0	req	
+6.2-E3-chip-kernels	receipt verified	0	PASS	0	req	
+6.3-E6-seed-vecadd	receipt verified	0	PASS	0	req	
+6.4-E7-native-launch	receipt verified	0	PASS	0	req	
+6.5-E8-doctor	receipt verified	0	PASS	0	req	
+6.6-E9-exhaustive	receipt verified	0	PASS	1	req	
+6.7-E10-builders	receipt verified	0	PASS	0	req	
+6.8-E1-no-cuda	receipt verified	0	PASS	0	req	
+5.2-om-encoder-corpus	HOST_TESTED	-	NOT_RUN	0	opt	optional, long (three CUDApp builds on one core); run with --corpus
+7-chip	CHIP_TESTED	-	NOT_RUN	0	opt	chip steps are off by default; run with --chip on a GB10

@@ -1,0 +1,11 @@
+note trap4_for_bound: a for count above its bound traps 4 when pass N+1 would start, exit 104
+text before "before\n"
+fn main to int
+k = write 1 before 0 len before
+n = ulong 11
+s = ulong 0
+for i ulong n bound 10
+s = add s i
+end
+ret int s
+end

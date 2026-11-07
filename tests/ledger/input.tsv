@@ -1,0 +1,11 @@
+alpha	tests/ledger/alpha/main.om
+alpha	tests/ledger/alpha/lib.rs
+alpha	tests/ledger/alpha/inc/defs.h
+alpha	tests/ledger/alpha/Makefile
+beta	tests/ledger/beta/empty.py
+beta	tests/ledger/beta/run.sh
+beta	tests/ledger/beta/notes.md
+beta	tests/ledger/beta/tool.S
+beta	tests/ledger/beta/k.cu
+beta	tests/ledger/beta/dir.v1/README
+beta	tests/ledger/beta/.gitignore

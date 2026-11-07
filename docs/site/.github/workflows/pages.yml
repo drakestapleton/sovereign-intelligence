@@ -1,0 +1,59 @@
+name: pages
+# drakestapleton.com merged into https://www.aienos.com/engineer/ on 2026-10-26.
+# This site now only serves redirect stubs (site/), one per old address, listed
+# in redirects.tsv. GitHub Pages cannot send a 301, so each stub carries a
+# canonical link, a meta refresh at 0, location.replace and a visible link.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Every old address has its stub, pointing at its new page
+        run: |
+          set -eu
+          tab="$(printf '\t')"
+          n=0
+          while IFS="$tab" read -r old new; do
+            case "$old" in
+              *.md) f="site$old"; pat="$new" ;;
+              /) f="site/index.html"; pat="url=$new\"" ;;
+              *) f="site$old/index.html"; pat="url=$new\"" ;;
+            esac
+            if ! grep -qF "$pat" "$f"; then echo "stub missing or wrong: $old -> $new"; exit 1; fi
+            case "$old" in
+              *.md) ;;
+              *) grep -qF "<link rel=\"canonical\" href=\"$new\">" "$f" && grep -qF "location.replace(\"$new\"" "$f" && grep -qF "<a href=\"$new\">" "$f" \
+                   || { echo "stub incomplete: $old"; exit 1; } ;;
+            esac
+            n=$((n + 1))
+          done < redirects.tsv
+          grep -qx 'www.drakestapleton.com' site/CNAME
+          echo "$n stubs checked"
+      - name: Upload Pages artifact
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

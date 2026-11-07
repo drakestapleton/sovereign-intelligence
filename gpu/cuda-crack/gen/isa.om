@@ -1,0 +1,401 @@
+note gen/isa.om: derive machine-readable sm_121 encoding tables from my Omega encoder by probing it.
+note Build: cat gen/bw_enc_sm121.om gen/isa.om | omc > isa-gen   (omc reads one source from stdin, no imports).
+note Method: for every op 0..63 and every operand-presence/flag selector, encode one base instruction,
+note then flip one input bit at a time (register numbers, 32-bit immediate, barrier register) and diff
+note the 96 instruction bits (words 0..2; word 3 is the scheduling control word). Bits that never move
+note are the form's fixed bits (opcode and modifiers); bits that move belong to an operand field.
+note Output (decimal, space separated), one record per line:
+note   F id op sel fix0 fix1 fix2 msk0 msk1 msk2 ctl
+note   D id field m0 m1 m2 start width
+note sel bits: 0 dst 1 src1 2 src2 3 src3 4 ureg present, 5 uniform, 6 guard @P0, 7 guard negated.
+note field: 0 dst 1 src1 2 src2 3 src3 4 ureg 5 imm 6 barrier. start = bit (0..95) of input bit 0,
+note width = how many input bits map one-to-one onto consecutive output bits (0 when not linear).
+note op 255 is the NOP the encoder pads with.
+
+global obuf uchar 4194304
+global opos ulong 1
+global dg uchar 32
+global cw ulong 4
+global bw ulong 4
+global fmk ulong 21
+global pos ulong 32
+global fx ulong 65536
+global nf ulong 1
+note ga: the probe arguments op sel field bit (functions take at most six parameters)
+global ga ulong 4
+note cf: the candidate form op x0 x1 x2 m0 m1 m2
+global cf ulong 7
+
+fn pch c ulong to void
+p = get opos 0
+if lt p 4194304
+put obuf p uchar c
+put opos 0 add p 1
+end
+end
+
+fn pnum v ulong to void
+n = ulong 0
+x = v
+while gt x 0 bound 32
+q = div x 10
+put dg n uchar add 48 sub x mul q 10
+x = q
+n = add n 1
+end
+if eq n 0
+pch 48
+end
+k = n
+while gt k 0 bound 32
+k = sub k 1
+pch ulong get dg k
+end
+end
+
+fn psp v ulong to void
+pch 32
+pnum v
+end
+
+fn rdw code view uchar 16384 q ulong to ulong
+a = ulong get code q
+b = shl ulong get code add q 1 8
+c = shl ulong get code add q 2 16
+d = shl ulong get code add q 3 24
+ret or or a b or c d
+end
+
+note encode the one instruction in ins; 1 and words in cw, or 0 when refused
+fn encw ins view ulong 8192 phys view ulong 288 code edit uchar 16384 to ulong
+r = bw_enc_sm121 ins phys 1 0 edit code
+if eq r 0
+ret 0
+end
+for k ulong 4
+put cw k rdw code mul k 4
+end
+ret 1
+end
+
+fn setup ins edit ulong 8192 phys edit ulong 288 op ulong sel ulong to void
+put ins 0 op
+for s ulong 5
+vr = add s 1
+if eq s 4
+vr = 0
+end
+if ne and shr sel s 1 0
+put ins add s 1 vr
+else
+put ins add s 1 NEG
+end
+end
+put ins 6 3
+put ins 7 and shr sel 5 7
+for j ulong 5
+put phys j 0
+end
+put phys 256 0
+put phys 257 0
+end
+
+note set field f to its probe value for input bit b (f 7: no change, the base instruction)
+fn apply ins edit ulong 8192 phys edit ulong 288 f ulong b ulong to void
+v = shl 1 b
+if lt f 4
+put phys add f 1 v
+end
+if eq f 0
+put phys 257 v
+end
+if eq f 4
+put phys 256 v
+end
+if eq f 5
+put ins 6 xor 3 v
+end
+if eq f 6
+put ins 7 or get ins 7 shl v 8
+end
+end
+
+fn probe ins edit ulong 8192 phys edit ulong 288 code edit uchar 16384 to ulong
+setup edit ins edit phys get ga 0 get ga 1
+apply edit ins edit phys get ga 2 get ga 3
+ret encw ins phys edit code
+end
+
+note the bit index 0..31 of a one-bit word
+fn lg v ulong to ulong
+r = ulong 0
+for i ulong 32
+if eq shr v i 1
+r = i
+end
+end
+ret r
+end
+
+note position 0..95 when exactly one of the three words changed by one bit; 998 several; 999 none
+fn onepos d0 ulong d1 ulong d2 ulong to ulong
+n0 = ne d0 0
+n1 = ne d1 0
+n2 = ne d2 0
+if not or n0 or n1 n2
+ret 999
+end
+if and n0 and not n1 not n2
+if eq and d0 sub d0 1 0
+ret lg d0
+end
+end
+if and n1 and not n0 not n2
+if eq and d1 sub d1 1 0
+ret add 32 lg d1
+end
+end
+if and n2 and not n0 not n1
+if eq and d2 sub d2 1 0
+ret add 64 lg d2
+end
+end
+ret 998
+end
+
+note fold the last probe's diff against the base into field f's mask and bit b's position
+fn acc f ulong b ulong to void
+d0 = xor get cw 0 get bw 0
+d1 = xor get cw 1 get bw 1
+d2 = xor get cw 2 get bw 2
+m = mul f 3
+put fmk m or get fmk m d0
+put fmk add m 1 or get fmk add m 1 d1
+put fmk add m 2 or get fmk add m 2 d2
+put pos b onepos d0 d1 d2
+end
+
+note probe all nb input bits of field ga 2; masks into fmk, per-bit positions into pos
+fn field ins edit ulong 8192 phys edit ulong 288 code edit uchar 16384 nb ulong to void
+for b ulong nb
+put pos b 999
+put ga 3 b
+r = probe edit ins edit phys edit code
+if ne r 0
+acc get ga 2 b
+end
+end
+end
+
+note width of the run where input bit b lands on output bit start+b
+fn runw nb ulong to ulong
+s = get pos 0
+w = ulong 0
+if lt s 96
+w = 1
+ok = true
+for b ulong nb
+if and ok gt b 0
+if eq get pos b add s b
+w = add w 1
+else
+ok = false
+end
+end
+end
+end
+ret w
+end
+
+fn fmask k ulong to ulong
+m = ulong 0
+for f ulong 7
+m = or m get fmk add mul f 3 k
+end
+ret m
+end
+
+note 1 when a form with this op, fixed bits and mask is already recorded
+fn same j ulong to bool
+b = mul j 8
+ok = true
+for i ulong 7
+if ne get fx add b i get cf i
+ok = false
+end
+end
+ret ok
+end
+
+fn seen to bool
+hit = false
+for j ulong get nf 0
+if same j
+hit = true
+end
+end
+ret hit
+end
+
+fn record to ulong
+j = get nf 0
+b = mul j 8
+for i ulong 7
+put fx add b i get cf i
+end
+put nf 0 add j 1
+ret j
+end
+
+fn emitd id ulong f ulong w ulong to void
+m = mul f 3
+pch 68
+psp id
+psp f
+psp get fmk m
+psp get fmk add m 1
+psp get fmk add m 2
+s = get pos 0
+if eq w 0
+s = 0
+end
+psp s
+psp w
+pch 10
+end
+
+fn emitf id ulong op ulong sel ulong m0 ulong m1 ulong m2 ulong to void
+pch 70
+psp id
+psp op
+psp sel
+psp and get bw 0 xor m0 4294967295
+psp and get bw 1 xor m1 4294967295
+psp and get bw 2 xor m2 4294967295
+psp m0
+psp m1
+psp m2
+psp get bw 3
+pch 10
+end
+
+note the field record of f when the field moved any bit
+fn emitnz id ulong f ulong nb ulong to void
+m = mul f 3
+if ne or get fmk m or get fmk add m 1 get fmk add m 2 0
+emitd id f runw nb
+end
+end
+
+note probe every field of one (op, sel); the field records go out with the form record
+fn fields ins edit ulong 8192 phys edit ulong 288 code edit uchar 16384 id ulong emit bool to void
+sel = get ga 1
+for f ulong 7
+nb = ulong 8
+if eq f 5
+nb = 32
+end
+live = true
+if lt f 5
+live = ne and shr sel f 1 0
+end
+if live
+put ga 2 f
+field edit ins edit phys edit code nb
+if emit
+emitnz id f nb
+end
+end
+end
+end
+
+note the candidate form from the base words and the field masks
+fn mkcf to void
+put cf 0 get ga 0
+for k ulong 3
+m = fmask k
+put cf add k 1 and get bw k xor m 4294967295
+put cf add k 4 m
+end
+end
+
+note copy the base words and clear the field masks
+fn rebase to void
+for k ulong 4
+put bw k get cw k
+end
+clearm
+end
+
+fn clearm to void
+for i ulong 21
+put fmk i 0
+end
+end
+
+note record the candidate form and print its F record; its id
+fn newform to ulong
+id = record
+emitf id get ga 0 get ga 1 get cf 4 get cf 5 get cf 6
+clearm
+ret id
+end
+
+fn form ins edit ulong 8192 phys edit ulong 288 code edit uchar 16384 to void
+put ga 2 7
+put ga 3 0
+r = probe edit ins edit phys edit code
+if ne r 0
+rebase
+fields edit ins edit phys edit code 0 false
+mkcf
+if not seen
+id = newform
+fields edit ins edit phys edit code id true
+end
+end
+end
+
+fn flush to int
+d = ulong 0
+n = get opos 0
+while lt d n bound 1000000
+w = write 1 obuf d sub n d
+if le w 0
+ret 3
+end
+d = add d ulong w
+end
+ret 0
+end
+
+fn main to int
+ins = new ulong 8192 0
+phys = new ulong 288 0
+code = new uchar 16384 0
+for op ulong 64
+for sel ulong 256
+skip = and ne and sel 128 0 eq and sel 64 0
+if not skip
+put ga 0 op
+put ga 1 sel
+form edit ins edit phys edit code
+end
+end
+end
+r = bw_enc_sm121 ins phys 0 1 edit code
+if ne r 512
+ret 4
+end
+for k ulong 4
+put bw k rdw code mul k 4
+end
+put cf 0 255
+for k ulong 3
+put cf add k 1 get bw k
+put cf add k 4 0
+end
+id = record
+emitf id 255 0 0 0 0
+ret flush
+end

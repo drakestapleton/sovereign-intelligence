@@ -6,13 +6,79 @@
 >
 > My code isn't published on GitHub anymore. Each project is moving into its own repository on [Radicle](https://radicle.xyz), a peer-to-peer network that no single company can switch off, served from my own hardware. This repository is only a signpost. The Radicle links below are the only way in.
 
-# GitHub censored me. I demand to be heard.
+# Sovereign Intelligence
+
+**One repository for my whole sovereign AI stack, written in Omega and grown from 408 hand-written bytes.**
+
+On 7 November 2026 GitHub hid my 109-repository organization. I'm using it to stop being scattered. The 44 public projects I recovered from Radicle that day are moving into this one repository, and everything here is written, or is being rewritten, in Omega, my own language. Omega's compiler grows from a 408-byte program I wrote by hand in hex, so every binary built here can be traced back to bytes a person can read.
+
+```sh
+git clone https://github.com/drakestapleton/sovereign-intelligence
+cd sovereign-intelligence
+sh build.sh
+```
+
+## Built from the seed
+
+`build.sh` grows the compiler, then builds and checks everything else with it. No C compiler, assembler or linker writes a byte. The one outside tool is a 24-line shell script, `seed/rung0/load0.sh`, that writes the first 408 bytes with `printf`. It ends with `RC=0` when every step passed.
+
+| Claim | Label | Receipt |
+|---|---|---|
+| The Omega compiler, omc, grows from 408 hand-written bytes in four rungs (seed0, hex1, asm2, om4). It then compiles itself to a fixpoint, sha256 `45442c7d…080d`: omega-mv's compiler with two local changes, [`seed/LOCAL.patch`](seed/LOCAL.patch): the checked bulk word `count`, and `fma` refused on x86 only after its operands are typed. Without them the fixpoint is `cfd96b48…0a8d`, the same bytes as the compiler omega-mv commits. | HOST_TESTED, 2026-11-07, on x86-64, the AArch64 rungs under qemu-aarch64 8.2.2 | `build.sh` steps 1 and 2; pins in [`seed/PINS.tsv`](seed/PINS.tsv) |
+| A native x86-64 Omega compiler, omc-x86 (sha256 `5e1f6e1f…3f19`), built by omc. It rebuilds itself byte for byte. Compiling omc.om with it gives exactly the AArch64 omc: the same compiler source, compiled through two instruction sets, agrees with itself. | HOST_TESTED, 2026-11-07, native x86-64 | step 3 |
+| A one-word edit of the seed, and a one-line edit of the compiler, each change what is born, and the pins catch both. | HOST_TESTED, 2026-11-07 | step 4 |
+| The front-door generator, [`compiler/si.om`](compiler/si.om), built for both targets, regenerates this README's generated blocks and [`repos.tsv`](repos.tsv) byte for byte. Both builds write the same `si.sh`, the one www.aienos.com/si served on 2026-11-07 (sha256 `d939d394…a48f`). | HOST_TESTED, 2026-11-07 | step 5 |
+| The stack ledger, [`tools/ledger.om`](tools/ledger.om), gives the same counts on both targets as an independent oracle, over 68,575 files and 954,659,395 bytes of the recovered stack. | HOST_TESTED, 2026-11-07 | step 6 (fixture); [`stack/LEDGER.tsv`](stack/LEDGER.tsv) |
+| All 110 worked examples of the Omega harness, and the 3 compiler regressions in [`tests/regress/`](tests/regress/), pass on AArch64 and on native x86-64: compile status, exit status, stdout and refusal line. | HOST_TESTED, 2026-11-07 | step 7, [`tests/examples.sh`](tests/examples.sh) |
+| cuda-crack, moved in: its Omega table generator, built by the seed-born compilers, regenerates all 471 sm_121 instruction forms. Its Omega reencoder rebuilds the 70 kernels that ran on the GB10 (13,520 instructions) from those tables alone, to the chip receipt's sha256. Its four planted bugs, now made by Omega (`check/mutate.om`, byte for byte the same as the original awk and od), are each caught. | HOST_TESTED, 2026-11-07, AArch64 and native x86-64; the kernels themselves ran on the chip on 2026-10-27 | step 8, [`gpu/cuda-crack/PROVENANCE.md`](gpu/cuda-crack/PROVENANCE.md) |
+| The fork-push generator, [`tools/forkpush.om`](tools/forkpush.om), writes the same script on both targets from [`stack/FORKS.tsv`](stack/FORKS.tsv). It refuses 18 malformed manifests, and a branch marked private appears only as a comment, never as a push. | HOST_TESTED, 2026-11-07 | step 9 |
+| The checked bulk word `count A off n v`, added to omc ([`seed/PROVENANCE.md`](seed/PROVENANCE.md#local-changes)): its 16 examples in [`tests/omc/`](tests/omc/) pass on both targets, and a compiler with its slice check deleted fails both trap-3 examples. Built with it, the stack ledger runs 6.1 times faster on native x86-64. | HOST_TESTED, 2026-11-07; the speed-up was measured over the 44 stack checkouts, outside the gate | steps 10 and 11; speed-up in [`seed/PROVENANCE.md`](seed/PROVENANCE.md#local-changes) |
+| omega-mv's whole FR-9 x86 corpus ran with its x86-64 programs native for the first time: 16,179 rows, 15,499 PASS, 232 FAIL, 32 NOT_RUN, 30 MISSING_IMPLEMENTATION, 75 BLOCKED, 311 EXCLUDED. No FAIL is an x86 miscompile. 150 need om2 candidate compilers whose commits are not published; 46 are omega-bridge refusing the compiler's hash (all 49 bridge rows pass when that one pin is moved); 36 pin the AArch64 bytes of an older omc. The run also found a cross-target bug in omc, fixed in [`seed/LOCAL.patch`](seed/LOCAL.patch). | HOST_TESTED, 2026-11-07, native x86-64; the AArch64 side under qemu-aarch64 8.2.2 | [`evidence/x86-native/`](evidence/x86-native/) |
+
+The whole gate takes 19.3 s on a 4-vCPU x86-64 cloud machine. There, omc-x86 compiles the 337,225-byte compiler in 0.10 s natively.
+
+omega-mv records its x86-64 backend as a draft that has never run on x86-64 hardware (`docs/X86-LINUX.md`, FR-9). These are its first native runs: one cloud x86-64 host, covering the compiler itself, the programs above and omega-mv's full FR-9 fixture corpus. The oracle's verdict is still FAIL, and the reasons are in [`evidence/x86-native/`](evidence/x86-native/). Native x86 code is correct there but slow: omega-mv's SHA-256 runs at 20.6 MB/s on x86-64, against 57 MB/s for the AArch64 build under emulation, because the x86 backend keeps its values in memory. Nothing here has run on a GPU.
+
+## One repository
+
+| Path | What it is |
+|---|---|
+| [`seed/`](seed/) | the compiler's sources, from the hand-written `seed0.hex` to `omc/omc.om`, copied from omega-mv with [provenance](seed/PROVENANCE.md) |
+| [`build.sh`](build.sh) | the one build and gate |
+| [`compiler/`](compiler/) | `si.om`, the front-door generator |
+| [`tools/`](tools/) | `ledger.om`, the stack ledger; `forkpush.om`, which writes the script that sends my forks' branches to Radicle |
+| [`harness/`](harness/) | the Omega harness: agent skills for writing correct Omega; `.claude/skills` points at it |
+| [`tests/`](tests/) | the ledger and fork-push fixtures, the example runner, the compiler regressions and the examples of the words this repository adds to the compiler |
+| [`gpu/cuda-crack/`](gpu/cuda-crack/) | cuda-crack: the sm_121 encoding tables, the Omega encoder and reencoder, and the chip receipts; [provenance](gpu/cuda-crack/PROVENANCE.md) |
+| [`docs/`](docs/) | writing and sites from my personal account that have no Radicle project: the AIEN constitution, drakestapleton.com's source, and the old site as an archive |
+| [`evidence/`](evidence/) | receipts of runs made from this repository, starting with the native x86-64 corpus run |
+| [`stack/`](stack/) | the 44 recovered projects, what each is made of, and the order they move in; every branch of my personal forks and where it goes |
+
+## The stack
+
+The 44 projects are listed in [`stack/STACK.tsv`](stack/STACK.tsv), with their Radicle IDs and the heads recovered on 7 November 2026. [`stack/LEDGER.tsv`](stack/LEDGER.tsv) counts what each one is written in: 902,624 lines of Omega and 2,518,966 lines of other languages (1,366,364 Rust, 862,390 C, 165,160 shell, 81,780 Python, 43,272 other). Omega is 26.3% of it today.
+
+| Subsystem | Projects | Omega lines | Other lines | Omega share |
+|---|---:|---:|---:|---:|
+| `compiler` | 4 | 214,235 | 537,943 | 28.5% |
+| `gpu` | 5 | 89,600 | 230,442 | 28.0% |
+| `os` | 5 | 349,008 | 986,798 | 26.1% |
+| `runtime` | 8 | 24,327 | 460,355 | 5.0% |
+| `train` | 1 | 112,692 | 11,425 | 90.8% |
+| `protocol` | 3 | 3,165 | 56,067 | 5.3% |
+| `agents` | 10 | 20,249 | 139,462 | 12.7% |
+| `evidence` | 3 | 12,584 | 18,852 | 40.0% |
+| `docs` | 5 | 76,764 | 77,622 | 49.7% |
+
+What "moved" means, and the order, are in [`stack/README.md`](stack/README.md). The compiler went first. The rest follows one project at a time, each with its gates in `build.sh`.
+
+## What happened
+
+I published everything on GitHub: 109 repositories in the `aien-dev` organization. On 7 November 2026, between 08:14 and 08:20 UTC, GitHub cancelled my Actions runs as "owner marked spammy", flagged the organization, hid every repository from the public and suspended my machine account, `aien-spark`. About 20 AI agents work on this project, and they had been pushing and opening pull requests faster than GitHub's abuse filters allow. I have appealed and the appeal is pending. My work now lives on [Radicle](https://radicle.xyz), a peer-to-peer network no single company can switch off, and on my own hardware. GitHub switched me off. I'm still here.
 
 ## I broke CUDA.
 
 *My own language, Omega, writes NVIDIA GB10 machine code. It ran on the chip: 1,048,576 of 1,048,576 values correct, no CUDA toolkit, no nvcc, no PTX.*
-
-I published everything on GitHub: 109 repositories in the `aien-dev` organization. On 7 November 2026, between 08:14 and 08:20 UTC, GitHub cancelled my Actions runs as "owner marked spammy", flagged the organization, hid every repository from the public and suspended my machine account, `aien-spark`. About 20 AI agents work on this project, and they had been pushing and opening pull requests faster than GitHub's abuse filters allow. I have appealed and the appeal is pending. My work now lives on [Radicle](https://radicle.xyz), a peer-to-peer network no single company can switch off, and on my own hardware. GitHub switched me off. I'm still here.
 
 **The code that broke CUDA**, on Radicle:
 
@@ -26,7 +92,7 @@ On the web: [radicle.network/nodes/rosa.radicle.network/rad:z631r2JJiVT8it4tST7R
 
 **The DGX Spark manual NVIDIA didn't write:** [www.aienos.com/spark/](https://www.aienos.com/spark/)
 
-I reverse engineered how NVIDIA's CUDA stack puts machine code on the NVIDIA GB10, the Blackwell chip in the DGX Spark, and built my own path without CUDA: a compiler back end, an sm_121 SASS encoder, a launcher and a driver client. The encoder is written in Omega, my own programming language, and it needs no nvcc. This repository is the front door to all of it.
+I reverse engineered how NVIDIA's CUDA stack puts machine code on the NVIDIA GB10, the Blackwell chip in the DGX Spark, and built my own path without CUDA: a compiler back end, an sm_121 SASS encoder, a launcher and a driver client. The encoder is written in Omega, my own programming language, and it needs no nvcc. This repository is now its home.
 
 ```sh
 curl -fsSL https://www.aienos.com/si | sh
@@ -165,7 +231,7 @@ Open any of them on the web at `https://radicle.network/nodes/rosa.radicle.netwo
 
 ## Where everything lives now
 
-The morning GitHub switched me off, every public project moved to Radicle, one Radicle repository per project, seeded from my own machines, each with its own key. My website, [www.aienos.com](https://www.aienos.com), runs on my own hardware. GitHub keeps this one repository so that people can still find me, and its only code is Omega. The full account is at [www.aienos.com/switched-off/](https://www.aienos.com/switched-off/).
+The morning GitHub switched me off, every public project moved to Radicle, one Radicle repository per project, seeded from my own machines, each with its own key. My website, [www.aienos.com](https://www.aienos.com), runs on my own hardware. GitHub keeps this one repository so that people can still find me, and it is now where the whole stack comes together. Its own programs are Omega. The exceptions are the shell that starts the seed and runs the gate (`seed/rung0/load0.sh`, `build.sh`, `tests/examples.sh`, `tools/ledger-refresh.sh`), the scripts that ran the receipts in `evidence/`, and the code inside imported projects that has not been rewritten yet; each import's `PROVENANCE.md` lists what is left and what replaces it. The full account is at [www.aienos.com/switched-off/](https://www.aienos.com/switched-off/).
 
 ## Run your own seed
 

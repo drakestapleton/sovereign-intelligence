@@ -1,0 +1,4 @@
+live-serve-no-cuda.txt is a redacted copy of omega-mv@943d9555 evidence/WHAT-OMEGA-IS-20261021/live-serve-no-cuda.txt
+(rad:z6do9WDBhuSnvopDkgFdFr1yWA62). The only change: the home directory prefix is replaced by ~.
+original sha256 9b4220676c8d86296459b62f44a7d170e986701069491f809095577813d78cfc
+redacted sha256 195176c41e860888d7ce6df4f03b703199703c26d40f2eacee940607f04afbe1

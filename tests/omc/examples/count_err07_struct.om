@@ -1,0 +1,11 @@
+note count_err07_struct: A must name an array; a struct (or a layout) is error 7
+om2
+struct P a uint b uint end
+fn f p view P to ulong
+ret count p 0 1 10
+end
+fn main to int
+p = new P 1 2
+r = f p
+ret 0
+end

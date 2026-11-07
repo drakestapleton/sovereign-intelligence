@@ -1,0 +1,357 @@
+note check/reencode.om: rebuild a kernel's machine code from the isa/sm121-forms.txt tables alone.
+note stdin: the table text, a line "E", then the kernel bytes (16 bytes per instruction).
+note First the D records are checked against the F records: each F id equals its position, each field
+note number 0..6 appears at most once per form, operand fields of one form never overlap, their union
+note is exactly the form's mask, and a field with width > 0 is exactly the bits start .. start+width-1.
+note For each instruction: find the first form whose fixed bits equal the instruction's bits outside
+note the form's operand fields (words 0..2), then write fixed bits or the operand-field bits, and the
+note control word 3 unchanged. Unmatched instructions are written as zero.
+note stdout: the rebuilt bytes. stderr: "N U", instructions read and instructions no form explains.
+note exit 0 all matched; 2 read error or input too big; 3 write error; 4 unmatched; 5 bad length; 6 no E line;
+note 7 the F and D records disagree
+
+global inb uchar 8388608
+global ip ulong 1
+global tf ulong 32768
+global nt ulong 1
+global ow ulong 4
+global obuf uchar 4194304
+global dg uchar 32
+global lb uchar 64
+global ln ulong 1
+global du ulong 12288
+global dm ulong 3
+global ex ulong 3
+global bad ulong 1
+global dmax ulong 1
+global df ulong 4096
+
+note mark the table inconsistent
+fn flag to void
+put bad 0 1
+end
+
+fn rdall to long
+t = ulong 0
+while lt t len inb bound 1000000
+k = read 0 inb t sub len inb t
+if lt k 0
+ret k
+end
+if eq k 0
+ret long t
+end
+t = add t ulong k
+end
+ret neg long 27
+end
+
+note the next decimal number at ip, skipping spaces
+fn num to ulong
+p = get ip 0
+while eq get inb p 32 bound 1000
+p = add p 1
+end
+v = ulong 0
+while and ge get inb p 48 le get inb p 57 bound 24
+v = add mul v 10 sub ulong get inb p 48
+p = add p 1
+end
+put ip 0 p
+ret v
+end
+
+fn skipline n ulong to void
+p = get ip 0
+while and lt p n ne get inb p 10 bound 8388608
+p = add p 1
+end
+put ip 0 add p 1
+end
+
+note one F record: id op sel fix0 fix1 fix2 msk0 msk1 msk2 ctl, kept as op fix0..2 msk0..2
+fn readf to void
+put ip 0 add get ip 0 1
+id = num
+j = get nt 0
+if ne id j
+flag
+end
+b = mul j 8
+put tf b num
+sel = num
+for k ulong 6
+put tf add b add k 1 num
+end
+if lt j 4095
+put nt 0 add j 1
+end
+end
+
+note OR the D record's mask (in dm) into form id's field union; overlapping fields are an error
+fn dunion id ulong to void
+b = mul id 3
+for k ulong 3
+m = get dm k
+o = get du add b k
+if ne and o m 0
+flag
+end
+put du add b k or o m
+end
+end
+
+note each field number 0..6 appears at most once per form
+fn dfield id ulong fd ulong to void
+if lt fd 7
+bit = shl ulong 1 fd
+o = get df id
+if ne and o bit 0
+flag
+end
+put df id or o bit
+else
+flag
+end
+end
+
+note the mask of wd consecutive instruction bits from bit st, into ex
+fn span st ulong wd ulong to void
+for k ulong 3
+put ex k 0
+end
+for i ulong wd
+c = add st i
+if lt c 96
+w = div c 32
+put ex w or get ex w shl ulong 1 and c 31
+else
+flag
+end
+end
+end
+
+note a linear field's mask must be exactly its span
+fn dspan st ulong wd ulong to void
+span st wd
+for k ulong 3
+if ne get ex k get dm k
+flag
+end
+end
+end
+
+note one D record: id field m0 m1 m2 start width
+fn readd to void
+put ip 0 add get ip 0 1
+id = num
+fd = num
+for k ulong 3
+put dm k num
+end
+st = num
+wd = num
+if lt id 4096
+dunion id
+dfield id fd
+if gt id get dmax 0
+put dmax 0 id
+end
+else
+flag
+end
+if gt wd 96
+flag
+else
+if gt wd 0
+dspan st wd
+end
+end
+end
+
+note form j's field union must equal its mask
+fn dform j ulong to void
+for k ulong 3
+u = get du add mul j 3 k
+m = get tf add mul j 8 add k 4
+if ne u m
+flag
+end
+end
+end
+
+note every D record names a listed form, and each form's field union equals its mask
+fn dcheck to void
+n = get nt 0
+if ge get dmax 0 n
+flag
+end
+for j ulong n
+dform j
+end
+end
+
+note parse records up to the E line; the offset of the kernel bytes, or 0 when no E line
+fn table n ulong to ulong
+put ip 0 0
+while lt get ip 0 n bound 1000000
+c = get inb get ip 0
+if eq c 69
+skipline n
+ret get ip 0
+end
+if eq c 70
+readf
+end
+if eq c 68
+readd
+end
+skipline n
+end
+ret 0
+end
+
+fn rdw q ulong to ulong
+a = ulong get inb q
+b = shl ulong get inb add q 1 8
+c = shl ulong get inb add q 2 16
+d = shl ulong get inb add q 3 24
+ret or or a b or c d
+end
+
+note 1 when form j explains the instruction at q
+fn fits j ulong q ulong to bool
+b = mul j 8
+ok = true
+for k ulong 3
+x = rdw add q mul k 4
+m = get tf add b add k 4
+if ne and x xor m 4294967295 get tf add b add k 1
+ok = false
+end
+end
+ret ok
+end
+
+note the first form that explains the instruction at q, or nt when none does
+fn find q ulong to ulong
+r = get nt 0
+for j ulong get nt 0
+if and eq r get nt 0 fits j q
+r = j
+end
+end
+ret r
+end
+
+fn putw o ulong x ulong to void
+for j ulong 4
+put obuf add o j uchar and shr x mul j 8 255
+end
+end
+
+note word k of form b's instruction: fixed bits, or the input's bits inside the operand fields
+fn rword b ulong q ulong k ulong to ulong
+x = rdw add q mul k 4
+m = get tf add b add k 4
+f = get tf add b add k 1
+ret or f and x m
+end
+
+note rebuild instruction i (input at q) from form j into obuf
+fn rebuild i ulong q ulong j ulong to void
+b = mul j 8
+o = mul i 16
+for k ulong 3
+y = rword b q k
+putw add o mul k 4 y
+end
+putw add o 12 rdw add q 12
+end
+
+fn pch c ulong to void
+p = get ln 0
+put lb p uchar c
+put ln 0 add p 1
+end
+
+fn pnum v ulong to void
+n = ulong 0
+x = v
+while gt x 0 bound 32
+q = div x 10
+put dg n uchar add 48 sub x mul q 10
+x = q
+n = add n 1
+end
+if eq n 0
+pch 48
+end
+k = n
+while gt k 0 bound 32
+k = sub k 1
+pch ulong get dg k
+end
+end
+
+fn wrall n ulong to long
+d = ulong 0
+while lt d n bound 1000000
+w = write 1 obuf d sub n d
+if le w 0
+ret w
+end
+d = add d ulong w
+end
+ret long d
+end
+
+note "N U" on stderr: instructions read, instructions no form explains
+fn report n ulong u ulong to void
+put ln 0 0
+pnum n
+pch 32
+pnum u
+pch 10
+w = write 2 lb 0 get ln 0
+end
+
+fn main to int
+r = rdall
+if lt r 0
+ret 2
+end
+n = ulong r
+ks = table n
+if eq ks 0
+ret 6
+end
+dcheck
+if ne get bad 0 0
+ret 7
+end
+kl = sub n ks
+if ne and kl 15 0
+ret 5
+end
+ni = div kl 16
+u = ulong 0
+for i ulong ni
+q = add ks mul i 16
+j = find q
+if lt j get nt 0
+rebuild i q j
+else
+u = add u 1
+end
+end
+report ni u
+w = wrall kl
+if ne w long kl
+ret 3
+end
+if ne u 0
+ret 4
+end
+ret 0
+end

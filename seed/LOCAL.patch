@@ -1,0 +1,275 @@
+--- a/seed/omc/omc.om
++++ b/seed/omc/omc.om
+@@ -1374,8 +1374,8 @@
+ end
+ 
+ note ======== OM-2 words (spec/omegese-om2.md): reserved only in an OM-2 unit. rotr 59, rotl 60 are
+-note binary operators; dit 225 and scrub 226 are program-mode value words (OMEGESE 9.13.1); the rest are
+-note statement and declaration words of later sections. ========
++note binary operators; dit 225 and scrub 226 are program-mode value words (OMEGESE 9.13.1); count 179 is a
++note value word (cnt_word); the rest are statement and declaration words of later sections. ========
+ fn kw2 w ulong to ulong
+ if eq w 1920233330
+ ret 59
+@@ -1437,6 +1437,9 @@
+ if eq w 422877225843
+ ret 226
+ end
++if eq w 500069396323
++ret 179
++end
+ ret 0
+ end
+ 
+@@ -4499,10 +4502,6 @@
+ fn ffma dst ulong to void
+ o = get fpo 0
+ put fpo 0 0
+-note x86's baseline is SSE2, not FMA3. No unfused fallback is permitted.
+-if or ne get irmode 0 0 ne get xtarget 0 0
+-fail 9
+-end
+ put fpw 0 1
+ rdval 0 0 255 0
+ if eq get rk 0 6
+@@ -4532,6 +4531,12 @@
+ if ne get rt 0 at
+ fail 7
+ end
++note x86's baseline is SSE2, not FMA3. No unfused fallback is permitted. The operands are typed
++note first, so an ill-typed fma gets the same error 7 or 11 on every target; only a well-typed one
++note is refused here.
++if or ne get irmode 0 0 ne get xtarget 0 0
++fail 9
++end
+ va = fvop ak av at 0
+ vb = fvop bk bv at 1
+ vc = fvop get rk 0 get rv 0 at 2
+@@ -5752,6 +5757,114 @@
+ vdone 1 r 9
+ end
+ 
++note cnt_word: OM-2 `count A off n v`, a ulong: how many of the n uchar elements of A from off equal v.
++note A is an array name (a local, global, text, or a view or edit parameter, sized or unsized); off and n
++note are ulong, v is uchar. The four values are read left to right; then the slice is checked exactly as
++note read and write check theirs (vs_chk: a non-uchar A is error 7; n <= len A and off <= len A - n, else
++note trap 3), and only then is any element read, so an out-of-bounds slice traps 3 whatever v is and an
++note in-bounds one never traps. A tracked fresh array (error 27, fz_arg), a struct or layout (error 7) and
++note a contract clause (error 30, cp_token) are refused; an IR unit is never OM-2, so count is no word there
++note (error 3), and the irmode guard (error 9, as dit) only keeps it so. Code (AArch64): P = A + off
++note (ADD, C6.2.6), M = n (MOV = ORR), V0 = v in all 16 byte lanes (DUP), S = 0 (MOVZ, C6.2.285); then
++note while M >= 16 (CMP, C6.2.96; B.LO, C6.2.34): a block of K = min(M >> 4, 255) chunks (LSR = UBFM,
++note C6.2.487; CMP; B.LS; MOVZ X16, #255; V1 = 0 by MOVI, C7.2.247), each chunk LD1 {V2.16B}, [P], #16
++note (post-index), CMEQ V2, V2, V0 (0xff where equal), SUB V1.16B, V1, V2 (+1 per equal lane; 255 chunks
++note keep each lane <= 255), SUB M, M, #16, SUBS X16, X16, #1, B.NE; then UADDLV H2, V1.16B (the 16 lanes,
++note at most 4080), UMOV W16, V2.H[0], ADD S, S, X16, B back (C6.2.35). The last M < 16 bytes one at a
++note time: CBZ M (C6.2.78), UMOV WK, V0.B[0], LDRB W16, [P], #1 (post-index), CMP W16, WK, CINC S, S, EQ
++note (CSINC), SUBS M, M, #1, B.NE. Every word is a fixed part from the instruction's Arm ARM encoding ORed
++note with register fields; each fixed part was checked against llvm-mc 18 at two or more register
++note choices. P, M, S and K are new temporaries, so no name's register changes; X16 is scratch;
++note V0-V2 carry nothing between operations (see scrub). The result moves to the destination after the
++note temporaries are given back.
++fn cnt_word dst ulong to void
++if ne get irmode 0 0
++fail 9
++end
++x = mul get depth 0 32
++sl = get nslot 0
++put fr add x 8 sl
++e = arrname
++fz_arg e
++if ge get nm_kind sub e 1 6
++fail 7
++end
++rdval 0 5 255 0
++vs_off x
++rdval 0 5 255 0
++if ne get rt 0 5
++fail 7
++end
++put fr add x 12 matreg get rk 0 get rv 0 get rt 0
++rdval 0 2 255 0
++if ne get rt 0 2
++fail 7
++end
++v = matreg get rk 0 get rv 0 get rt 0
++ro = get fr add x 11
++rn = get fr add x 12
++vs_chk e ro rn
++if ne get xtarget 0 0
++xcount e ro rn v
++put nslot 0 sl
++d = destreg dst
++xrr 137 0 2
++xstore 0 d
++vdone 1 d 5
++ret
++end
++s = cnt_a64 e ro rn v
++put nslot 0 sl
++d = destreg dst
++if ne d s
++emit or or 2852127712 d shl s 16
++end
++vdone 1 d 5
++end
++
++note cnt_a64: the AArch64 loop of cnt_word (see there), after vs_chk; gives S, the register of the count
++fn cnt_a64 e ulong ro ulong rn ulong v ulong to ulong
++i = sub e 1
++p = alloc
++if ge get nm_kind i 4
++matconst p get nm_addr i
++e3 2332033024 p p ro
++else
++e3 2332033024 p ulong get nm_reg i ro
++end
++m = alloc
++emit or or 2852127712 m shl rn 16
++emit or 1308691456 shl v 5
++s = alloc
++emit or 3531603968 s
++k = alloc
++emit or 4043325471 shl m 5
++emit 1409286659
++emit or 3544513552 shl m 5
++emit 4043570719
++emit 1409286217
++emit 3531612144
++emit 1862329345
++emit or 1289711618 shl p 5
++emit 1847626818
++emit 1847755809
++emit or or 3506454528 m shl m 5
++emit 4043310608
++emit 1426063201
++emit 1848653858
++emit 235027536
++emit or or 2333081600 s shl s 5
++emit 402653168
++emit or 3019899104 m
++emit or 234961920 k
++emit or 943723536 shl p 5
++emit or 1795162655 shl k 16
++emit or or or 2592084992 s shl s 5 shl s 16
++emit or or 4043310080 m shl m 5
++emit 1426063233
++ret s
++end
++
+ note Native Linux ARM64 host operations. Encoding forms are those in seed/rung2/table.s2.
+ note Syscall numbers and layouts: Linux asm-generic/unistd.h, fcntl.h and time.h.
+ note No raw address or arbitrary syscall is exposed to an Omega program.
+@@ -8578,6 +8691,10 @@
+ vdec
+ ret
+ end
++if eq c 179
++cnt_word dst
++ret
++end
+ if eq c 51
+ e = arrname
+ if ge get nm_kind sub e 1 6
+@@ -17012,6 +17129,101 @@
+ emitb 5
+ end
+ 
++note xcount: the x86-64 loop of cnt_word, after vs_chk. RSI = A + off (LEA of a global or text, else the
++note array's slot; ADD), RCX = n, AL = v (zero-extended uchar). XMM0 = v in all 16 byte lanes (MOVD,
++note PUNPCKLBW, PSHUFLW 0, PSHUFD 0), XMM3 = 0, EDX = 0 (the count). While RCX >= 16 (CMP; JB): a block of
++note R8 = min(RCX >> 4, 255) chunks (MOV, SHR, CMP, JBE, MOV R8D 255; PXOR XMM1), each chunk MOVDQU XMM2,
++note [RSI]; PCMPEQB XMM2, XMM0 (0xff where equal); PSUBB XMM1, XMM2 (+1 per equal lane; 255 chunks keep
++note each lane <= 255); ADD RSI, 16; SUB RCX, 16; DEC R8; JNE; then PSADBW XMM1, XMM3 (each 8-lane half
++note summed into its quadword), MOVQ R9 / ADD RDX twice around PSRLDQ XMM1, 8, JMP back. The last RCX < 16
++note bytes one at a time: TEST; JE; CMP [RSI], AL; JNE; INC RDX; INC RSI; DEC RCX; JNE. SSE2 only (every
++note x86-64 CPU), unaligned loads, never a byte outside the checked slice. The 128 bytes after the four
++note setup moves are fixed (Intel SDM vol. 2 encodings, checked byte for byte against llvm-mc 18; the short
++note jumps' distances are constant); RDX holds the result for cnt_word. RAX, RCX, RDX, RSI, R8, R9 and
++note XMM0-XMM3 are emitter scratch here: language values live in RBP slots.
++fn xcount e ulong ro ulong rn ulong v ulong to void
++i = sub e 1
++if ge get nm_kind i 4
++xaddr 6 get nm_addr i
++else
++xload 6 ulong get nm_reg i
++end
++xload 0 ro
++xrr 1 6 0
++xload 1 rn
++xload 0 v
++xb 102 15 110
++emitb 192
++xb 102 15 96
++emitb 192
++xb 242 15 112
++emitb 192
++emitb 0
++xb 102 15 112
++emitb 192
++emitb 0
++xb 102 15 239
++emitb 219
++emitb 49
++emitb 210
++xb 72 131 249
++emitb 16
++emitb 114
++emitb 78
++xb 73 137 200
++xb 73 193 232
++emitb 4
++xb 73 129 248
++xb 255 0 0
++emitb 0
++emitb 118
++emitb 6
++xb 65 184 255
++xb 0 0 0
++xb 102 15 239
++emitb 201
++xb 243 15 111
++emitb 22
++xb 102 15 116
++emitb 208
++xb 102 15 248
++emitb 202
++xb 72 131 198
++emitb 16
++xb 72 131 233
++emitb 16
++xb 73 255 200
++emitb 117
++emitb 231
++xb 102 15 246
++emitb 203
++xb 102 73 15
++emitb 126
++emitb 201
++xb 76 1 202
++xb 102 15 115
++emitb 217
++emitb 8
++xb 102 73 15
++emitb 126
++emitb 201
++xb 76 1 202
++emitb 235
++emitb 172
++xb 72 133 201
++emitb 116
++emitb 15
++emitb 56
++emitb 6
++emitb 117
++emitb 3
++xb 72 255 194
++xb 72 255 198
++xb 72 255 201
++emitb 117
++emitb 241
++end
++
+ fn xarray w ulong to void
+ if ne get nb 0 0
+ fail 9
