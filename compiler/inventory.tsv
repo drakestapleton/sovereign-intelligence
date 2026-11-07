@@ -20,6 +20,7 @@ omega-blas	rad:z47VdC9EFsF4dFyH1QJ1C2JNJK4JS	public	e3f1b403839b1fc23d54c060c9c0
 omega-bridge	rad:z3Hr9ZaiKHwwuNzPK5M8c7uw6pj7y	public	d8174eddf953ad53e16f19eb5841459df99e24bb	Omega-first language interoperability: checked conversion backends and native language bindings
 omega-gpu-driver	rad:z2xjD5kxUTTBNCryJ6rg9QXpemzei	public	1ac3589c525657cf0698ff0f95557d922d2162ce	aien-dev/omega-gpu-driver (Radicle canonical mirror during the GitHub hold)
 omega-harness	rad:z39gvwWsnkRZsAConQLjaKiNVLHfW	public	c38640db4fe8ee49eff589123415d4a1ba80567a	Agent skills for operating, encoding and communicating in Omega (.om) and the AIEN repositories
+omega-mcp	rad:z3e8UBQVfwEcESJrcTWEbyMAHWFBZ	public	4b37ec2167583a5023b6d6415438486c88875dda	aien-dev/omega-mcp (Radicle canonical mirror during the GitHub hold)
 omega-mv	rad:z6do9WDBhuSnvopDkgFdFr1yWA62	public	6efc45728d5080b0fc5d74016a00ba8bbfcf9698	Omega: a language for verified programs, semantic identity and machine realization. Seed-born work and existing implementations have distinct provenance.
 physics-mv	rad:z49She8eifZpLd2aiSvk2pph3DMUo	public	56d02ae50de6c6be46d6b23380eb7ec5edcca787	FORGE: request-bound machine realization, providers and verification for AienOS. Host, simulated and GB10 hardware paths have separate evidence.
 sovereign-intelligence	rad:z2JJz4RDfZZxKGBLn6UhmW5p9VJQj	public	320c1bb34283ef532086c0c98413f972a1825a02	Sovereign Intelligence: one command turns a DGX Spark into your own AI. Allen, Omega, science tools, no NVIDIA user-space software. Alpha testing.
