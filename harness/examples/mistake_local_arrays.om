@@ -1,0 +1,6 @@
+note mistake_local_arrays: 3 MiB plus 2 MiB of local arrays in one function. Fix: split across functions or use a global
+fn main to int
+a = new uchar 3145728 1
+b = new uchar 2097152 2
+ret int get a 0
+end

@@ -1,0 +1,26 @@
+note block_frees_registers: names first written in a block die at its end and their registers return to the pool
+fn main to int
+a1 = int 1
+a2 = int 2
+a3 = int 3
+a4 = int 4
+a5 = int 5
+a6 = int 6
+a7 = int 7
+a8 = int 8
+a9 = int 9
+a10 = int 10
+if true
+b1 = int 1
+b2 = int 2
+b3 = int 3
+b4 = int 4
+b5 = int 5
+end
+c1 = int 1
+c2 = int 2
+c3 = int 3
+c4 = int 4
+c5 = int 5
+ret add a10 c5
+end

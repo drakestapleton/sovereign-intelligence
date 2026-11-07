@@ -1,0 +1,9 @@
+note keyword_prefix: regression guard at omc 62775d2a. A name of 9..63 bytes is never a
+note keyword by its first 8 bytes, so continue_x compiles and returns 7. An exact keyword
+note name is still error 16. Older pin 2c824805 refused this file with error 16 on line 4.
+fn continue_x to int
+ret 7
+end
+fn main to int
+ret continue_x
+end

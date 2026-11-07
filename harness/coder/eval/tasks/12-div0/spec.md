@@ -1,0 +1,1 @@
+Read standard input (it will be empty) into a 16-byte buffer with one read call. Let d be the returned byte count converted to ulong. Compute 7 divided by d with the div word and print the quotient in decimal followed by a newline. Do not guard against zero: the run check expects the exit status this produces under Omega semantics.

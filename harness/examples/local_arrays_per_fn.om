@@ -1,0 +1,9 @@
+note local_arrays_per_fn: the 4 MiB local-array cap counts per function; 3 MiB here plus 2 MiB in f compiles
+fn f to int
+b = new uchar 2097152 2
+ret int get b 0
+end
+fn main to int
+a = new uchar 3145728 1
+ret add int get a 0 f
+end

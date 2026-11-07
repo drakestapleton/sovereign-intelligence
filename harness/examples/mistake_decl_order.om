@@ -1,0 +1,6 @@
+note mistake_decl_order: a global (or text, const) is named before its line. Fix: declare it above the first function that uses it
+fn main to int
+put g 0 5
+ret int get g 0
+end
+global g uchar 4

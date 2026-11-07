@@ -1,0 +1,1 @@
+Read all of standard input (at most 65535 bytes). Print the number of newline bytes and the total number of bytes, in decimal, on one line separated by one space, followed by a newline. Exit status 0.
