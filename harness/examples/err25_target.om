@@ -1,0 +1,5 @@
+target foo
+note err25_target: an unknown target name (or an AArch64-only path on another target); target must be the first line
+fn main to int
+ret 0
+end

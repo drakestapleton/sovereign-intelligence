@@ -1,0 +1,5 @@
+note mistake_deep_nest: 17 nested adds over one name need 17 temporaries at once. Fix: bind partial sums on separate lines
+fn main to int
+a = int 1
+ret add a add a add a add a add a add a add a add a add a add a add a add a add a add a add a add a add a a
+end

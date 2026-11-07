@@ -1,0 +1,1 @@
+Standard input is one line ending in a newline. Ignoring that final newline, print `yes` and a newline if the line reads the same backwards as forwards, otherwise print `no` and a newline. Exit status 0.

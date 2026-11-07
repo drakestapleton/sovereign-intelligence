@@ -1,0 +1,10 @@
+note for_bound: for i T K bound N caps the passes at N (1..9223372036854775807); here 5 passes, exit 10
+note with bound N every count, a number or a value, traps 4 after N passes (trap4_for_bound.om)
+fn main to int
+n = ulong 5
+s = ulong 0
+for i ulong n bound 10
+s = add s i
+end
+ret int s
+end

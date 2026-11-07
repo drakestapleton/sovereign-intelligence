@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this work, please cite the paper below."
-title: "sovereign-intelligence: front door to the Radicle home of my GB10 GPU machine-code toolchain"
+title: "Sovereign Intelligence: one repository for my sovereign AI stack, written in Omega and grown from a 408-byte hand-written seed"
 type: software
 authors:
   - family-names: Stapleton
@@ -20,6 +20,8 @@ keywords:
   - reverse-engineering
   - omega-lang
   - radicle
+  - bootstrapping
+  - reproducible-builds
 preferred-citation:
   type: article
   title: "Reverse Engineering the CUDA Software Stack: An Independently Implemented GPU Machine-Code Toolchain for the NVIDIA GB10"

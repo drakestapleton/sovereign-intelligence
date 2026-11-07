@@ -1,0 +1,1 @@
+Define a struct with two long fields x and y. Make two values of it, (3, -4) and (-5, 7). Print the Manhattan distance between them (|x1-x2| + |y1-y2|) in decimal, followed by a newline. Exit status 0.

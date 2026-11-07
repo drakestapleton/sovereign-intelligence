@@ -1,0 +1,8 @@
+note mistake_bound_range: a while or for bound is 1..9223372036854775807; 0 and 2^63 are error 8
+fn main to int
+i = ulong 0
+while lt i 3 bound 9223372036854775808
+i = add i 1
+end
+ret 0
+end

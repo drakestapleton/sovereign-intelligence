@@ -1,0 +1,218 @@
+[
+ {
+  "id": "01-hello",
+  "spec": "Print exactly the line `hello, omega` followed by a newline to standard output. Exit status 0.",
+  "stdin_bytes": 0,
+  "expected_sha256": "e6b51fc65d4c7e81a4db2c096921fb29dd91a30dac677f4d05e1db8f0464523a",
+  "exit": 0,
+  "ref_sha256": "53500fbfed13c4d9e85f7a719442bd1cb8d80d49fb154031b699dd8296f08a5e"
+ },
+ {
+  "id": "02-sum100",
+  "spec": "Print the sum of the integers 1 through 100 in decimal, followed by a newline. Exit status 0.",
+  "stdin_bytes": 0,
+  "expected_sha256": "cae8934a441243980ca44aadcdf5e70da43aff4b901e7d53b6f17b479ec4986e",
+  "exit": 0,
+  "ref_sha256": "bccb9b30fdfdcf1a36fae8ff79dd999fcf467afe983563321125c663e538d189"
+ },
+ {
+  "id": "03-fact20",
+  "spec": "Print 20 factorial (20!) in decimal, followed by a newline. Exit status 0.",
+  "stdin_bytes": 0,
+  "expected_sha256": "3cec9f38c592acdcecaf2ff2a76fcc2c6864ea86fd3d2a43bb1e6f99df440867",
+  "exit": 0,
+  "ref_sha256": "2561332e1b4183fa35a21db7b05efe8be86e43fe45aaafef325238cd80d525a2"
+ },
+ {
+  "id": "04-squares",
+  "spec": "Print the squares of 1 through 10 in decimal, one per line (1, 4, 9, ... 100), each followed by a newline. Exit status 0.",
+  "stdin_bytes": 0,
+  "expected_sha256": "e0d6ffbca61566fccf5f4347b44c909a563516bf306aed095e5f62dbc3e6d207",
+  "exit": 0,
+  "ref_sha256": "69bde26a0b146893f1f7121d72295b74a355793f67adf4be75ccec3d72e23cd6"
+ },
+ {
+  "id": "05-primes50",
+  "spec": "Print every prime number less than 50 in increasing order, one per line in decimal. Exit status 0.",
+  "stdin_bytes": 0,
+  "expected_sha256": "3c6d9976691ffdf36dcd13abefd9a89acdf40e1aa7953d50733bafea4f9eb273",
+  "exit": 0,
+  "ref_sha256": "d9d606e181593f680cacad0f78d147abc6308cd9ad1dc0e7429ed17c51e13eba"
+ },
+ {
+  "id": "06-collatz27",
+  "spec": "Start with n = 27. Repeat: if n is even, n becomes n/2, otherwise n becomes 3n+1, until n is 1. Print the number of steps taken in decimal, followed by a newline. Exit status 0.",
+  "stdin_bytes": 0,
+  "expected_sha256": "1fc917c7ad66487470e466c0ad40ddd45b9f7730a4b43e1b2542627f0596bbdc",
+  "exit": 0,
+  "ref_sha256": "85bb7a1ba5bbb0cfd187b94ab1bd7fff7d7255da9f9677d3a5b43e591d2f7971"
+ },
+ {
+  "id": "07-gcdlcm",
+  "spec": "Print the greatest common divisor and the least common multiple of 1071 and 462 in decimal on one line, separated by one space, followed by a newline. Exit status 0.",
+  "stdin_bytes": 0,
+  "expected_sha256": "a2a29ec044ffdd593c97a256391bce04c4aa8c5444e12709d231ec7b547cf4d1",
+  "exit": 0,
+  "ref_sha256": "a344fad0b2b68459e825ddbe6bbf255bc99b7c8b78ba17f423e2e1a91b7661f0"
+ },
+ {
+  "id": "08-upper",
+  "spec": "Read all of standard input (at most 65535 bytes). Write it to standard output with every ASCII lowercase letter a-z changed to its uppercase letter; all other bytes unchanged. Exit status 0.",
+  "stdin_bytes": 17,
+  "expected_sha256": "c7d50cb406c0cb6054709ec488911839c1a3dc577d59fa231561bbbe3a6a7894",
+  "exit": 0,
+  "ref_sha256": "715f9e32846f3c21123fa425ba2da6af4bbbcc4ee02ca79153efc7c5d29d4cb5"
+ },
+ {
+  "id": "09-wc",
+  "spec": "Read all of standard input (at most 65535 bytes). Print the number of newline bytes and the total number of bytes, in decimal, on one line separated by one space, followed by a newline. Exit status 0.",
+  "stdin_bytes": 24,
+  "expected_sha256": "30f377392009e176b1c861bd19983ea0a2e1e6a70e33caef6c6508a2ba52b255",
+  "exit": 0,
+  "ref_sha256": "f17e0ea84de3b86c04decf95097675415f4a5b6252fddc9bf48c28636de8ffcf"
+ },
+ {
+  "id": "10-fizzbuzz",
+  "spec": "For each integer k from 1 to 15 print one line: `FizzBuzz` if k is divisible by 15, else `Fizz` if divisible by 3, else `Buzz` if divisible by 5, else k in decimal. Exit status 0.",
+  "stdin_bytes": 0,
+  "expected_sha256": "97a001055c31d662bd99aaa118eea34eed0ebdffeae98312effd306161ba2f26",
+  "exit": 0,
+  "ref_sha256": "6e66893401249b8ae479c1222f0b1d8318b855a38376654b81b47a62f8f49f30"
+ },
+ {
+  "id": "11-exit42",
+  "spec": "Write nothing to standard output and exit with status 42.",
+  "stdin_bytes": 0,
+  "expected_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "exit": 42,
+  "ref_sha256": "5bbca7c11490cfb39c47132a20884d5b71e4438c06a05a748f765a7f4975c149"
+ },
+ {
+  "id": "12-div0",
+  "spec": "Read standard input (it will be empty) into a 16-byte buffer with one read call. Let d be the returned byte count converted to ulong. Compute 7 divided by d with the div word and print the quotient in decimal followed by a newline. Do not guard against zero: the run check expects the exit status this produces under Omega semantics.",
+  "stdin_bytes": 0,
+  "expected_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "exit": 102,
+  "ref_sha256": "5969c7ca0c43d1b664b85db3e1ba489cd55ec3fbda0d383f61bb2dca609a59ed"
+ },
+ {
+  "id": "13-digitsum",
+  "spec": "Read all of standard input (at most 65535 bytes). Print the sum of the values of all ASCII decimal digit bytes 0-9 in it, in decimal, followed by a newline. Exit status 0.",
+  "stdin_bytes": 10,
+  "expected_sha256": "420002158111bff8adb3347d84029e480f45e60e1869b454b6adac3345f9f7d4",
+  "exit": 0,
+  "ref_sha256": "cac7ec1029b3855dcd68e41f8e72639b3f2b2be512b3647731661baebafe9b1a"
+ },
+ {
+  "id": "14-double",
+  "spec": "Standard input holds one non-negative decimal integer (less than 10^18) followed by a newline. Print twice its value in decimal, followed by a newline. Exit status 0.",
+  "stdin_bytes": 6,
+  "expected_sha256": "f1288c3cc2a1ca2760f5d2fd88b372d5a21662b7e0037a6266337a91a28f4353",
+  "exit": 0,
+  "ref_sha256": "f9619d60618a2a44ca527c213811ad7d79b07319e588d4eeda1e13cad0d7440b"
+ },
+ {
+  "id": "15-sort10",
+  "spec": "Sort the ten numbers 31 4 15 9 26 5 35 8 97 93 into increasing order and print them in decimal on one line separated by single spaces, followed by a newline. Exit status 0.",
+  "stdin_bytes": 0,
+  "expected_sha256": "b3896dca8267afc228b3a0a9f9b6c7a7b99aedbdc3511976f726cf9dc016596f",
+  "exit": 0,
+  "ref_sha256": "09b8dcbbe8499fee5ceb9d1fc59fcdfb81f72e49212f97d84d1a8c476c8a5be0"
+ },
+ {
+  "id": "16-bytesum",
+  "spec": "Read all of standard input (at most 65535 bytes). Print the sum of all its byte values modulo 65536, in decimal, followed by a newline. Exit status 0.",
+  "stdin_bytes": 6,
+  "expected_sha256": "87fcb8e2232cd8ea18e93e6d4761f9843db167599efe621edf5329561faf24a7",
+  "exit": 0,
+  "ref_sha256": "7edb4b5078b32c387a305d638363c40dad22027c40da5c2ae03516bddbf09a0e"
+ },
+ {
+  "id": "17-struct",
+  "spec": "Define a struct with two long fields x and y. Make two values of it, (3, -4) and (-5, 7). Print the Manhattan distance between them (|x1-x2| + |y1-y2|) in decimal, followed by a newline. Exit status 0.",
+  "stdin_bytes": 0,
+  "expected_sha256": "a9742eb8ee320e006666aef25ae9aeed948247f3125c9cafa7cf97b7e7467dd5",
+  "exit": 0,
+  "ref_sha256": "a5ffb2688b8aad1e0c2fd185760ca7170484cdcea6a46e8d7a71bcb5c4741568"
+ },
+ {
+  "id": "18-binary",
+  "spec": "Print 37 in binary (base 2) digits with no leading zeros, followed by a newline. Exit status 0.",
+  "stdin_bytes": 0,
+  "expected_sha256": "ef430007dcb51252d3ba29192f078bca5bdd15eb428516ccd51789372e748d39",
+  "exit": 0,
+  "ref_sha256": "21be1a76de8104eb2758c36e7516ade2523451a1e23610bf5d5d94194918dc46"
+ },
+ {
+  "id": "19-hex",
+  "spec": "Print 48879 in lowercase hexadecimal digits with no prefix and no leading zeros, followed by a newline. Exit status 0.",
+  "stdin_bytes": 0,
+  "expected_sha256": "9133a08119601ab3c6a4a352e869094e283458d95cfce45d33b924a047b0e94f",
+  "exit": 0,
+  "ref_sha256": "51c1b0a26676e69e081154745c5a06d3b9593bac709d0ff9adb41f4e67c5d50d"
+ },
+ {
+  "id": "20-revwords",
+  "spec": "Standard input is one line of words separated by single spaces, ending in a newline. Print the words in reverse order, separated by single spaces, followed by a newline. Exit status 0.",
+  "stdin_bytes": 19,
+  "expected_sha256": "1e870ec15528c4602ab5a01bd7f697a3720746fa52ea563cbbc6d3722a1ffd25",
+  "exit": 0,
+  "ref_sha256": "e0b8cab0f97e11ed6645c03514d195c6ea585730981444241f53eaef3da7058e"
+ },
+ {
+  "id": "21-pow2",
+  "spec": "Print the powers of two 2^0 through 2^10 in decimal, one per line. Exit status 0.",
+  "stdin_bytes": 0,
+  "expected_sha256": "aa8e76f20698eb3d574963d24dd484c296089762b6e88bb070921d361078fcc4",
+  "exit": 0,
+  "ref_sha256": "a3a45244ec811716310deb45b247bee4d460b6338dcdc8f12f1c5a3ca406fdf2"
+ },
+ {
+  "id": "22-triangle",
+  "spec": "Print the largest integer n such that n(n+1)/2 is less than 1000, in decimal, followed by a newline. Exit status 0.",
+  "stdin_bytes": 0,
+  "expected_sha256": "b1ce0aa6fdf3cf349d773243dab9fbbe09d30619f38b0c1e8977e28c4f0bc495",
+  "exit": 0,
+  "ref_sha256": "f3d8798e310eb12e8b71b5ec8546391507d6f0f5cb13b3d0333694bf18cc8b7d"
+ },
+ {
+  "id": "23-palindrome",
+  "spec": "Standard input is one line ending in a newline. Ignoring that final newline, print `yes` and a newline if the line reads the same backwards as forwards, otherwise print `no` and a newline. Exit status 0.",
+  "stdin_bytes": 8,
+  "expected_sha256": "5040625b1fb6fa4af07226683f6e6003b29e5e70b16f8cfb24be7a752393f0ee",
+  "exit": 0,
+  "ref_sha256": "738fa60a3d781b9620141837ecbee7c723c29bbf39d27e6b95f80e173fc2cfbc"
+ },
+ {
+  "id": "24-maxline",
+  "spec": "Standard input holds non-negative decimal integers, one per line, each line ending in a newline. Print the largest of them in decimal, followed by a newline. Exit status 0.",
+  "stdin_bytes": 12,
+  "expected_sha256": "94ea0504da906138495e412400707ebec1f315c58330820504f132152150f828",
+  "exit": 0,
+  "ref_sha256": "9aa9994e6835e728fb9bdeca8ff671af7dbc6aee0d42520a292a964d1ca57c77"
+ },
+ {
+  "id": "25-vowels",
+  "spec": "Read all of standard input (at most 65535 bytes). Print how many of its bytes are one of the vowels a e i o u A E I O U, in decimal, followed by a newline. Exit status 0.",
+  "stdin_bytes": 44,
+  "expected_sha256": "25d4f2a86deb5e2574bb3210b67bb24fcc4afb19f93a7b65a057daa874a9d18e",
+  "exit": 0,
+  "ref_sha256": "1559032c02dc62a4c6ee4bb4753efece1b3a19556b1db44f1fe0e110f6c674f4"
+ },
+ {
+  "id": "26-isqrt",
+  "spec": "Print the integer square root of 1000000007 (the largest integer r with r*r <= 1000000007) in decimal, followed by a newline. Exit status 0.",
+  "stdin_bytes": 0,
+  "expected_sha256": "54abcef7dd5931b10f1c26b08c1b1f868724c509dbbb6eb3108140cb506567e4",
+  "exit": 0,
+  "ref_sha256": "a86e47a74c1323b6b06e2ef79c59a95e999d62e5aeeff8fb93adc18e1607c754"
+ },
+ {
+  "id": "27-negative",
+  "spec": "Compute -17 multiplied by 3 as a signed 64-bit integer and print it in decimal (with a leading minus sign when negative), followed by a newline. Exit status 0.",
+  "stdin_bytes": 0,
+  "expected_sha256": "c0c646181a7cf70f4837cc4e435f7fb0b022f761a31b9ed3c177e4a707f63a45",
+  "exit": 0,
+  "ref_sha256": "4f908b5e119dc6e28aa4ff826d7bc987d1a24691979ab219d070e042c742ab69"
+ }
+]
