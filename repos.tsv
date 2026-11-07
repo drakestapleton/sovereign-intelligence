@@ -24,7 +24,9 @@ harvester	rad:zVPJPCdCgWVrw97UKxEBzMU3sCDY	89a61a41b1de42130c08b193e777a00b3ac9c
 interplane-mv	rad:zNhNbqYvgSBEHBq9vvE8xpbcBzGa	e0d6863e2598a147babbf8b707b88c2aedba0872	rest	INTERPLANE: open interoperability protocol between AI models and agent runtimes. Models express intent. Runtimes retain authority.
 interplane.io	rad:z399yKvnXcBQNkKoq86iBDgTvQ5QV	3b79aaaaf4738f8227dc523d7f74b7d9d57be57e	rest	Source of interplane.io: a Rust generator that renders the page from the protocol repository's public record, deployed hourly from the Spark.
 mobhub	rad:z3Konv8McLhn67ZBUiCE4bFR5r9tC	6ff6027c57087c16a6a526fe9d749cfc834ac7fe	rest	Decentralized model and agent weights distribution network
+omega-blas	rad:z47VdC9EFsF4dFyH1QJ1C2JNJK4JS	e3f1b403839b1fc23d54c060c9c0c0c751774edd	rest	aien-dev/omega-blas (Radicle canonical mirror during the GitHub hold)
 omega-bridge	rad:z3Hr9ZaiKHwwuNzPK5M8c7uw6pj7y	d8174eddf953ad53e16f19eb5841459df99e24bb	rest	Omega-first language interoperability: checked conversion backends and native language bindings
+omega-gpu-driver	rad:z2xjD5kxUTTBNCryJ6rg9QXpemzei	1ac3589c525657cf0698ff0f95557d922d2162ce	rest	aien-dev/omega-gpu-driver (Radicle canonical mirror during the GitHub hold)
 omega-harness	rad:z39gvwWsnkRZsAConQLjaKiNVLHfW	bd107ca15c40b6cdfef0f23afb03a884fe3c8086	rest	Agent skills for operating, encoding and communicating in Omega (.om) and the AIEN repositories
 open-humanity	rad:z2jftNw1LLYTNgj8DNoh1TGGNmEmP	f68d7a2c68a93ec1aaf866b785da4ad3303e23f0	rest	Privacy-first peer assistance network for sovereign autonomous agents
 openclaw-rs	rad:z21SQF1DVwRmpxbTMnSiYxXveiRp1	d491aff96f6a875f5de46db8f5f7c7a98d73a4fa	rest	High-performance sovereign agent runtime in native Rust and Mojo for NVIDIA DGX Spark

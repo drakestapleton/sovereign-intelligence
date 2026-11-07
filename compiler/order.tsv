@@ -1,6 +1,8 @@
 # order.tsv: hand-kept input to compiler/si.om
 # core TAB name   the core projects, listed first, in this order
 # deny TAB name   never listed, whatever the inventory says
+# lead TAB name   the one project the README leads with (its clone line)
+lead	cuda-crack
 core	aienux
 core	omega-mv
 core	aien-sovereign-core-mv

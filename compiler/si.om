@@ -8,8 +8,9 @@ note   si INVENTORY ORDER README REPOS SISH
 note   INVENTORY  read: one project per line, name TAB rid TAB visibility TAB head TAB description,
 note              exported from my Radicle node by the one command in compiler/README.md
 note   ORDER      read: "core TAB name" lines give the core projects in order,
-note              "deny TAB name" lines name projects that are never listed
-note   README     read and rewritten in place between the si:index markers
+note              "deny TAB name" lines name projects that are never listed,
+note              one optional "lead TAB name" line names the project the README leads with
+note   README     read and rewritten in place between the si:lead markers, then the si:index markers
 note   REPOS      written: the public manifest, one project per line, as TSV
 note   SISH       written: the POSIX sh bootstrap served at https://www.aienos.com/si
 note Private and denied projects are never emitted. Core projects come first, in ORDER's
@@ -34,6 +35,9 @@ global cor ulong 128
 global ncor ulong 1
 global den ulong 128
 global nden ulong 1
+note the lead project's name from ORDER: offset, length; nled is 0 or 1
+global led ulong 2
+global nled ulong 1
 note emission order: record numbers
 global seq ulong 1024
 global nseq ulong 1
@@ -54,13 +58,13 @@ text tbrid "bad RID (rad:z then letters and digits): "
 text tbhead "head is not a 40-digit lowercase hex commit: "
 text tbvis "visibility is not public or private: "
 text tbdesc "description has control bytes or is over 512 bytes: "
-text tbord "order line must be core TAB name or deny TAB name: "
-text tmore "more than 64 core or deny names at: "
+text tbord "order line must be core, deny or lead TAB name: "
+text tmore "more than 64 core or deny names, or a second lead, at: "
 text tdupn "duplicate project name: "
 text tdupr "duplicate RID: "
 text tcmiss "core project is not in the inventory: "
 text tcpriv "core project is private, denied or listed twice: "
-text tnomark "README lacks <!-- si:index:begin --> then <!-- si:index:end -->"
+text tnomark "README lacks <!-- si:lead:begin -->, <!-- si:lead:end -->, <!-- si:index:begin --> and <!-- si:index:end -->, in that order"
 text tdot "."
 text tdotdot ".."
 text tradz "rad:z"
@@ -69,9 +73,19 @@ text tprivat "private"
 text ttab "\t"
 text tcore "core"
 text tdeny "deny"
+text tlead "lead"
 text trest "rest"
 text tbeg "<!-- si:index:begin -->"
 text tend "<!-- si:index:end -->"
+text tlbeg "<!-- si:lead:begin -->"
+text tlend "<!-- si:lead:end -->"
+text ld0 "`"
+text ld1 "` is being published to Radicle. Its Radicle ID appears here as soon as it is.\n"
+text ld2 "```sh\nrad clone "
+text ld3 "   # "
+text ld4 "\n```\n\nOn the web: [radicle.network/nodes/rosa.radicle.network/"
+text ld5 "](https://radicle.network/nodes/rosa.radicle.network/"
+text ld6 ")\n"
 text ix1 "**"
 text ix2 " public projects**, "
 text ix3 " of them core, listed by `compiler/si.om` from my Radicle node's inventory. Full commit ids are in [`repos.tsv`](repos.tsv).\n\n| # | Project | Radicle ID | Head | About |\n|---:|---|---|---|---|\n"
@@ -469,6 +483,15 @@ put den add mul k 2 1 n
 put nden 0 add k 1
 ret
 end
+if eqt p sub t p tlead
+if ne get nled 0 0
+die tmore p sub q p
+end
+put led 0 o
+put led 1 n
+put nled 0 1
+ret
+end
 die tbord p sub q p
 end
 
@@ -619,21 +642,72 @@ em ix11
 end
 end
 
-note gen_readme: README [rs, re) with the text between its markers replaced by the index
+note findlead: the listed public project named [o, o+n), or nrec when there is none
+fn findlead o ulong n ulong to ulong
+nr = get nrec 0
+hit = nr
+for r ulong nr
+if lt kindof r 2
+if eqs fldo r 0 fldn r 0 o n
+hit = r
+end
+end
+end
+ret hit
+end
+
+note gen_lead: the clone line of the lead project, or a note that it is not on Radicle yet
+fn gen_lead to void
+if eq get nled 0 0
+ret
+end
+lo = get led 0
+ln = get led 1
+r = findlead lo ln
+if eq r get nrec 0
+em ld0
+ems lo ln
+em ld1
+ret
+end
+em ld2
+ems fldo r 1 fldn r 1
+em ld3
+ems lo ln
+em ld4
+ems fldo r 1 fldn r 1
+em ld5
+ems fldo r 1 fldn r 1
+em ld6
+end
+
+note gen_readme: README [rs, re) with the lead block and the index put between their markers
 fn gen_readme rs ulong re ulong to void
-b = find rs re tbeg
+b = find rs re tlbeg
 if eq b re
 die tnomark 0 0
 end
-be = add b len tbeg
-x = find be re tend
+be = add b len tlbeg
+x = find be re tlend
 if eq x re
+die tnomark 0 0
+end
+b2 = find x re tbeg
+if eq b2 re
+die tnomark 0 0
+end
+be2 = add b2 len tbeg
+x2 = find be2 re tend
+if eq x2 re
 die tnomark 0 0
 end
 ems rs sub be rs
 emb 10
+gen_lead
+ems x sub be2 x
+emb 10
 gen_index
-ems x sub re x
+ems x2 sub re x2
 end
 
 note gen_repos: the manifest, name TAB rid TAB head TAB tier TAB description

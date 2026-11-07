@@ -1,0 +1,36 @@
+cff-version: 1.2.0
+message: "If you use this work, please cite the paper below."
+title: "sovereign-intelligence: front door to the Radicle home of my GB10 GPU machine-code toolchain"
+type: software
+authors:
+  - family-names: Stapleton
+    given-names: Drake
+    orcid: "https://orcid.org/0009-0002-6890-7111"
+license: Apache-2.0
+url: "https://www.aienos.com/"
+keywords:
+  - cuda
+  - nvidia
+  - gb10
+  - dgx-spark
+  - sm121
+  - blackwell
+  - sass
+  - compiler
+  - reverse-engineering
+  - omega-lang
+  - radicle
+preferred-citation:
+  type: article
+  title: "Reverse Engineering the CUDA Software Stack: An Independently Implemented GPU Machine-Code Toolchain for the NVIDIA GB10"
+  authors:
+    - family-names: Stapleton
+      given-names: Drake
+      orcid: "https://orcid.org/0009-0002-6890-7111"
+  date-released: "2026-10-26"
+  version: "2"
+  doi: "10.5281/zenodo.23677465"
+  url: "https://doi.org/10.5281/zenodo.23677465"
+  publisher:
+    name: Zenodo
+  notes: "Preprint, not peer reviewed. Concept DOI for all versions: 10.5281/zenodo.23578452."

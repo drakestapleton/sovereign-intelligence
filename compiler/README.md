@@ -2,14 +2,14 @@
 
 `si.om` is the front-door generator, written in pure seeded Omega. From my Radicle node's inventory it writes three things:
 
-- the project table in `../README.md`, between `<!-- si:index:begin -->` and `<!-- si:index:end -->`;
+- in `../README.md`, the clone line of the lead project between `<!-- si:lead:begin -->` and `<!-- si:lead:end -->`, and the project table between `<!-- si:index:begin -->` and `<!-- si:index:end -->`. While the lead project is not in the inventory, the lead block says it is being published;
 - `../repos.tsv`, the manifest: name, RID, full head commit, tier and description of every public project;
 - `si.sh`, the POSIX sh bootstrap served at `https://www.aienos.com/si`. It is never committed here.
 
 Inputs, both data:
 
 - `inventory.tsv`: one project per line, `name TAB rid TAB visibility TAB head TAB description`, exported from the node by the command below.
-- `order.tsv`: hand-kept. `core TAB name` lines give the core projects, in order. `deny TAB name` lines name projects that are never listed.
+- `order.tsv`: hand-kept. `core TAB name` lines give the core projects, in order. `deny TAB name` lines name projects that are never listed. One `lead TAB name` line names the project the README leads with.
 
 Private and denied projects are never emitted. Core projects come first, in `order.tsv` order; the rest follow in inventory order. `si` refuses, with exit 1 and nothing written, when a core project is missing or not public, a name or RID appears twice, or a field is malformed. The output depends only on the input bytes: no clock and no environment, so two runs give identical files.
 
