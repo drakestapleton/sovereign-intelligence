@@ -1,17 +1,18 @@
 # compiler/
 
-`si.om` is the front-door generator, written in pure seeded Omega. From my Radicle node's inventory it writes three things:
+`si.om` is the front-door generator, written in pure seeded Omega. From my Radicle node's inventory, filtered by the vetted public table, it writes three things:
 
 - in `../README.md`, the clone line of the lead project between `<!-- si:lead:begin -->` and `<!-- si:lead:end -->`, and the project table between `<!-- si:index:begin -->` and `<!-- si:index:end -->`. While the lead project is not in the inventory, the lead block says it is being published;
 - `../repos.tsv`, the manifest: name, RID, full head commit, tier and description of every public project;
 - `si.sh`, the POSIX sh bootstrap served at `https://www.aienos.com/si`. It is never committed here.
 
-Inputs, both data:
+Inputs, all data:
 
-- `inventory.tsv`: one project per line, `name TAB rid TAB visibility TAB head TAB description`, exported from the node by the command below.
+- `vetted.md`: the vetted public table, one Markdown row per project, `| name | RID | branch | head |`. It is copied from RadPublish's `RIDS.md` by the command below and is the single source of what may be listed.
+- `inventory.tsv`: one project per line, `name TAB rid TAB visibility TAB head TAB description`, exported from the node for the vetted RIDs only, by the command below.
 - `order.tsv`: hand-kept. `core TAB name` lines give the core projects, in order. `deny TAB name` lines name projects that are never listed. One `lead TAB name` line names the project the README leads with.
 
-Private and denied projects are never emitted. Core projects come first, in `order.tsv` order; the rest follow in inventory order. `si` refuses, with exit 1 and nothing written, when a core project is missing or not public, a name or RID appears twice, or a field is malformed. The output depends only on the input bytes: no clock and no environment, so two runs give identical files.
+A project is listed only when its name and RID are both on a `vetted.md` row and the node calls it public. Anything else on the node, and every private or denied project, is never emitted. Core projects come first, in `order.tsv` order; the rest follow in inventory order. `si` refuses, with exit 1 and nothing written, when a core project is missing, unvetted or not public, a name or RID appears twice, or a field is malformed. The output depends only on the input bytes: no clock and no environment, so two runs give identical files.
 
 ## Build
 
@@ -22,12 +23,13 @@ sha256sum "$OMC"                       # must print 3ad9f10f…3194
 "$OMC" < compiler/si.om > si && chmod +x si
 ```
 
-## Export the inventory
+## Export the vetted table and the inventory
 
-Run on the machine whose Radicle node holds the projects (it needs `rad`, `git` and `jq`):
+Run on the machine whose Radicle node holds the projects, from the repository root (it needs `rad`, `git` and `jq`). The first command copies the public rows of `RIDS.md`, stopping before its extra-branches table:
 
 ```sh
-cd ~/.radicle/storage && for id in *; do rid="rad:$id"; p="$(rad inspect "$rid" --payload)" || continue; br="$(printf '%s' "$p" | jq -r '."xyz.radicle.project".defaultBranch')"; printf '%s\t%s\t%s\t%s\t%s\n' "$(printf '%s' "$p" | jq -r '."xyz.radicle.project".name')" "$rid" "$(rad inspect "$rid" --visibility | sed -n '1{s/ .*//;p;}')" "$(git --git-dir="$id" rev-parse "refs/heads/$br")" "$(printf '%s' "$p" | jq -r '."xyz.radicle.project".description')"; done | LC_ALL=C sort > /path/to/sovereign-intelligence/compiler/inventory.tsv
+{ printf '# Vetted public projects\n\n| name | RID | branch | head |\n|---|---|---|---|\n'; awk '/^## Extra branches/{exit} /^\| [^|]+ \| rad:z[0-9A-Za-z]+ \| [^|]+ \| [0-9a-f]{40} \|/' /path/to/RIDS.md | awk -F'|' '{print "|" $2 "|" $3 "|" $4 "|" $5 "|"}'; } > compiler/vetted.md
+grep '^| [^|]* | rad:z' compiler/vetted.md | cut -d'|' -f3 | tr -d ' ' | while read -r rid; do id="${rid#rad:}"; p="$(rad inspect "$rid" --payload)" || continue; br="$(printf '%s' "$p" | jq -r '."xyz.radicle.project".defaultBranch')"; printf '%s\t%s\t%s\t%s\t%s\n' "$(printf '%s' "$p" | jq -r '."xyz.radicle.project".name')" "$rid" "$(rad inspect "$rid" --visibility | sed -n '1{s/ .*//;p;}')" "$(git --git-dir="$HOME/.radicle/storage/$id" rev-parse "refs/heads/$br")" "$(printf '%s' "$p" | jq -r '."xyz.radicle.project".description')"; done | LC_ALL=C sort > compiler/inventory.tsv
 ```
 
 ## Regenerate
@@ -35,7 +37,7 @@ cd ~/.radicle/storage && for id in *; do rid="rad:$id"; p="$(rad inspect "$rid" 
 From the repository root:
 
 ```sh
-./si compiler/inventory.tsv compiler/order.tsv README.md repos.tsv si.sh
+./si compiler/inventory.tsv compiler/order.tsv compiler/vetted.md README.md repos.tsv si.sh
 ```
 
 To check what is served, rebuild and compare:

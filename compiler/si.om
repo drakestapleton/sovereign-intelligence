@@ -4,21 +4,26 @@ note
 note Build with the pinned seeded compiler (compiler/README.md names the pin):
 note   omc < compiler/si.om > si && chmod +x si
 note Run:
-note   si INVENTORY ORDER README REPOS SISH
+note   si INVENTORY ORDER VETTED README REPOS SISH
 note   INVENTORY  read: one project per line, name TAB rid TAB visibility TAB head TAB description,
 note              exported from my Radicle node by the one command in compiler/README.md
+note   VETTED     read: the vetted public table, Markdown rows "| name | rid | branch | head |";
+note              RadPublish's RIDS.md or its committed copy compiler/vetted.md. Other lines
+note              (headings, prose, rows whose RID or head is not well formed) are ignored
 note   ORDER      read: "core TAB name" lines give the core projects in order,
 note              "deny TAB name" lines name projects that are never listed,
 note              one optional "lead TAB name" line names the project the README leads with
 note   README     read and rewritten in place between the si:lead markers, then the si:index markers
 note   REPOS      written: the public manifest, one project per line, as TSV
 note   SISH       written: the POSIX sh bootstrap served at https://www.aienos.com/si
-note Private and denied projects are never emitted. Core projects come first, in ORDER's
-note order; the rest follow in inventory order. A missing or non-public core project,
-note a duplicate name or RID, or a malformed field makes si refuse with exit 1 and write
-note nothing. The output depends only on the input bytes: no clock, no environment.
+note Only projects whose name and RID are both on a VETTED row are listed: anything else on
+note the node, and every private or denied project, is never emitted. Core projects come
+note first, in ORDER's order; the rest follow in inventory order. A missing, unvetted or
+note non-public core project, a duplicate name or RID, or a malformed field makes si refuse
+note with exit 1 and write nothing. The output depends only on the input bytes: no clock,
+note no environment.
 
-note input bytes (all three inputs, one after another) and output bytes
+note input bytes (all four inputs, one after another) and output bytes
 global src uchar 4194304
 global srcn ulong 1
 global ob uchar 4194304
@@ -38,13 +43,16 @@ global nden ulong 1
 note the lead project's name from ORDER: offset, length; nled is 0 or 1
 global led ulong 2
 global nled ulong 1
+note vetted projects from VETTED: name offset, name length, rid offset, rid length
+global vet ulong 4096
+global nvet ulong 1
 note emission order: record numbers
 global seq ulong 1024
 global nseq ulong 1
 
 text tsi "si: "
 text tnl "\n"
-text tusage "usage: si INVENTORY ORDER README REPOS SISH\n"
+text tusage "usage: si INVENTORY ORDER VETTED README REPOS SISH\n"
 text toverf "output is over the 4 MiB buffer"
 text targ "cannot read a command-line argument"
 text topen "cannot open "
@@ -63,7 +71,8 @@ text tmore "more than 64 core or deny names, or a second lead, at: "
 text tdupn "duplicate project name: "
 text tdupr "duplicate RID: "
 text tcmiss "core project is not in the inventory: "
-text tcpriv "core project is private, denied or listed twice: "
+text tcpriv "core project is private, denied, not vetted or listed twice: "
+text tmvet "more than 1024 vetted rows at: "
 text tnomark "README lacks <!-- si:lead:begin -->, <!-- si:lead:end -->, <!-- si:index:begin --> and <!-- si:index:end -->, in that order"
 text tdot "."
 text tdotdot ".."
@@ -74,6 +83,8 @@ text ttab "\t"
 text tcore "core"
 text tdeny "deny"
 text tlead "lead"
+text tbar " | "
+text tbare " |"
 text trest "rest"
 text tbeg "<!-- si:index:begin -->"
 text tend "<!-- si:index:end -->"
@@ -107,7 +118,7 @@ text sha0 "#!/bin/sh\n# sovereign-intelligence bootstrap: fetch every public pro
 text sha1 "SI_DIR=\"${SI_DIR:-./sovereign-intelligence}\"\nSI_ONLY=\"${SI_ONLY:-all}\"\nSI_HTTP=\"${SI_HTTP:-https://www.aienos.com/rad}\"\nSI_HTTP2=\"${SI_HTTP2:-https://rosa.radicle.network}\"\nSI_INSTALL_RAD=\"${SI_INSTALL_RAD:-0}\"\nSI_RAD_TIMEOUT=\"${SI_RAD_TIMEOUT:-5min}\"\n\n"
 text sha2 "si_say() { printf '%s\\n' \"$*\"; }\nsi_die() { printf 'si: %s\\n' \"$*\" >&2; exit 1; }\n\n"
 text sha3 "if [ \"$(id -u)\" = \"0\" ]; then si_die \"refusing to run as root; run it as your own user\"; fi\ncase \"$SI_ONLY\" in all|core) ;; *) si_die \"SI_ONLY must be all or core\" ;; esac\ncommand -v git >/dev/null 2>&1 || si_die \"git is required: https://git-scm.com\"\nsi_rad=0\nif command -v rad >/dev/null 2>&1; then si_rad=1; fi\n\n"
-text sha4 "si_say \"Sovereign Intelligence. GitHub switched us off. We're still here.\"\nsi_say \"\"\nsi_say \"This will:\"\nsi_say \"  1. make one directory, $SI_DIR, and put everything in it (no sudo, nothing else touched)\"\nif [ \"$SI_ONLY\" = \"core\" ]; then si_say \"  2. fetch the "
+text sha4 "si_say \"Sovereign Intelligence. GitHub censored me. I demand to be heard.\"\nsi_say \"\"\nsi_say \"This will:\"\nsi_say \"  1. make one directory, $SI_DIR, and put everything in it (no sudo, nothing else touched)\"\nif [ \"$SI_ONLY\" = \"core\" ]; then si_say \"  2. fetch the "
 text shb0 " core projects\"; else si_say \"  2. fetch all "
 text shc0 " public projects (SI_ONLY=core fetches only the "
 text shd0 " core ones)\"; fi\nif [ \"$si_rad\" = \"1\" ]; then\n  si_say \"     peer-to-peer with rad clone, falling back to git clone from $SI_HTTP, then $SI_HTTP2\"\nelse\n  si_say \"     with git clone from $SI_HTTP, then $SI_HTTP2 (rad not found; with Radicle it fetches peer-to-peer)\"\nfi\nsi_say \"  3. check every checkout against the commit in its manifest and print OK or MISMATCH\"\nsi_say \"\"\n\n"
@@ -508,6 +519,84 @@ p = add q 1
 end
 end
 
+note vet_row: one VETTED line [p, q); "| name | rid | branch | head |" with a good name,
+note RID and 40-digit head is kept, any other line is ignored
+fn vet_row p ulong q ulong to void
+if lt sub q p 8
+ret
+end
+if ne get src p 124
+ret
+end
+a = add p 2
+b = find a q tbar
+if eq b q
+ret
+end
+c = add b 3
+d = find c q tbar
+if eq d q
+ret
+end
+f = find add d 3 q tbar
+if eq f q
+ret
+end
+g = add f 3
+h = find g q tbare
+if eq h q
+ret
+end
+if not okname a sub b a
+ret
+end
+if not okrid c sub d c
+ret
+end
+if not okhex g sub h g
+ret
+end
+k = get nvet 0
+if ge k 1024
+die tmvet p sub q p
+end
+put vet mul k 4 a
+put vet add mul k 4 1 sub b a
+put vet add mul k 4 2 c
+put vet add mul k 4 3 sub d c
+put nvet 0 add k 1
+end
+
+fn parse_vetted s ulong e ulong to void
+p = s
+while lt p e bound 4194305
+q = eol p e
+vet_row p q
+p = add q 1
+end
+end
+
+note vetted: are record r's name and RID both on one VETTED row
+fn vetted r ulong to bool
+nmo = fldo r 0
+nmn = fldn r 0
+ro = fldo r 1
+rn = fldn r 1
+nv = get nvet 0
+for j ulong nv
+vo = get vet mul j 4
+vn = get vet add mul j 4 1
+if eqs nmo nmn vo vn
+vo = get vet add mul j 4 2
+vn = get vet add mul j 4 3
+if eqs ro rn vo vn
+ret true
+end
+end
+end
+ret false
+end
+
 note check_unique: no two projects share a name or a RID
 fn check_unique to void
 nr = get nrec 0
@@ -547,7 +636,7 @@ end
 ret false
 end
 
-note mark_hidden: private and denied projects get kind 2 and are never listed
+note mark_hidden: private, denied and unvetted projects get kind 2 and are never listed
 fn mark_hidden to void
 nr = get nrec 0
 for r ulong nr
@@ -556,6 +645,9 @@ if not eqt fldo r 2 fldn r 2 tpublic
 kd = 2
 end
 if denied r
+kd = 2
+end
+if not vetted r
 kd = 2
 end
 put rec add mul r 12 10 kd
@@ -771,7 +863,7 @@ em she1
 end
 
 fn main to int
-if ne argcnt 6
+if ne argcnt 7
 w = write 2 tusage 0 len tusage
 ret 2
 end
@@ -779,19 +871,22 @@ ins = load 1
 ine = get srcn 0
 ors = load 2
 ore = get srcn 0
-rs = load 3
+vs = load 3
+ve = get srcn 0
+rs = load 4
 re = get srcn 0
 parse_inventory ins ine
 parse_order ors ore
+parse_vetted vs ve
 check_unique
 mark_hidden
 order_core
 order_rest
 gen_readme rs re
-wout 3
-gen_repos
 wout 4
-gen_sh
+gen_repos
 wout 5
+gen_sh
+wout 6
 ret 0
 end

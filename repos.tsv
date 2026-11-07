@@ -9,36 +9,19 @@ CUDApp	rad:z4RxD8vXigmWg61nM8miQ8DVPAXEP	b774723f537cec16a359fe082b8100317a5b549
 .github	rad:z36odegYfUoEoX8xwjJ4so68jb1W3	e146b8433966dbb9eedf35add9fa510a213efc3e	rest	AienOS organization profile, contribution guidance and GitHub community templates. Source, lessons and verification evidence are linked explicitly.
 aegis-runtime-mv	rad:z6hhF5wGXCqvkcvxYdcBb12qm3FB	279f08e92729777d038a57f59d319811cb8dbe97	rest	Native Rust agent runtime: Axum WebSocket/SSE/REST gateway, heartbeat scheduler, dependency-aware task workflow, SQLite storage. Attachment of AienOS. Pre-alpha.
 aien	rad:zDTnULpiVMniD2etkbUozUP5mn6U	be2b65c863ef83487636a5c909f6f3ab00282758	rest	aien-dev/aien (Radicle canonical mirror during the GitHub hold)
-aien-harness	rad:z3tjNacwmefzXhmChFjfp6jssEzmK	15948e23e7330dca88e122fb019db75eaf6df6ff	rest	Autonomous agent verification and benchmark test harness
 aien-protocols-mv	rad:zzxgxYRc5tw6VwYXkQNLC2hqKkfb	47066887c5f0801e2fc33d1c1790c66f85d5f0c2	rest	Canonical specifications, wire protocols, and schemas for the AIEN sovereign ecosystem
 aien-receipts	rad:z4HXNamwwXyfN11ZBJXAQpdMKvojz	bda984fa92fecef3ad43375b5db402f794acd224	rest	Append-only AIEN verification receipts, indexed by repository and exact source commit. Read verdicts, signatures and retained logs before making a claim.
 aien-rig	rad:z2MPnsBZpJYeJJq39EXz1SYzLL7mc	476c4ace9b522d1ca659fbf6c437e2272ae48102	rest	AIEN Rig: local AI and frame-rate tuning for RTX gaming PCs. Pre-alpha; host fixtures and target-card qualification are separate.
-aien-sovereign-core	rad:z2kdkm8HpiyFbMFpFmzzWZQgTn1EQ	8a42b145ce05843728e50f4e81e028604dc6244b	rest	Autonomous sovereign intelligence engine and runtime core for NVIDIA DGX Spark
 aienix	rad:zV8VdbBDCPEZePcnBiseNyym3Wnk	0dce79de79071ef0b30727403af2feccf895f0e3	rest	AienOS front door: pinned repositories, source-linked lessons and verification paths. AienOS is in alpha testing; components remain separate and each states its own status.
 aienos.com	rad:z3iwnx2pktbGhnfBpJSsaFcTmKgHU	6d614cbac4b8c7945b83db859de6f6e9d778f571	rest	Source of www.aienos.com, built by a Rust generator and served by GitHub Pages
 benchmarks-mv	rad:z2nYCN9XZAPjNohqT8bz46rcs9zvZ	ecfd23805150b8105fa74f028b4ff2c3a90ab24e	rest	Measurement harnesses and evidence bundles for AIEN on the NVIDIA DGX Spark GB10. Speed is reported against the machine's physical limit and my own previous run. Attachment of AienOS.
-cortex-rs	rad:z2VKEz9qeswAC7EGhPaTvDRirkXKf	deb66c005f67abbe8d092ef9b9c96e034a368e8c	rest	Pure compiled native Rust memory engine with vector search and SQLite WAL
-crumb-spec	rad:z3w694J42BU3ztSSkBz319tb7pHky	80d3ff018b238b00a2f560174f801614c13e1bbd	rest	Crumb Protocol specification and filesystem standard for sovereign AI agents
 gpu-head-to-head	rad:z3ZSvMF8VFFGa5FyyKXGh4Vv6NBpS	173c9b48479c83649072acb19d7c31d3d526b5f5	rest	aien-dev/gpu-head-to-head (Radicle canonical mirror during the GitHub hold)
-harvester	rad:zVPJPCdCgWVrw97UKxEBzMU3sCDY	89a61a41b1de42130c08b193e777a00b3ac9c5ee	rest	Zero-telemetry documentation and knowledge extraction engine
 interplane-mv	rad:zNhNbqYvgSBEHBq9vvE8xpbcBzGa	e0d6863e2598a147babbf8b707b88c2aedba0872	rest	INTERPLANE: open interoperability protocol between AI models and agent runtimes. Models express intent. Runtimes retain authority.
 interplane.io	rad:z399yKvnXcBQNkKoq86iBDgTvQ5QV	3b79aaaaf4738f8227dc523d7f74b7d9d57be57e	rest	Source of interplane.io: a Rust generator that renders the page from the protocol repository's public record, deployed hourly from the Spark.
-mobhub	rad:z3Konv8McLhn67ZBUiCE4bFR5r9tC	6ff6027c57087c16a6a526fe9d749cfc834ac7fe	rest	Decentralized model and agent weights distribution network
 omega-blas	rad:z47VdC9EFsF4dFyH1QJ1C2JNJK4JS	e3f1b403839b1fc23d54c060c9c0c0c751774edd	rest	aien-dev/omega-blas (Radicle canonical mirror during the GitHub hold)
 omega-bridge	rad:z3Hr9ZaiKHwwuNzPK5M8c7uw6pj7y	d8174eddf953ad53e16f19eb5841459df99e24bb	rest	Omega-first language interoperability: checked conversion backends and native language bindings
 omega-gpu-driver	rad:z2xjD5kxUTTBNCryJ6rg9QXpemzei	1ac3589c525657cf0698ff0f95557d922d2162ce	rest	aien-dev/omega-gpu-driver (Radicle canonical mirror during the GitHub hold)
 omega-harness	rad:z39gvwWsnkRZsAConQLjaKiNVLHfW	bd107ca15c40b6cdfef0f23afb03a884fe3c8086	rest	Agent skills for operating, encoding and communicating in Omega (.om) and the AIEN repositories
-open-humanity	rad:z2jftNw1LLYTNgj8DNoh1TGGNmEmP	f68d7a2c68a93ec1aaf866b785da4ad3303e23f0	rest	Privacy-first peer assistance network for sovereign autonomous agents
-openclaw-rs	rad:z21SQF1DVwRmpxbTMnSiYxXveiRp1	d491aff96f6a875f5de46db8f5f7c7a98d73a4fa	rest	High-performance sovereign agent runtime in native Rust and Mojo for NVIDIA DGX Spark
-rad-id-sync	rad:z4YVa7BSf1MGTrHoJewK8iWQcyHbC	f9a04527fa5460ba4f55147c9b9d802f0a494a12	rest	Radicle identity document synchronization utility
 sovereign-intelligence	rad:z2JJz4RDfZZxKGBLn6UhmW5p9VJQj	320c1bb34283ef532086c0c98413f972a1825a02	rest	Sovereign Intelligence: one command turns a DGX Spark into your own AI. Allen, Omega, science tools, no NVIDIA user-space software. Alpha testing.
-spark-adapters	rad:z2L6KpjRgTCMbPeuEpggRmecH5Qpc	ad883a242993d1f8ddc0e41e355d41a5086c7f8d	rest	Hardware abstraction adapters for local AI accelerators
-spark-crumbs	rad:z2uQ4JsdQJ8zwrW2Fc3mDro8fJo4g	3adeb73aa7c78dd488e3544cde3fd0a4bf974037	rest	Deterministic append-only operational event ledger
-spark-debugger	rad:zhE9hwwAEWUup6PaXBcVApAVwEUt	00d4e4f425fdf8a050d38aad07c84f455d7bc2b7	rest	Native runtime state inspector and execution debugger
-spark-dream	rad:z4UHi17ttdBX6qAfFutgFaL6s1Aga	265dec1d7de15e15a6f4b0162459b99823639cc6	rest	Idle-cycle neural memory consolidator and vectorizer
-spark-hive	rad:z2RVudShJWi3She9WLw3DNZDwYvnB	f81a7e2052e1f83ef01897f073edd2bb0d98db01	rest	Multi-agent swarm coordination and peer routing engine
-spark-inquisitor	rad:z4PuE5iVq1optfv8xaEYXp3B4nbt4	1cb45c4d7ae7d5731fcf74c6a74a3d736ab2cce6	rest	Ultra-fast compiled native Rust gatekeeper and automated code reviewer
-spark-rsi	rad:z2zietej47ufRfzb4RNQKwemNxTJ9	5aa5e654ae8fac5d25caa449caf7473e7fb469f1	rest	Resilient systems interface and fault-tolerant agent communication
 spark-rsi-mv	rad:z4AauBRPXzPNMiAoHZpRpyCee61A2	505c75dedac8796f4fa16f5376db13e9bd0f7d84	rest	Native Rust recursive self-improvement engine with paired bootstrap evaluation and cryptographic ledger
-spark-supervisor	rad:z3HQENMJfT9o14N3oDQtY4YPFak73	b3c5c3caee10c1fb3834d26959aec32e392d1fff	rest	Process supervisor and health monitor for sovereign daemons
 synapse	rad:zMGRREr2tmtRqpo4mMjpzkZdUGXN	01a4de3333753dc28595a4ba73903707628a6a77	rest	Synapse: agent-native changesets and coordination, with Git and Radicle interoperability. A component of the AienOS ecosystem.

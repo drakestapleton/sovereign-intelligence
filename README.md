@@ -4,7 +4,7 @@
 
 *My own language, Omega, writes NVIDIA GB10 machine code. It ran on the chip: 1,048,576 of 1,048,576 values correct, no CUDA toolkit, no nvcc, no PTX.*
 
-I published everything on GitHub: 109 repositories in the `aien-dev` organization. On 7 November 2026, between 08:14 and 08:20 UTC, GitHub cancelled my Actions runs as "owner marked spammy", flagged the organization, hid every repository from the public and suspended my machine account, `aien-spark`. About 20 AI agents work on this project, and they had been pushing and opening pull requests faster than GitHub's abuse filters allow. I have appealed and the appeal is pending. My work now lives on [Radicle](https://radicle.xyz), a peer-to-peer network no single company can switch off, and on my own hardware. GitHub switched us off. We're still here.
+I published everything on GitHub: 109 repositories in the `aien-dev` organization. On 7 November 2026, between 08:14 and 08:20 UTC, GitHub cancelled my Actions runs as "owner marked spammy", flagged the organization, hid every repository from the public and suspended my machine account, `aien-spark`. About 20 AI agents work on this project, and they had been pushing and opening pull requests faster than GitHub's abuse filters allow. I have appealed and the appeal is pending. My work now lives on [Radicle](https://radicle.xyz), a peer-to-peer network no single company can switch off, and on my own hardware. GitHub switched me off. I'm still here.
 
 **The code that broke CUDA**, on Radicle:
 
@@ -107,7 +107,7 @@ rad clone rad:z2JJz4RDfZZxKGBLn6UhmW5p9VJQj   # sovereign-intelligence, the DGX 
 ## Projects
 
 <!-- si:index:begin -->
-**43 public projects**, 7 of them core, listed by `compiler/si.om` from my Radicle node's inventory. Full commit ids are in [`repos.tsv`](repos.tsv).
+**26 public projects**, 7 of them core, listed by `compiler/si.om` from my Radicle node's inventory. Full commit ids are in [`repos.tsv`](repos.tsv).
 
 | # | Project | Radicle ID | Head | About |
 |---:|---|---|---|---|
@@ -121,46 +121,29 @@ rad clone rad:z2JJz4RDfZZxKGBLn6UhmW5p9VJQj   # sovereign-intelligence, the DGX 
 | 8 | **.github** | `rad:z36odegYfUoEoX8xwjJ4so68jb1W3` | `e146b84` | AienOS organization profile, contribution guidance and GitHub community templates. Source, lessons and verification evidence are linked explicitly. |
 | 9 | **aegis-runtime-mv** | `rad:z6hhF5wGXCqvkcvxYdcBb12qm3FB` | `279f08e` | Native Rust agent runtime: Axum WebSocket/SSE/REST gateway, heartbeat scheduler, dependency-aware task workflow, SQLite storage. Attachment of AienOS. Pre-alpha. |
 | 10 | **aien** | `rad:zDTnULpiVMniD2etkbUozUP5mn6U` | `be2b65c` | aien-dev/aien (Radicle canonical mirror during the GitHub hold) |
-| 11 | **aien-harness** | `rad:z3tjNacwmefzXhmChFjfp6jssEzmK` | `15948e2` | Autonomous agent verification and benchmark test harness |
-| 12 | **aien-protocols-mv** | `rad:zzxgxYRc5tw6VwYXkQNLC2hqKkfb` | `4706688` | Canonical specifications, wire protocols, and schemas for the AIEN sovereign ecosystem |
-| 13 | **aien-receipts** | `rad:z4HXNamwwXyfN11ZBJXAQpdMKvojz` | `bda984f` | Append-only AIEN verification receipts, indexed by repository and exact source commit. Read verdicts, signatures and retained logs before making a claim. |
-| 14 | **aien-rig** | `rad:z2MPnsBZpJYeJJq39EXz1SYzLL7mc` | `476c4ac` | AIEN Rig: local AI and frame-rate tuning for RTX gaming PCs. Pre-alpha; host fixtures and target-card qualification are separate. |
-| 15 | **aien-sovereign-core** | `rad:z2kdkm8HpiyFbMFpFmzzWZQgTn1EQ` | `8a42b14` | Autonomous sovereign intelligence engine and runtime core for NVIDIA DGX Spark |
-| 16 | **aienix** | `rad:zV8VdbBDCPEZePcnBiseNyym3Wnk` | `0dce79d` | AienOS front door: pinned repositories, source-linked lessons and verification paths. AienOS is in alpha testing; components remain separate and each states its own status. |
-| 17 | **aienos.com** | `rad:z3iwnx2pktbGhnfBpJSsaFcTmKgHU` | `6d614cb` | Source of www.aienos.com, built by a Rust generator and served by GitHub Pages |
-| 18 | **benchmarks-mv** | `rad:z2nYCN9XZAPjNohqT8bz46rcs9zvZ` | `ecfd238` | Measurement harnesses and evidence bundles for AIEN on the NVIDIA DGX Spark GB10. Speed is reported against the machine's physical limit and my own previous run. Attachment of AienOS. |
-| 19 | **cortex-rs** | `rad:z2VKEz9qeswAC7EGhPaTvDRirkXKf` | `deb66c0` | Pure compiled native Rust memory engine with vector search and SQLite WAL |
-| 20 | **crumb-spec** | `rad:z3w694J42BU3ztSSkBz319tb7pHky` | `80d3ff0` | Crumb Protocol specification and filesystem standard for sovereign AI agents |
-| 21 | **gpu-head-to-head** | `rad:z3ZSvMF8VFFGa5FyyKXGh4Vv6NBpS` | `173c9b4` | aien-dev/gpu-head-to-head (Radicle canonical mirror during the GitHub hold) |
-| 22 | **harvester** | `rad:zVPJPCdCgWVrw97UKxEBzMU3sCDY` | `89a61a4` | Zero-telemetry documentation and knowledge extraction engine |
-| 23 | **interplane-mv** | `rad:zNhNbqYvgSBEHBq9vvE8xpbcBzGa` | `e0d6863` | INTERPLANE: open interoperability protocol between AI models and agent runtimes. Models express intent. Runtimes retain authority. |
-| 24 | **interplane.io** | `rad:z399yKvnXcBQNkKoq86iBDgTvQ5QV` | `3b79aaa` | Source of interplane.io: a Rust generator that renders the page from the protocol repository's public record, deployed hourly from the Spark. |
-| 25 | **mobhub** | `rad:z3Konv8McLhn67ZBUiCE4bFR5r9tC` | `6ff6027` | Decentralized model and agent weights distribution network |
-| 26 | **omega-blas** | `rad:z47VdC9EFsF4dFyH1QJ1C2JNJK4JS` | `e3f1b40` | aien-dev/omega-blas (Radicle canonical mirror during the GitHub hold) |
-| 27 | **omega-bridge** | `rad:z3Hr9ZaiKHwwuNzPK5M8c7uw6pj7y` | `d8174ed` | Omega-first language interoperability: checked conversion backends and native language bindings |
-| 28 | **omega-gpu-driver** | `rad:z2xjD5kxUTTBNCryJ6rg9QXpemzei` | `1ac3589` | aien-dev/omega-gpu-driver (Radicle canonical mirror during the GitHub hold) |
-| 29 | **omega-harness** | `rad:z39gvwWsnkRZsAConQLjaKiNVLHfW` | `bd107ca` | Agent skills for operating, encoding and communicating in Omega (.om) and the AIEN repositories |
-| 30 | **open-humanity** | `rad:z2jftNw1LLYTNgj8DNoh1TGGNmEmP` | `f68d7a2` | Privacy-first peer assistance network for sovereign autonomous agents |
-| 31 | **openclaw-rs** | `rad:z21SQF1DVwRmpxbTMnSiYxXveiRp1` | `d491aff` | High-performance sovereign agent runtime in native Rust and Mojo for NVIDIA DGX Spark |
-| 32 | **rad-id-sync** | `rad:z4YVa7BSf1MGTrHoJewK8iWQcyHbC` | `f9a0452` | Radicle identity document synchronization utility |
-| 33 | **sovereign-intelligence** | `rad:z2JJz4RDfZZxKGBLn6UhmW5p9VJQj` | `320c1bb` | Sovereign Intelligence: one command turns a DGX Spark into your own AI. Allen, Omega, science tools, no NVIDIA user-space software. Alpha testing. |
-| 34 | **spark-adapters** | `rad:z2L6KpjRgTCMbPeuEpggRmecH5Qpc` | `ad883a2` | Hardware abstraction adapters for local AI accelerators |
-| 35 | **spark-crumbs** | `rad:z2uQ4JsdQJ8zwrW2Fc3mDro8fJo4g` | `3adeb73` | Deterministic append-only operational event ledger |
-| 36 | **spark-debugger** | `rad:zhE9hwwAEWUup6PaXBcVApAVwEUt` | `00d4e4f` | Native runtime state inspector and execution debugger |
-| 37 | **spark-dream** | `rad:z4UHi17ttdBX6qAfFutgFaL6s1Aga` | `265dec1` | Idle-cycle neural memory consolidator and vectorizer |
-| 38 | **spark-hive** | `rad:z2RVudShJWi3She9WLw3DNZDwYvnB` | `f81a7e2` | Multi-agent swarm coordination and peer routing engine |
-| 39 | **spark-inquisitor** | `rad:z4PuE5iVq1optfv8xaEYXp3B4nbt4` | `1cb45c4` | Ultra-fast compiled native Rust gatekeeper and automated code reviewer |
-| 40 | **spark-rsi** | `rad:z2zietej47ufRfzb4RNQKwemNxTJ9` | `5aa5e65` | Resilient systems interface and fault-tolerant agent communication |
-| 41 | **spark-rsi-mv** | `rad:z4AauBRPXzPNMiAoHZpRpyCee61A2` | `505c75d` | Native Rust recursive self-improvement engine with paired bootstrap evaluation and cryptographic ledger |
-| 42 | **spark-supervisor** | `rad:z3HQENMJfT9o14N3oDQtY4YPFak73` | `b3c5c3c` | Process supervisor and health monitor for sovereign daemons |
-| 43 | **synapse** | `rad:zMGRREr2tmtRqpo4mMjpzkZdUGXN` | `01a4de3` | Synapse: agent-native changesets and coordination, with Git and Radicle interoperability. A component of the AienOS ecosystem. |
+| 11 | **aien-protocols-mv** | `rad:zzxgxYRc5tw6VwYXkQNLC2hqKkfb` | `4706688` | Canonical specifications, wire protocols, and schemas for the AIEN sovereign ecosystem |
+| 12 | **aien-receipts** | `rad:z4HXNamwwXyfN11ZBJXAQpdMKvojz` | `bda984f` | Append-only AIEN verification receipts, indexed by repository and exact source commit. Read verdicts, signatures and retained logs before making a claim. |
+| 13 | **aien-rig** | `rad:z2MPnsBZpJYeJJq39EXz1SYzLL7mc` | `476c4ac` | AIEN Rig: local AI and frame-rate tuning for RTX gaming PCs. Pre-alpha; host fixtures and target-card qualification are separate. |
+| 14 | **aienix** | `rad:zV8VdbBDCPEZePcnBiseNyym3Wnk` | `0dce79d` | AienOS front door: pinned repositories, source-linked lessons and verification paths. AienOS is in alpha testing; components remain separate and each states its own status. |
+| 15 | **aienos.com** | `rad:z3iwnx2pktbGhnfBpJSsaFcTmKgHU` | `6d614cb` | Source of www.aienos.com, built by a Rust generator and served by GitHub Pages |
+| 16 | **benchmarks-mv** | `rad:z2nYCN9XZAPjNohqT8bz46rcs9zvZ` | `ecfd238` | Measurement harnesses and evidence bundles for AIEN on the NVIDIA DGX Spark GB10. Speed is reported against the machine's physical limit and my own previous run. Attachment of AienOS. |
+| 17 | **gpu-head-to-head** | `rad:z3ZSvMF8VFFGa5FyyKXGh4Vv6NBpS` | `173c9b4` | aien-dev/gpu-head-to-head (Radicle canonical mirror during the GitHub hold) |
+| 18 | **interplane-mv** | `rad:zNhNbqYvgSBEHBq9vvE8xpbcBzGa` | `e0d6863` | INTERPLANE: open interoperability protocol between AI models and agent runtimes. Models express intent. Runtimes retain authority. |
+| 19 | **interplane.io** | `rad:z399yKvnXcBQNkKoq86iBDgTvQ5QV` | `3b79aaa` | Source of interplane.io: a Rust generator that renders the page from the protocol repository's public record, deployed hourly from the Spark. |
+| 20 | **omega-blas** | `rad:z47VdC9EFsF4dFyH1QJ1C2JNJK4JS` | `e3f1b40` | aien-dev/omega-blas (Radicle canonical mirror during the GitHub hold) |
+| 21 | **omega-bridge** | `rad:z3Hr9ZaiKHwwuNzPK5M8c7uw6pj7y` | `d8174ed` | Omega-first language interoperability: checked conversion backends and native language bindings |
+| 22 | **omega-gpu-driver** | `rad:z2xjD5kxUTTBNCryJ6rg9QXpemzei` | `1ac3589` | aien-dev/omega-gpu-driver (Radicle canonical mirror during the GitHub hold) |
+| 23 | **omega-harness** | `rad:z39gvwWsnkRZsAConQLjaKiNVLHfW` | `bd107ca` | Agent skills for operating, encoding and communicating in Omega (.om) and the AIEN repositories |
+| 24 | **sovereign-intelligence** | `rad:z2JJz4RDfZZxKGBLn6UhmW5p9VJQj` | `320c1bb` | Sovereign Intelligence: one command turns a DGX Spark into your own AI. Allen, Omega, science tools, no NVIDIA user-space software. Alpha testing. |
+| 25 | **spark-rsi-mv** | `rad:z4AauBRPXzPNMiAoHZpRpyCee61A2` | `505c75d` | Native Rust recursive self-improvement engine with paired bootstrap evaluation and cryptographic ledger |
+| 26 | **synapse** | `rad:zMGRREr2tmtRqpo4mMjpzkZdUGXN` | `01a4de3` | Synapse: agent-native changesets and coordination, with Git and Radicle interoperability. A component of the AienOS ecosystem. |
 <!-- si:index:end -->
 
 Open any of them on the web at `https://radicle.network/nodes/rosa.radicle.network/<RID>`.
 
 ## Where everything lives now
 
-The morning GitHub switched us off, every public project moved to Radicle, one Radicle repository per project, seeded from my own machines, each with its own key. My website, [www.aienos.com](https://www.aienos.com), runs on my own hardware. GitHub keeps this one repository so that people can still find me, and its only code is Omega. The full account is at [www.aienos.com/switched-off/](https://www.aienos.com/switched-off/).
+The morning GitHub switched me off, every public project moved to Radicle, one Radicle repository per project, seeded from my own machines, each with its own key. My website, [www.aienos.com](https://www.aienos.com), runs on my own hardware. GitHub keeps this one repository so that people can still find me, and its only code is Omega. The full account is at [www.aienos.com/switched-off/](https://www.aienos.com/switched-off/).
 
 ## Run your own seed
 
