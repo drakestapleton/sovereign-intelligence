@@ -1,0 +1,499 @@
+om2
+note gpu/cuda-crack/check/mutate.om: the four planted bugs of check/check.sh, in pure seeded Omega.
+note
+note check.sh plants four bugs and requires each to be caught. It makes them with awk, od and
+note printf. This program makes the same four inputs, byte for byte; build.sh compares its output
+note with those one-liners on every build, on both targets.
+note Build with the seed-born compiler:
+note   omc < check/mutate.om > mutate && chmod +x mutate
+note   { printf 'target x86linux\n'; cat check/mutate.om; } | omc-x86 > mutate   (native x86-64)
+note Run:
+note   mutate MODE < IN > OUT
+note   MODE 1  IN is isa/sm121-forms.txt. Let K be fields 5..10 of the F record whose field 3 is
+note           255 (the NOP). In every F record whose fields 5..10 are K, field 5 (fix0) has its
+note           bit 0 flipped. If there is not exactly one such NOP record, nothing changes (as the
+note           awk key then never matches).
+note   MODE 2  IN is a kernel's machine code; bit 0 of its first byte is flipped.
+note   MODE 3  IN is a table; the first D record whose field 8 (width) is over 1 gets width - 1.
+note   MODE 4  IN is a table; in the first D record whose width is over 0, the mask word holding
+note           bit "start" (field 7) loses that bit: field 4 + start / 32 becomes itself minus
+note           2 ^ (start mod 32), printed with a sign when it goes below zero.
+note Text modes read lines split at "\n" and fields split at runs of spaces and tabs, as awk's
+note default field splitting does. A changed record is written as its fields joined by single
+note spaces; every other line is written as it was. Every record ends with "\n" on output, also
+note a last line that had none. A field these rules must read as a number is decimal digits
+note (1 to 19 of them): a field 3, 7 or 8 of an F or D record that is not, or a changed field
+note that is not, is refused.
+note Refusals: one stderr line "mutate: ...", exit 1, nothing on stdout. Usage errors exit 2.
+note Input and output are each at most 4 MiB. No clock, no environment.
+
+note standard input and output
+global inp uchar 4194304
+global inn ulong 1
+global ob uchar 4194304
+global obn ulong 1
+note the fields of the current line: offset in inp and length; nf is their count, 65 when over 64
+global fo ulong 64
+global fl ulong 64
+global nf ulong 1
+note mode 1: fields 5..10 of the NOP record (offset, length pairs) and how many NOP records there are
+global ky ulong 12
+global nky ulong 1
+note the mode, and for modes 3 and 4 whether a D record was changed already
+global md ulong 1
+global dn ulong 1
+
+text tpre "mutate: "
+text tnl "\n"
+text tusage "usage: mutate 1|2|3|4 < IN > OUT   (see the notes in check/mutate.om)\n"
+text tbig "input over the 4 MiB buffer"
+text tread "cannot read standard input"
+text toverf "output is over the 4 MiB buffer"
+text twrite "cannot write standard output"
+text tempty "mode 2 needs at least one byte of input"
+text tnum "a field that must be a decimal number is not, on the line: "
+text tmany "a record to change has more than 64 fields: "
+text tnof "the field to change does not exist, on the line: "
+text tF "F"
+text tD "D"
+
+note die: report m and up to 200 bytes of inp from o on stderr, then exit 1
+fn die m view uchar * o ulong n ulong to void
+k = n
+if gt k 200
+k = 200
+end
+w = write 2 tpre 0 len tpre
+w = write 2 m 0 len m
+if gt k 0
+w = write 2 inp o k
+end
+w = write 2 tnl 0 len tnl
+exit 1
+end
+
+note emb: append one byte to ob
+fn emb c uchar to void
+p = get obn 0
+if ge p 4194304
+die toverf 0 0
+end
+put ob p c
+put obn 0 add p 1
+end
+
+note emi: append n bytes of inp from o to ob
+fn emi o ulong n ulong to void
+p = get obn 0
+if gt n sub 4194304 p
+die toverf 0 0
+end
+for i ulong n bound 4194304
+put ob add p i get inp add o i
+end
+put obn 0 add p n
+end
+
+note emu: append v in decimal to ob
+fn emu v ulong to void
+d = new uchar 20 0
+x = v
+put d 0 uchar add rem x 10 48
+k = ulong 1
+x = div x 10
+while gt x 0 bound 20
+put d k uchar add rem x 10 48
+k = add k 1
+x = div x 10
+end
+while gt k 0 bound 20
+k = sub k 1
+emb get d k
+end
+end
+
+note wout: write ob to standard output
+fn wout to void
+n = get obn 0
+p = ulong 0
+while lt p n bound 4194305
+k = write 1 ob p sub n p
+if le k 0
+die twrite 0 0
+end
+p = add p ulong k
+end
+end
+
+note loadin: read all of standard input into inp
+fn loadin to void
+t = new uchar 1 0
+p = ulong 0
+going = true
+note every pass but the last reads at least one byte of a 4 MiB buffer
+while going bound 4194306
+k = read 0 inp p sub 4194304 p
+if lt k 0
+die tread 0 0
+end
+if eq k 0
+going = false
+else
+p = add p ulong k
+if eq p 4194304
+going = false
+end
+end
+end
+if eq p 4194304
+k = read 0 t 0 1
+if ne k 0
+die tbig 0 0
+end
+end
+put inn 0 p
+end
+
+note eol: the end of the line that starts at p (its newline, or the end of the input)
+fn eol p ulong to ulong
+e = get inn 0
+q = p
+while lt q e bound 4194305
+if eq get inp q 10
+ret q
+end
+q = add q 1
+end
+ret e
+end
+
+note isws: is c a field separator (space or tab)
+fn isws c uchar to bool
+ret or eq c 32 eq c 9
+end
+
+note split: the fields of the line inp[s, e) into fo, fl and nf
+fn split s ulong e ulong to void
+n = ulong 0
+p = s
+while lt p e bound 4194305
+c = get inp p
+if isws c
+p = add p 1
+else
+q = p
+going = true
+while going bound 4194305
+q = add q 1
+if ge q e
+going = false
+else
+if isws get inp q
+going = false
+end
+end
+end
+if lt n 64
+put fo n p
+put fl n sub q p
+end
+n = add n 1
+p = q
+end
+end
+if gt n 64
+n = 65
+end
+put nf 0 n
+end
+
+note fhas: does field i (1-based) exist on the current line
+fn fhas i ulong to bool
+n = get nf 0
+if eq i 0
+ret false
+end
+if gt i 64
+ret false
+end
+ret le i n
+end
+
+note fis: is field i exactly the text t
+fn fis i ulong t view uchar * to bool
+if not fhas i
+ret false
+end
+o = get fo sub i 1
+n = get fl sub i 1
+if ne n len t
+ret false
+end
+for j ulong n bound 64
+if ne get inp add o j get t j
+ret false
+end
+end
+ret true
+end
+
+note fdig: is field i 1 to 19 decimal digits
+fn fdig i ulong to bool
+if not fhas i
+ret false
+end
+o = get fo sub i 1
+n = get fl sub i 1
+if eq n 0
+ret false
+end
+if gt n 19
+ret false
+end
+for j ulong n bound 19
+c = get inp add o j
+if lt c 48
+ret false
+end
+if gt c 57
+ret false
+end
+end
+ret true
+end
+
+note fnum: field i as a number; s, e is the line, named in the refusal
+fn fnum i ulong s ulong e ulong to ulong
+if not fdig i
+die tnum s sub e s
+end
+o = get fo sub i 1
+n = get fl sub i 1
+v = ulong 0
+for j ulong n bound 19
+v = add mul v 10 ulong sub get inp add o j 48
+end
+ret v
+end
+
+note fsame: is field i the same bytes as the saved key slice k (0..5) of ky
+fn fsame i ulong k ulong to bool
+ko = get ky mul k 2
+kn = get ky add mul k 2 1
+if not fhas i
+ret eq kn 0
+end
+o = get fo sub i 1
+n = get fl sub i 1
+if ne n kn
+ret false
+end
+for j ulong n bound 4194304
+if ne get inp add o j get inp add ko j
+ret false
+end
+end
+ret true
+end
+
+note emrec: write the current record's fields joined by single spaces, field ci replaced by the
+note value neg/mag (a minus sign first when neg), then "\n"; s, e is the line, for refusals
+fn emrec ci ulong ng bool mg ulong s ulong e ulong to void
+n = get nf 0
+if gt n 64
+die tmany s sub e s
+end
+for i ulong n bound 64
+if gt i 0
+emb uchar 32
+end
+if eq add i 1 ci
+if ng
+emb uchar 45
+end
+emu mg
+else
+emi get fo i get fl i
+end
+end
+emb uchar 10
+end
+
+note keep: write the line s, e as it was, then "\n"
+fn keep s ulong e ulong to void
+emi s sub e s
+emb uchar 10
+end
+
+note nopscan: mode 1, first pass: count the F records whose field 3 is 255 and keep the first one's
+note fields 5..10
+fn nopscan to void
+e = get inn 0
+p = ulong 0
+while lt p e bound 4194305
+q = eol p
+split p q
+if fis 1 tF
+if fdig 3
+if eq fnum 3 p q 255
+k = get nky 0
+if eq k 0
+savekey
+end
+put nky 0 add k 1
+end
+end
+end
+p = add q 1
+end
+end
+
+note savekey: keep fields 5..10 of the current line in ky (a missing field as length 0)
+fn savekey to void
+for k ulong 6
+i = add k 5
+if fhas i
+put ky mul k 2 get fo sub i 1
+put ky add mul k 2 1 get fl sub i 1
+else
+put ky mul k 2 0
+put ky add mul k 2 1 0
+end
+end
+end
+
+note iskey: are fields 5..10 of the current line the NOP's
+fn iskey to bool
+for k ulong 6
+if not fsame add k 5 k
+ret false
+end
+end
+ret true
+end
+
+note line1: mode 1, one line
+fn line1 s ulong e ulong to void
+if fis 1 tF
+if eq get nky 0 1
+if iskey
+v = fnum 5 s e
+emrec 5 false xor v 1 s e
+ret
+end
+end
+end
+keep s e
+end
+
+note line3: mode 3, one line
+fn line3 s ulong e ulong to void
+if eq get dn 0 0
+if fis 1 tD
+if fhas 8
+w = fnum 8 s e
+if gt w 1
+put dn 0 1
+emrec 8 false sub w 1 s e
+ret
+end
+end
+end
+end
+keep s e
+end
+
+note line4: mode 4, one line
+fn line4 s ulong e ulong to void
+if eq get dn 0 0
+if fis 1 tD
+if fhas 8
+w = fnum 8 s e
+if gt w 0
+put dn 0 1
+st = fnum 7 s e
+ci = add 4 div st 32
+if not fhas ci
+die tnof s sub e s
+end
+v = fnum ci s e
+b = shl ulong 1 rem st 32
+if ge v b
+emrec ci false sub v b s e
+else
+emrec ci true sub b v s e
+end
+ret
+end
+end
+end
+end
+keep s e
+end
+
+note lines: run the mode's line rule over every line of the input
+fn lines to void
+e = get inn 0
+m = get md 0
+p = ulong 0
+while lt p e bound 4194305
+q = eol p
+split p q
+if eq m 1
+line1 p q
+end
+if eq m 3
+line3 p q
+end
+if eq m 4
+line4 p q
+end
+p = add q 1
+end
+end
+
+note getmode: the mode from the one argument, 0 when it is not 1, 2, 3 or 4
+fn getmode to ulong
+a = new uchar 8 0
+n = argread 1 a 0 8
+if ne n 1
+ret 0
+end
+c = get a 0
+if lt c 49
+ret 0
+end
+if gt c 52
+ret 0
+end
+ret ulong sub c 48
+end
+
+fn main to int
+if ne argcnt 2
+w = write 2 tusage 0 len tusage
+ret 2
+end
+m = getmode
+if eq m 0
+w = write 2 tusage 0 len tusage
+ret 2
+end
+put md 0 m
+loadin
+if eq m 2
+n = get inn 0
+if eq n 0
+die tempty 0 0
+end
+emi 0 n
+put ob 0 xor get ob 0 1
+else
+if eq m 1
+nopscan
+end
+lines
+end
+wout
+ret 0
+end

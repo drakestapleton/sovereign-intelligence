@@ -1,0 +1,80 @@
+[
+  {
+    "viewport": "desktop",
+    "javascript": true,
+    "home": {
+      "url": "http://127.0.0.1:18731/",
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "qa": {
+        "errors": [],
+        "messages": []
+      },
+      "ctas": [
+        {
+          "name": "Start a conversation",
+          "href": "/interest"
+        },
+        {
+          "name": "Begin the journey",
+          "href": "#w-home"
+        },
+        {
+          "name": "Jump to the machine",
+          "href": "#w-aien"
+        }
+      ]
+    },
+    "interest": {
+      "url": "http://127.0.0.1:18731/interest/",
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "qa": {
+        "errors": [],
+        "messages": []
+      },
+      "h1": "Start a Conversation",
+      "formCount": 1,
+      "action": "https://formsubmit.co/drake@aienos.com",
+      "method": "post",
+      "fields": [
+        {
+          "name": "_next",
+          "value": "https://www.drakestapleton.com/interest?received=1",
+          "required": false,
+          "label": null
+        },
+        {
+          "name": "_subject",
+          "value": "New inquiry from drakestapleton.com",
+          "required": false,
+          "label": null
+        },
+        {
+          "name": "name",
+          "value": "",
+          "required": true,
+          "label": "YOUR NAME"
+        },
+        {
+          "name": "email",
+          "value": "",
+          "required": true,
+          "label": "YOUR EMAIL"
+        },
+        {
+          "name": "message",
+          "value": "",
+          "required": true,
+          "label": "MESSAGE"
+        }
+      ],
+      "descriptionIds": "inquiry-guidance form-privacy",
+      "valid": false,
+      "mailto": "mailto:drake@aienos.com"
+    },
+    "keyboard_enter_navigated": true
+  }
+]

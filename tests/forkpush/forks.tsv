@@ -1,0 +1,6 @@
+github	branch	head	commits	date	action	dest
+me/alpha	feat/one	0123456789abcdef0123456789abcdef01234567	3	2026-09-19	radicle	rad:zAAAA1111
+me/alpha	fix/crypto-x	89abcdef0123456789abcdef0123456789abcdef	2	2026-09-29	private	-
+me/alpha	docs/v1.2_x	fedcba9876543210fedcba9876543210fedcba98	1	2026-10-22	radicle	rad:zAAAA1111
+me/beta.site	main	aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa	223	2026-10-26	si	docs/site
+me/gamma-1	node-8d75/run_2	bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb	1	2026-10-19	radicle	rad:zBBBB2222

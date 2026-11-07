@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+Sitemap: https://www.aienos.com/sitemap.xml
+Sitemap: https://www.drakestapleton.com/sitemap.xml

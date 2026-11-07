@@ -1,0 +1,18 @@
+# Drake Stapleton
+> Freedom Fighter, AI Architect & Operator. A personal record of projects, research, and the life behind the work. Open to good conversation and research partnerships that advance what our generation can build with AI.
+
+Drake Stapleton documents production orchestration, GPU systems, model training, community work, and Atlas.
+
+## Pages
+- [Home](https://www.drakestapleton.com/): life and project record
+- [Conversation](https://www.drakestapleton.com/interest): leave a note
+- [Career path](https://www.drakestapleton.com/path): chemist to manufacturing engineer to AI Architect
+- [Orchestration](https://www.drakestapleton.com/software): AI architecture practice and evidence
+- [Audit](https://www.drakestapleton.com/evidence): source and evidence record
+- [Atlas](https://www.drakestapleton.com/atlas): personal accountable AI research
+- [AEGIS](https://www.drakestapleton.com/aegis): on-prem defensive Atlas extension and August 20 evaluation
+- [Symphony](https://www.drakestapleton.com/symphony): multi-model orchestration process
+
+## Contact
+- GitHub: https://github.com/aien-dev
+- Conversation and AI research: https://www.drakestapleton.com/interest
