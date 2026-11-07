@@ -4499,10 +4499,6 @@ note The addend is Ra, bits 14..10; multiplicands Rn, Rm are bits 9..5, 20..16.
 fn ffma dst ulong to void
 o = get fpo 0
 put fpo 0 0
-note x86's baseline is SSE2, not FMA3. No unfused fallback is permitted.
-if or ne get irmode 0 0 ne get xtarget 0 0
-fail 9
-end
 put fpw 0 1
 rdval 0 0 255 0
 if eq get rk 0 6
@@ -4531,6 +4527,12 @@ fail 11
 end
 if ne get rt 0 at
 fail 7
+end
+note x86's baseline is SSE2, not FMA3. No unfused fallback is permitted. The operands are typed
+note first, so an ill-typed fma gets the same error 7 or 11 on every target; only a well-typed one
+note is refused here.
+if or ne get irmode 0 0 ne get xtarget 0 0
+fail 9
 end
 va = fvop ak av at 0
 vb = fvop bk bv at 1

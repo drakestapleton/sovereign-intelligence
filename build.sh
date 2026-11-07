@@ -23,7 +23,8 @@
 #   5. compiler/si.om, built for both targets, must regenerate the committed README.md and repos.tsv
 #      byte for byte, and both builds must write the same si.sh
 #   6. tools/ledger.om, built for both targets, must print tests/ledger/expected.tsv
-#   7. the Omega harness examples, on both targets (tests/examples.sh)
+#   7. the Omega harness examples and the compiler regressions in tests/regress, on both targets
+#      (tests/examples.sh)
 # Last line: RC=0 when every step passed.
 set -eu
 R=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
@@ -173,7 +174,7 @@ for t in a64 x86; do
 done
 
 # 7. The Omega harness examples, on both targets.
-sh tests/examples.sh "$O/omc" "$O/omc-x86" ${A64:+"$A64"} || fail "harness examples"
-pass "harness examples"
+sh tests/examples.sh "$O/omc" "$O/omc-x86" ${A64:+"$A64"} || fail "harness examples and regressions"
+pass "harness examples and regressions"
 
 printf 'RC=0\n'

@@ -3,5 +3,5 @@ seed0.bin	408	aca00cf3677236809f0f223437398c6bb429e4c65f13d58762bcf96d13799474	r
 hex1.bin	776	920e1756aec399c7c74f5cedd1676abb91b844ea75448e14aa50dcb0bbc7ba5d	seed0 from rung1/hex1.hex; then hex1 from hex1.hex
 asm2.bin	2464	6988abe072fac3cdef2240d5ad13a3ecd8fb576fa09112d344b9e7c2315969c4	hex1 from rung2/asm2.hex1
 om4.bin	14224	bfc1cfd197348c398be19425b21704ad5ea79d28e33c0e1eff676142f47812b7	asm2 from rung2/table.s2 + rung3/table3.s2 + rung4/table4.s2 + rung4/om4.s
-omc	660940	cfd96b48b0460ab5557853d6856f9c741b96ac8d0d624e06198defb4cbfa0d8a	om4 from omc/omc.om (stage1), then omc from omc.om twice (stage2 = stage3 = stage1)
-omc-x86	5081428	5287a5aac3e2c5d372fadd6b04a038fbe1278d4c3673650796d178b1f90dba46	omc from "target x86linux" + omc/omc.om; then omc-x86 from the same input
+omc	660980	0f2de85153b07656f4b992d101272987fe6ed1eee471ef70b132a37f5ba6b02f	om4 from omc/omc.om (stage1), then omc from omc.om twice (stage2 = stage3 = stage1)
+omc-x86	5081428	a855330dd983fc9982eba37f0ecbe582a70f6e6503ec6b162b6d3e673fc8377e	omc from "target x86linux" + omc/omc.om; then omc-x86 from the same input

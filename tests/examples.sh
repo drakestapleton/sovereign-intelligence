@@ -2,8 +2,9 @@
 # tests/examples.sh OMC_A64 OMC_X86 [QEMU_A64]
 #
 # Compiles and runs every worked example of the Omega harness (harness/examples/*.om and
-# harness/skills/*/examples/*.om) on two targets, against the same NAME.expect files that
-# harness/examples/gate.sh reads, with the same meaning:
+# harness/skills/*/examples/*.om), and this repository's compiler regressions (tests/regress/*.om),
+# on two targets, against the same NAME.expect files that harness/examples/gate.sh reads, with the
+# same meaning:
 #   compile N         required; the compiler's exit status
 #   stderr LINE       required when N is not 0; the compiler's whole stderr is exactly LINE
 #   exit N            required when N is 0; the program's exit status
@@ -115,6 +116,7 @@ one() {
     tgt=$1 src=$2
     base=${src%.om}
     nm=${base#"$root"/}
+    nm=${nm#"$here"/}
     if [ "$tgt" = a64 ]; then omc=$A64 emu=$arun not=$anot; else omc=$X86 emu=$xrun not=$xnot; fi
     if [ -n "$not" ]; then report "$tgt" "$nm" NOT_RUN "$not"; return; fi
     if [ ! -f "$base.expect" ]; then report "$tgt" "$nm" FAIL "no $nm.expect"; return; fi
@@ -224,11 +226,11 @@ one() {
 for tgt in a64 x86; do
     [ -z "$ONLY" ] || [ "$ONLY" = "$tgt" ] || continue
     # An expectation without its program is a silent loss of coverage, so it fails.
-    for f in "$root"/examples/*.expect "$root"/skills/*/examples/*.expect; do
+    for f in "$root"/examples/*.expect "$root"/skills/*/examples/*.expect "$here"/regress/*.expect; do
         [ -e "$f" ] || continue
-        [ -e "${f%.expect}.om" ] || report "$tgt" "$(printf '%s' "${f%.expect}" | sed "s|^$root/||")" FAIL "expect file without its .om"
+        [ -e "${f%.expect}.om" ] || report "$tgt" "$(printf '%s' "${f%.expect}" | sed "s|^$root/||; s|^$here/||")" FAIL "expect file without its .om"
     done
-    for src in "$root"/examples/*.om "$root"/skills/*/examples/*.om; do
+    for src in "$root"/examples/*.om "$root"/skills/*/examples/*.om "$here"/regress/*.om; do
         [ -e "$src" ] || continue
         one "$tgt" "$src"
     done
