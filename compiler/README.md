@@ -51,10 +51,10 @@ The two hashes match when the served script was built from the inventory committ
 
 ## Gate
 
-From the repository root, with the pinned `omc`:
+`gate.om` is the gate of `si.om`, also in pure seeded Omega. From the repository root, with the pinned `omc` and an existing scratch directory `$W`:
 
 ```sh
-sh compiler/gate.sh "$OMC"
+"$OMC" < compiler/gate.om > "$W/gate" && chmod +x "$W/gate" && "$W/gate" "$OMC" "$W"
 ```
 
-It builds `si` and checks four cases: the committed inputs regenerate `README.md` and `repos.tsv` byte-identically; an inventory with one head digit changed, an inventory with one RID character changed, and the stale inventory of commit `3c37e6fb` are each refused with exit 1, the matching message and nothing written. A mutant identical to the committed inventory counts as a failure. It prints `SI pass=4 fail=0` and exits 0; any other omc is NOT_RUN, exit 3.
+It first checks the `omc` it is given by its sha256: any other `omc`, or none, prints `SI NOT_RUN` and exits 3. It then builds `si` from `si.om` and checks four cases: the committed inputs regenerate `README.md` and `repos.tsv` byte-identically; an inventory with one head digit changed, an inventory with one RID character changed (both written by the gate), and the stale inventory of commit `3c37e6fb` (`gate-3c37e6fb.tsv`) are each refused with exit 1, the matching message, the README unchanged and nothing written. Each refused input must have a sha256 different from the committed inventory's, so a mutation that did not apply counts as a failure. It prints `SI pass=4 fail=0` and exits 0.

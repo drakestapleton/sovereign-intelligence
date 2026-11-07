@@ -1,0 +1,942 @@
+om2
+note compiler/gate.om: the gate of compiler/si.om, in pure seeded Omega.
+note
+note Build and run from the repository root, with the pinned seeded compiler and an existing
+note scratch directory WORK:
+note   "$OMC" < compiler/gate.om > WORK/gate && chmod +x WORK/gate && WORK/gate "$OMC" WORK
+note It checks that OMC is the pinned omc by its sha256 (any other omc, or none: SI NOT_RUN, exit 3),
+note builds si from compiler/si.om with it into WORK/si, then runs four cases:
+note   1 the committed inputs regenerate README.md and repos.tsv byte-identically (exit 0)
+note   2 head mutant: the last digit of the first inventory row's head moved on by one is refused
+note   3 RID mutant: the last character of the first inventory row's RID changed is refused
+note   4 the stale inventory of commit 3c37e6fb (compiler/gate-3c37e6fb.tsv) is refused
+note The mutants are written here, to WORK/head.tsv and WORK/rid.tsv. Cases 2-4 first check that the
+note input's sha256 differs from the committed inventory's, so an edit that did not apply cannot pass
+note as a refusal. A refusal must be exit 1, stderr starting "si: " and the expected message, the
+note README copy unchanged and no repos.tsv written. Each case prints PASS or FAIL with the evidence,
+note then "SI pass=N fail=M"; exit 0 when no case fails, 1 otherwise, 2 on a usage error.
+note SHA-256 (fn kinit to fn finish) is copied unchanged from omega-mv om/sha256/sha256-om2.om
+note at f4df82394e35893dcf1354dda69a2fe028d94bc1 (Apache-2.0, FIPS 180-4).
+
+text tpin "3ad9f10f64309e7acf8a725082b28e23a2a4aeb07e98322fb4dc0fcd8fc93194"
+text tusage "usage: gate OMC WORK (from the repository root; WORK is an existing directory)\n"
+text tnrun "SI NOT_RUN: "
+text tnoomc "cannot read omc "
+text tnotpin "omc sha256 is not the pin "
+text thave ", it is "
+text tnl "\n"
+text tpass "PASS "
+text tfail "FAIL "
+text tsep ": "
+text tsum "SI pass="
+text tsumf " fail="
+text tsiom "compiler/si.om"
+text tinv "compiler/inventory.tsv"
+text tord "compiler/order.tsv"
+text tvet "compiler/vetted.md"
+text told "compiler/gate-3c37e6fb.tsv"
+text trd "README.md"
+text trepos "repos.tsv"
+text tsi "si"
+text tomcerr "omc.err"
+text thead "head.tsv"
+text trid "rid.tsv"
+text xreadme "-README.md"
+text xrepos "-repos.tsv"
+text xsh "-si.sh"
+text xout "-out"
+text xerr "-err"
+text tcomp "build si from compiler/si.om"
+text tcur "current inventory regenerates README.md and repos.tsv byte-identically"
+text thm "head-mutant"
+text trm "rid-mutant"
+text tom "old-3c37e6fb"
+text msi "si: "
+text mhead "inventory head is not the vetted main head: "
+text mrid "inventory RID has no vetted main row: "
+text fsame "input sha256 equals the committed inventory's"
+text frc "exit status "
+text fmsg "stderr lacks the expected refusal"
+text frd "README.md copy was changed"
+text frepo "repos.tsv was written"
+text fio "cannot read or write a gate file"
+text fdiff "regenerated output differs from the committed file"
+text tsha "sha256 "
+text tarrow " -> "
+text tref " refused: "
+text hexd "0123456789abcdef"
+
+note file buffers, the path being built, the two arguments, the packed argv of a child
+global fb uchar 4194304
+global gb uchar 4194304
+global pb uchar 4096
+global pbn ulong 1
+global wd uchar 2048
+global wdn ulong 1
+global om uchar 2048
+global omn ulong 1
+global av uchar 16384
+global avp ulong 1
+global avc ulong 1
+note child wait status, last digest, its hex and the previous hex, decimal digits, pass and fail counts
+global st uchar 4
+global dg uchar 32
+global hx uchar 64
+global hy uchar 64
+global dgt uchar 24
+global tally ulong 2
+
+note K[0..63]: the first 32 bits of the fractional parts of the cube roots of the first 64 primes.
+note Copied mechanically from seed/qualification/om2/fixtures/sha256-k.dec (tool-computed, never typed).
+fn kinit k edit uint 64 to void
+put k 0 0x428a2f98
+put k 1 0x71374491
+put k 2 0xb5c0fbcf
+put k 3 0xe9b5dba5
+put k 4 0x3956c25b
+put k 5 0x59f111f1
+put k 6 0x923f82a4
+put k 7 0xab1c5ed5
+put k 8 0xd807aa98
+put k 9 0x12835b01
+put k 10 0x243185be
+put k 11 0x550c7dc3
+put k 12 0x72be5d74
+put k 13 0x80deb1fe
+put k 14 0x9bdc06a7
+put k 15 0xc19bf174
+put k 16 0xe49b69c1
+put k 17 0xefbe4786
+put k 18 0x0fc19dc6
+put k 19 0x240ca1cc
+put k 20 0x2de92c6f
+put k 21 0x4a7484aa
+put k 22 0x5cb0a9dc
+put k 23 0x76f988da
+put k 24 0x983e5152
+put k 25 0xa831c66d
+put k 26 0xb00327c8
+put k 27 0xbf597fc7
+put k 28 0xc6e00bf3
+put k 29 0xd5a79147
+put k 30 0x06ca6351
+put k 31 0x14292967
+put k 32 0x27b70a85
+put k 33 0x2e1b2138
+put k 34 0x4d2c6dfc
+put k 35 0x53380d13
+put k 36 0x650a7354
+put k 37 0x766a0abb
+put k 38 0x81c2c92e
+put k 39 0x92722c85
+put k 40 0xa2bfe8a1
+put k 41 0xa81a664b
+put k 42 0xc24b8b70
+put k 43 0xc76c51a3
+put k 44 0xd192e819
+put k 45 0xd6990624
+put k 46 0xf40e3585
+put k 47 0x106aa070
+put k 48 0x19a4c116
+put k 49 0x1e376c08
+put k 50 0x2748774c
+put k 51 0x34b0bcb5
+put k 52 0x391c0cb3
+put k 53 0x4ed8aa4a
+put k 54 0x5b9cca4f
+put k 55 0x682e6ff3
+put k 56 0x748f82ee
+put k 57 0x78a5636f
+put k 58 0x84c87814
+put k 59 0x8cc70208
+put k 60 0x90befffa
+put k 61 0xa4506ceb
+put k 62 0xbef9a3f7
+put k 63 0xc67178f2
+end
+
+note H(0): the first 32 bits of the fractional parts of the square roots of the first 8 primes
+note (fixtures/sha256-iv.dec).
+fn iv s edit uint 8 to void
+put s 0 0x6a09e667
+put s 1 0xbb67ae85
+put s 2 0x3c6ef372
+put s 3 0xa54ff53a
+put s 4 0x510e527f
+put s 5 0x9b05688c
+put s 6 0x1f83d9ab
+put s 7 0x5be0cd19
+end
+
+note Message schedule of the block m[o .. o+64). w is fresh: its incoming contents are never read.
+note The compiler proves that every get of w reads an element written earlier in this function
+note (error 27 otherwise): w[0..16) are the block's big-endian words, w[16..64) the FIPS recurrence.
+fn sched w edit uint 64 fresh m view uchar * o ulong to void
+q = ulong 0
+x = uint 0
+y = uint 0
+for i ulong 16 unroll
+q = add o mul i 4
+x = uint get m q
+x = or shl x 8 uint get m add q 1
+x = or shl x 8 uint get m add q 2
+put w i or shl x 8 uint get m add q 3
+end
+for i ulong 48 unroll
+x = get w add i 1
+y = get w add i 14
+x = add add get w i get w add i 9 xor xor rotr x 7 rotr x 18 shr x 3
+put w add i 16 add x xor xor rotr y 17 rotr y 19 shr y 10
+end
+end
+
+note The 64 rounds on the chaining value s. One round body, emitted 64 times by unroll; i is a constant
+note in each copy, so get kt i and get w i need no run-time check. uint arithmetic wraps mod 2^32.
+note Ch(e,f,g) = (e and f) xor (not e and g) is written g xor (e and (f xor g)); Maj(a,b,c) =
+note (a and b) xor (a and c) xor (b and c) is written (a and b) or (c and (a or b)). Both are bitwise
+note identities. h first becomes T1, then T1 + T2, which is the next a; the names then shift by one.
+note The sums are built a term per line and each Sigma in two lines through t: 12 names are live, and
+note omc hands out 16 registers with no spilling (error 12 under compiler-s1/s2 for longer lines).
+fn rounds s edit uint 8 w view uint 64 kt view uint 64 to void
+a = get s 0
+b = get s 1
+c = get s 2
+d = get s 3
+e = get s 4
+f = get s 5
+g = get s 6
+h = get s 7
+t = uint 0
+for i ulong 64 unroll
+h = add h get kt i
+h = add h get w i
+t = xor rotr e 6 rotr e 11
+t = xor t rotr e 25
+h = add h t
+h = add h xor g and e xor f g
+d = add d h
+t = xor rotr a 2 rotr a 13
+t = xor t rotr a 22
+h = add h t
+t = and c or a b
+h = add h or and a b t
+t = h
+h = g
+g = f
+f = e
+e = d
+d = c
+c = b
+b = a
+a = t
+end
+put s 0 add get s 0 a
+put s 1 add get s 1 b
+put s 2 add get s 2 c
+put s 3 add get s 3 d
+put s 4 add get s 4 e
+put s 5 add get s 5 f
+put s 6 add get s 6 g
+put s 7 add get s 7 h
+end
+
+note One block m[o .. o+64) into s. sched and rounds stay calls: inlined, their names would share
+note one 16-register frame with this function's parameters (no spilling, error 12).
+fn compress s edit uint 8 w edit uint 64 kt view uint 64 m view uchar * o ulong to void
+sched w m o
+rounds s w kt
+end
+
+note The whole blocks of m (len m is a multiple of 64 and at most 2^25, so under 2^19 passes).
+fn run s edit uint 8 w edit uint 64 kt view uint 64 m view uchar * to void
+for j ulong shr len m 6
+compress s w kt m shl j 6
+end
+end
+
+note The whole blocks of m (len m a multiple of 64). A rolled loop traps 4 after 1000000 passes
+note (OMEGESE.md section 2; omc s_for), so m is cut into runs of 2^25 bytes (2^19 blocks):
+note len m = top * 2^44 + mid * 2^25 + rest, and no loop passes 2^20 times. top reaches 1000000
+note only above 1.7e19 bytes, which no AArch64 address space holds.
+fn blocks s edit uint 8 w edit uint 64 kt view uint 64 m view uchar * to void
+q = ulong 0
+for a ulong shr len m 44
+for b ulong 0x80000
+run s w kt part m q 0x2000000
+q = add q 0x2000000
+end
+end
+for b ulong and shr len m 25 0x7ffff
+run s w kt part m q 0x2000000
+q = add q 0x2000000
+end
+run s w kt part m q sub len m q
+end
+
+note Pad the k pending bytes already in p (k < 64; p was all zero past them): 0x80, zeros, and the
+note 64-bit big-endian bit length of the n-byte message in the last 8 bytes of one or two blocks.
+fn finish s edit uint 8 w edit uint 64 kt view uint 64 p edit uchar 128 k ulong n ulong to void
+put p k 0x80
+e = ulong 64
+if ge k 56
+e = 128
+end
+bits = shl n 3
+for i ulong 8 unroll
+put p sub e add i 1 uchar and shr bits mul i 8 0xff
+end
+compress s w kt view p 0
+if eq e 128
+compress s w kt view p 64
+end
+end
+
+
+note blkcopy: the 64 bytes of fb from o into b (omc refuses a global as an argument, error 19)
+fn blkcopy b edit uchar 64 o ulong to void
+for i ulong 64
+put b i get fb add o i
+end
+end
+
+note sha: SHA-256 of fb[0, n) into dg; sha256_hash of om/sha256/sha256-om2.om, reading each
+note whole block of fb through a local copy
+fn sha n ulong to void
+s = new uint 8 0
+w = new uint 64 0
+kt = new uint 64 0
+p = new uchar 128 0
+blk = new uchar 64 0
+kinit kt
+iv s
+nb = shr n 6
+for j ulong nb
+blkcopy blk shl j 6
+compress s w kt view blk 0
+end
+off = shl nb 6
+k = sub n off
+for i ulong k
+put p i get fb add off i
+end
+finish s w kt p k n
+digest s
+end
+
+note digest: the chaining value s, big-endian, into dg
+fn digest s view uint 8 to void
+v = ulong 0
+for i ulong 8 unroll
+v = ulong get s i
+for j ulong 4 unroll
+put dg add mul i 4 j uchar and shr v sub 24 mul j 8 0xff
+end
+end
+end
+
+note hexdg: dg in lowercase hex into hx
+fn hexdg to void
+for i ulong 32
+b = ulong get dg i
+put hx mul i 2 get hexd shr b 4
+put hx add mul i 2 1 get hexd and b 15
+end
+end
+
+fn say t view uchar * to void
+w = write 1 t 0 len t
+end
+
+note sayn: v in decimal on stdout
+fn sayn v ulong to void
+x = v
+k = ulong 1
+put dgt 0 uchar add rem x 10 48
+x = div x 10
+while gt x 0 bound 24
+put dgt k uchar add rem x 10 48
+k = add k 1
+x = div x 10
+end
+while gt k 0 bound 24
+k = sub k 1
+w = write 1 dgt k 1
+end
+end
+
+fn pclr to void
+put pbn 0 0
+end
+
+note padd: append a text to the path pb
+fn padd t view uchar * to void
+p = get pbn 0
+n = len t
+for i ulong n
+put pb add p i get t i
+end
+put pbn 0 add p n
+end
+
+note pwd: pb becomes WORK/
+fn pwd to void
+n = get wdn 0
+for i ulong n
+put pb i get wd i
+end
+put pb n 47
+put pbn 0 add n 1
+end
+
+note pcase: pb becomes WORK/<v><t>, a file of case v
+fn pcase v ulong t view uchar * to void
+pwd
+p = get pbn 0
+put pb p uchar add 48 v
+put pbn 0 add p 1
+padd t
+end
+
+note pinv: pb becomes the inventory of case v
+fn pinv v ulong to void
+pclr
+if eq v 0
+padd tinv
+end
+if eq v 1
+pwd
+padd thead
+end
+if eq v 2
+pwd
+padd trid
+end
+if eq v 3
+padd told
+end
+end
+
+note rdf, rdg: read the file named by pb into fb or gb; its length, 4194304 when unreadable or too big
+fn rdf to ulong
+fd = fopen pb 0 get pbn 0 524288 0
+if lt fd 0
+ret 4194304
+end
+p = ulong 0
+while lt p 4194304 bound 4194305
+k = read int fd fb p sub 4194304 p
+if lt k 0
+p = 4194304
+break
+end
+if eq k 0
+break
+end
+p = add p ulong k
+end
+c = fclose int fd
+ret p
+end
+
+fn rdg to ulong
+fd = fopen pb 0 get pbn 0 524288 0
+if lt fd 0
+ret 4194304
+end
+p = ulong 0
+while lt p 4194304 bound 4194305
+k = read int fd gb p sub 4194304 p
+if lt k 0
+p = 4194304
+break
+end
+if eq k 0
+break
+end
+p = add p ulong k
+end
+c = fclose int fd
+ret p
+end
+
+note wrf: write fb[0, n) to the file named by pb, created or truncated, mode 0644
+fn wrf n ulong to bool
+fd = fopen pb 0 get pbn 0 524865 420
+if lt fd 0
+ret false
+end
+p = ulong 0
+while lt p n bound 4194305
+k = write int fd fb p sub n p
+if le k 0
+c = fclose int fd
+ret false
+end
+p = add p ulong k
+end
+c = fclose int fd
+ret eq c 0
+end
+
+note opr, opw: open pb to read, or to write (created or truncated); the fd, negative on failure
+fn opr to int
+ret int fopen pb 0 get pbn 0 524288 0
+end
+
+fn opw to int
+ret int fopen pb 0 get pbn 0 524865 420
+end
+
+note astart, aadd: begin the packed argv of a child, append pb as its next argument
+fn astart to void
+put avp 0 2
+put avc 0 0
+end
+
+fn aadd to void
+p = get avp 0
+n = get pbn 0
+put av p uchar and n 255
+put av add p 1 uchar shr n 8
+p = add p 2
+for i ulong n
+put av add p i get pb i
+end
+put avp 0 add p n
+put avc 0 add get avc 0 1
+end
+
+note spawn: run the argv in av with fds i, o, e as stdin, stdout and stderr; its exit status,
+note 256 plus the signal when a signal ended it, 512 when it could not be run
+fn spawn i int o int e int to ulong
+put av 0 uchar and get avc 0 255
+put av 1 uchar shr get avc 0 8
+pid = fork
+if lt pid 0
+ret 512
+end
+if eq pid 0
+r = dupfd i 0 0
+r = dupfd o 1 0
+r = dupfd e 2 0
+r = execprog av 0 get avp 0
+exit 98
+end
+c = fclose i
+c = fclose o
+c = fclose e
+r = waitpid int pid st 0 4 0
+if ne r pid
+ret 512
+end
+if ne get st 0 0
+ret add 256 ulong get st 0
+end
+ret ulong get st 1
+end
+
+note pin: OMC must be readable and its sha256 the pin, else SI NOT_RUN and exit 3
+fn pin to void
+n = get omn 0
+for i ulong n
+put pb i get om i
+end
+put pbn 0 n
+m = rdf
+if ge m 4194304
+say tnrun
+say tnoomc
+w = write 1 om 0 get omn 0
+say tnl
+exit 3
+end
+sha m
+hexdg
+for i ulong 64
+if ne get hx i get tpin i
+say tnrun
+say tnotpin
+say tpin
+say thave
+w = write 1 hx 0 64
+say tnl
+exit 3
+end
+end
+end
+
+note fatal: a gate step that every case needs failed; exit 1
+fn fatal t view uchar * r ulong to void
+say tfail
+say t
+say tsep
+say frc
+sayn r
+say tnl
+exit 1
+end
+
+note build: OMC < compiler/si.om > WORK/si, with nothing on stderr, then chmod 0755
+fn build to void
+astart
+n = get omn 0
+for i ulong n
+put pb i get om i
+end
+put pbn 0 n
+aadd
+pclr
+padd tsiom
+i = opr
+pwd
+padd tsi
+o = opw
+pwd
+padd tomcerr
+e = opw
+if or lt i 0 or lt o 0 lt e 0
+fatal fio 0
+end
+r = spawn i o e
+pwd
+padd tomcerr
+n = rdf
+if or ne r 0 ne n 0
+fatal tcomp r
+end
+pwd
+padd tsi
+c = chmod pb 0 get pbn 0 493
+if ne c 0
+fatal fio 0
+end
+end
+
+note runsi: copy README.md to WORK/<v>-README.md, then run WORK/si on case v's inventory, writing
+note WORK/<v>-README.md, -repos.tsv and -si.sh, stdout to -out, stderr to -err; its exit status
+fn runsi v ulong to ulong
+pclr
+padd trd
+n = rdf
+if ge n 4194304
+ret 513
+end
+pcase v xreadme
+if not wrf n
+ret 513
+end
+pcase v xrepos
+r = unlink pb 0 get pbn 0
+pcase v xsh
+r = unlink pb 0 get pbn 0
+astart
+pwd
+padd tsi
+aadd
+pinv v
+aadd
+pclr
+padd tord
+aadd
+pclr
+padd tvet
+aadd
+pcase v xreadme
+aadd
+pcase v xrepos
+aadd
+pcase v xsh
+aadd
+pclr
+padd tvet
+i = opr
+pcase v xout
+o = opw
+pcase v xerr
+e = opw
+if or lt i 0 or lt o 0 lt e 0
+ret 513
+end
+ret spawn i o e
+end
+
+note same: are WORK/<v><x> and the committed file t byte-identical
+fn same v ulong x view uchar * t view uchar * to bool
+pcase v x
+n = rdf
+pclr
+padd t
+m = rdg
+if or ge n 4194304 ne n m
+ret false
+end
+for i ulong n
+if ne get fb i get gb i
+ret false
+end
+end
+ret true
+end
+
+note showerr: the first line of case v's stderr, at most 300 bytes, then a newline
+fn showerr v ulong to void
+pcase v xerr
+n = rdf
+if ge n 4194304
+n = 0
+end
+k = ulong 0
+while lt k n bound 4194305
+if or eq get fb k 10 ge k 300
+break
+end
+k = add k 1
+end
+w = write 1 fb 0 k
+say tnl
+end
+
+note errhas: does case v's stderr start with "si: " and the text m
+fn errhas v ulong m view uchar * to bool
+pcase v xerr
+n = rdf
+a = len msi
+if or ge n 4194304 lt n add a len m
+ret false
+end
+for i ulong a
+if ne get fb i get msi i
+ret false
+end
+end
+for i ulong len m
+if ne get fb add a i get m i
+ret false
+end
+end
+ret true
+end
+
+note absent: was case v's repos.tsv never written
+fn absent v ulong to bool
+pcase v xrepos
+fd = fopen pb 0 get pbn 0 524288 0
+if lt fd 0
+ret true
+end
+c = fclose int fd
+ret false
+end
+
+fn ok t view uchar * to void
+put tally 0 add get tally 0 1
+say tpass
+say t
+end
+
+fn bad t view uchar * to void
+put tally 1 add get tally 1 1
+say tfail
+say t
+say tsep
+end
+
+note current: case 0, the committed inventory regenerates README.md and repos.tsv byte-identically
+fn current to void
+r = runsi 0
+if eq r 0
+if same 0 xreadme trd
+if same 0 xrepos trepos
+ok tcur
+say tnl
+ret
+end
+end
+bad tcur
+say fdiff
+say tnl
+ret
+end
+bad tcur
+say frc
+sayn r
+say tsep
+showerr 0
+end
+
+note mutate: write case v's mutant of the committed inventory: v 1 moves the last digit of the
+note first row's head on by one (f to 0), v 2 changes the last character of its RID to X (X to Y)
+fn mutate v ulong to bool
+pclr
+padd tinv
+n = rdf
+if ge n 4194304
+ret false
+end
+want = ulong 2
+if eq v 1
+want = 4
+end
+t = ulong 0
+p = ulong 0
+q = ulong 0
+while lt q n bound 4194305
+c = get fb q
+if eq c 10
+break
+end
+if eq c 9
+t = add t 1
+if eq t want
+p = q
+break
+end
+end
+q = add q 1
+end
+if eq p 0
+ret false
+end
+x = get fb sub p 1
+y = uchar 88
+if eq x 88
+y = uchar 89
+end
+if eq v 1
+y = uchar add x 1
+if eq x 57
+y = uchar 97
+end
+if eq x 102
+y = uchar 48
+end
+end
+put fb sub p 1 y
+pinv v
+ret wrf n
+end
+
+note shafile: sha256 of the file named by pb into hx; false when it cannot be read
+fn shafile to bool
+n = rdf
+if ge n 4194304
+ret false
+end
+sha n
+hexdg
+ret true
+end
+
+note differs: the committed inventory's sha256 into hy, case v's into hx; do they differ
+fn differs v ulong to bool
+pclr
+padd tinv
+if not shafile
+ret false
+end
+for i ulong 64
+put hy i get hx i
+end
+pinv v
+if not shafile
+ret false
+end
+for i ulong 64
+if ne get hx i get hy i
+ret true
+end
+end
+ret false
+end
+
+note refused: case v must differ from the committed inventory and be refused with message m
+fn refused v ulong t view uchar * m view uchar * to void
+if not differs v
+bad t
+say fsame
+say tnl
+ret
+end
+r = runsi v
+if ne r 1
+bad t
+say frc
+sayn r
+say tsep
+showerr v
+ret
+end
+if not errhas v m
+bad t
+say fmsg
+say tsep
+showerr v
+ret
+end
+if not same v xreadme trd
+bad t
+say frd
+say tnl
+ret
+end
+if not absent v
+bad t
+say frepo
+say tnl
+ret
+end
+ok t
+say tsep
+say tsha
+w = write 1 hy 0 64
+say tarrow
+w = write 1 hx 0 64
+say tref
+showerr v
+end
+
+fn main to int
+if ne argcnt 3
+say tusage
+ret 2
+end
+n = argread 1 om 0 2048
+if le n 0
+say tusage
+ret 2
+end
+put omn 0 ulong n
+n = argread 2 wd 0 2048
+if le n 0
+say tusage
+ret 2
+end
+put wdn 0 ulong n
+pin
+build
+current
+if mutate 1
+refused 1 thm mhead
+else
+bad thm
+say fio
+say tnl
+end
+if mutate 2
+refused 2 trm mrid
+else
+bad trm
+say fio
+say tnl
+end
+refused 3 tom mhead
+say tsum
+sayn get tally 0
+say tsumf
+sayn get tally 1
+say tnl
+if ne get tally 1 0
+ret 1
+end
+ret 0
+end
