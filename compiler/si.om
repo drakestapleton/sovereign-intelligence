@@ -19,7 +19,8 @@ note   SISH       written: the POSIX sh bootstrap served at https://www.aienos.c
 note Only projects whose name and RID are both on a VETTED row are listed: anything else on
 note the node, and every private or denied project, is never emitted. Core projects come
 note first, in ORDER's order; the rest follow in inventory order. A missing, unvetted or
-note non-public core project, a duplicate name or RID, or a malformed field makes si refuse
+note non-public core project, a duplicate name or RID, a malformed field, or an inventory row
+note whose RID has no VETTED main row or whose head is not that row's head makes si refuse
 note with exit 1 and write nothing. The output depends only on the input bytes: no clock,
 note no environment.
 
@@ -43,8 +44,8 @@ global nden ulong 1
 note the lead project's name from ORDER: offset, length; nled is 0 or 1
 global led ulong 2
 global nled ulong 1
-note vetted projects from VETTED: name offset, name length, rid offset, rid length
-global vet ulong 4096
+note vetted rows from VETTED, 8 cells each: offset and length of name, rid, branch, head
+global vet ulong 8192
 global nvet ulong 1
 note emission order: record numbers
 global seq ulong 1024
@@ -73,6 +74,9 @@ text tdupr "duplicate RID: "
 text tcmiss "core project is not in the inventory: "
 text tcpriv "core project is private, denied, not vetted or listed twice: "
 text tmvet "more than 1024 vetted rows at: "
+text tfrid "inventory RID has no vetted main row: "
+text tfhead "inventory head is not the vetted main head: "
+text tmain "main"
 text tnomark "README lacks <!-- si:lead:begin -->, <!-- si:lead:end -->, <!-- si:agent:begin -->, <!-- si:agent:end -->, <!-- si:index:begin --> and <!-- si:index:end -->, in that order"
 text tdot "."
 text tdotdot ".."
@@ -526,7 +530,7 @@ end
 end
 
 note vet_row: one VETTED line [p, q); "| name | rid | branch | head |" with a good name,
-note RID and 40-digit head is kept, any other line is ignored
+note RID and 40-digit head is kept with its branch, any other line is ignored
 fn vet_row p ulong q ulong to void
 if lt sub q p 8
 ret
@@ -566,11 +570,17 @@ k = get nvet 0
 if ge k 1024
 die tmvet p sub q p
 end
-put vet mul k 4 a
-put vet add mul k 4 1 sub b a
-put vet add mul k 4 2 c
-put vet add mul k 4 3 sub d c
 put nvet 0 add k 1
+k = mul k 8
+put vet k a
+put vet add k 1 sub b a
+put vet add k 2 c
+put vet add k 3 sub d c
+a = add d 3
+put vet add k 4 a
+put vet add k 5 sub f a
+put vet add k 6 g
+put vet add k 7 sub h g
 end
 
 note parse_vetted: the vetted rows are those before the first "## " section line,
@@ -597,17 +607,62 @@ ro = fldo r 1
 rn = fldn r 1
 nv = get nvet 0
 for j ulong nv
-vo = get vet mul j 4
-vn = get vet add mul j 4 1
+vo = get vet mul j 8
+vn = get vet add mul j 8 1
 if eqs nmo nmn vo vn
-vo = get vet add mul j 4 2
-vn = get vet add mul j 4 3
+vo = get vet add mul j 8 2
+vn = get vet add mul j 8 3
 if eqs ro rn vo vn
 ret true
 end
 end
 end
 ret false
+end
+
+note freshness: 0 when no VETTED main row has RID [ro, ro+rn), 1 when one has it with another
+note head, 2 when one has it with head [ho, ho+hn)
+fn freshness ro ulong rn ulong ho ulong hn ulong to ulong
+v = ulong 0
+nv = get nvet 0
+for j ulong nv
+b = mul j 8
+vo = get vet add b 4
+vn = get vet add b 5
+if eqt vo vn tmain
+vo = get vet add b 2
+vn = get vet add b 3
+if eqs ro rn vo vn
+if eq v 0
+v = 1
+end
+vo = get vet add b 6
+vn = get vet add b 7
+if eqs ho hn vo vn
+v = 2
+end
+end
+end
+end
+ret v
+end
+
+note check_fresh: every inventory row's RID must have a VETTED main row and its head must be
+note that row's head, so a stale or unvetted inventory is refused, never rendered; the refusal
+note names the row (name, rid, visibility, head)
+fn check_fresh to void
+nr = get nrec 0
+for r ulong nr
+v = freshness fldo r 1 fldn r 1 fldo r 3 fldn r 3
+o = fldo r 0
+n = sub add fldo r 3 fldn r 3 o
+if eq v 0
+die tfrid o n
+end
+if eq v 1
+die tfhead o n
+end
+end
 end
 
 note check_unique: no two projects share a name or a RID
@@ -910,6 +965,7 @@ re = get srcn 0
 parse_inventory ins ine
 parse_order ors ore
 parse_vetted vs ve
+check_fresh
 check_unique
 mark_hidden
 order_core

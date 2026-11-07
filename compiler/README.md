@@ -12,7 +12,7 @@ Inputs, all data:
 - `inventory.tsv`: one project per line, `name TAB rid TAB visibility TAB head TAB description`, exported from the node for the vetted RIDs only, by the command below.
 - `order.tsv`: hand-kept. `core TAB name` lines give the core projects, in order. `deny TAB name` lines name projects that are never listed. One `lead TAB name` line names the project the README leads with.
 
-A project is listed only when its name and RID are both on a `vetted.md` row and the node calls it public. Anything else on the node, and every private or denied project, is never emitted. Core projects come first, in `order.tsv` order; the rest follow in inventory order. `si` refuses, with exit 1 and nothing written, when a core project is missing, unvetted or not public, a name or RID appears twice, or a field is malformed. The output depends only on the input bytes: no clock and no environment, so two runs give identical files.
+A project is listed only when its name and RID are both on a `vetted.md` row and the node calls it public. Every private or denied project is never emitted. Core projects come first, in `order.tsv` order; the rest follow in inventory order. `si` refuses, with exit 1 and nothing written, when a core project is missing, unvetted or not public, a name or RID appears twice, a field is malformed, or an inventory row is not fresh: its RID has no `vetted.md` row on branch `main`, or its head is not that row's head. The refusal names the row, so a stale export or a stale `vetted.md` cannot regenerate the front door. The output depends only on the input bytes: no clock and no environment, so two runs give identical files.
 
 ## Build
 
@@ -48,3 +48,13 @@ sha256sum si.sh
 ```
 
 The two hashes match when the served script was built from the inventory committed here.
+
+## Gate
+
+From the repository root, with the pinned `omc`:
+
+```sh
+sh compiler/gate.sh "$OMC"
+```
+
+It builds `si` and checks four cases: the committed inputs regenerate `README.md` and `repos.tsv` byte-identically; an inventory with one head digit changed, an inventory with one RID character changed, and the stale inventory of commit `3c37e6fb` are each refused with exit 1, the matching message and nothing written. A mutant identical to the committed inventory counts as a failure. It prints `SI pass=4 fail=0` and exits 0; any other omc is NOT_RUN, exit 3.
