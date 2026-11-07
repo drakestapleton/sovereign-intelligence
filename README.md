@@ -1,3 +1,11 @@
+> ## I tried it GitHub's way. GitHub said no.
+>
+> I tried to be good and do it their way: everything public, on GitHub, in the open. 109 repositories in the `aien-dev` organization. On 7 November 2026 GitHub's answer was no. It flagged the organization, hid every repository and suspended my machine account.
+>
+> **So now I'm doing it the sovereign way, the way I should have done it from the start. Lesson learned.**
+>
+> My code doesn't live on GitHub anymore. Each project is moving into its own repository on [Radicle](https://radicle.xyz), a peer-to-peer network that no company can switch off, served from my own hardware. This repository is only a signpost. The Radicle links below are the only way in.
+
 # GitHub censored me. I demand to be heard.
 
 ## I broke CUDA.
