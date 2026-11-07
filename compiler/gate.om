@@ -6,7 +6,7 @@ note scratch directory WORK:
 note   "$OMC" < compiler/gate.om > WORK/gate && chmod +x WORK/gate && WORK/gate "$OMC" WORK
 note It checks that OMC is the pinned omc by its sha256 (any other omc, or none: SI NOT_RUN, exit 3),
 note builds si from compiler/si.om and links from compiler/links.om with it into WORK/si and
-note WORK/links, then runs eight cases:
+note WORK/links, then runs twenty-six cases:
 note   1 the committed inputs regenerate README.md and repos.tsv byte-identically (exit 0)
 note   2 head mutant: the last digit of the first inventory row's head moved on by one is refused
 note   3 RID mutant: the last character of the first inventory row's RID changed is refused
@@ -18,13 +18,25 @@ note   7 link crypto mutant: WORK/6-tree/repos.tsv, the first link row's RID sta
 note     (the withdrawn crypto project), is refused by links
 note   8 vendored mutant: WORK/7-tree, the committed repos.tsv beside a planted project directory
 note     omega-mv holding main.om, is refused by links
-note The si mutants are written to WORK/head.tsv and WORK/rid.tsv. Cases 2-4, 6 and 7 first check that
-note the input's sha256 differs from the committed file's, and case 8 that the planted file exists, so
-note an edit that did not apply cannot pass as a refusal. An si refusal must be exit 1, stderr
-note starting "si: " and the expected message, the README copy unchanged and no repos.tsv written; a
-note links refusal exit 1 and stderr starting "links: " and the expected message; links passing exit
-note 0 and stdout starting "links: pass: ". Each case prints PASS or FAIL with the evidence,
-note then "SI pass=N fail=M"; exit 0 when no case fails, 1 otherwise, 2 on a usage error.
+note   9 minimal tree: WORK/A-tree, the committed repos.tsv and compiler/ holding only its eight
+note     allowed file names (empty), passes links; cases 10-26 each change one thing in it
+note  10-20 link-row mutants of WORK/B-tree to WORK/L-tree/repos.tsv, each refused by links with
+note     its own message: the first link row's name Omega-Pearl and aien-CRYPTO-mv (withdrawn
+note     crypto, any case) and ../x (bad name); its head with capitals, with a g, and 41 digits;
+note     its tier Core; its RID with a 29th character, and rad:z then 28 z (more than 20 bytes);
+note     the header's first field nam; and the header with no row after it
+note  21-26 planted entries, each refused by links as not an SI file: compiler/evil.om (WORK/M-tree),
+note     compiler/si.om as a symbolic link to gate.om (N), a root symbolic link lnk to compiler (O),
+note     a root file evil.rs (P), a root directory vendor (Q) and gpu/x.bin (R)
+note The si mutants are written to WORK/head.tsv and WORK/rid.tsv. Cases 2-4, 6, 7 and 10-20 first
+note check that the input's sha256 differs from the committed file's, and cases 8 and 21-26 that the
+note planted entry exists, so an edit that did not apply cannot pass as a refusal. An si refusal
+note must be exit 1, stderr starting "si: " and the expected message, the README copy unchanged and
+note no repos.tsv written; a links refusal exit 1 and stderr starting "links: " and the expected
+note message; links passing exit 0 and stdout starting "links: pass: ". Each case prints PASS or
+note FAIL with the evidence, then "SI pass=N fail=M"; exit 0 when no case fails, 1 otherwise, 2 on
+note a usage error. links reads a directory entry's kind from getdents64 and refuses DT_UNKNOWN,
+note which no case plants: ext4 and tmpfs never return it.
 note SHA-256 (fn kinit to fn finish) is copied unchanged from omega-mv om/sha256/sha256-om2.om
 note at f4df82394e35893dcf1354dda69a2fe028d94bc1 (Apache-2.0, FIPS 180-4).
 
@@ -94,6 +106,57 @@ text tsha "sha256 "
 text tarrow " -> "
 text tref " refused: "
 text hexd "0123456789abcdef"
+text tcmpd "/compiler"
+text tf1 "/README.md"
+text tf2 "/si.om"
+text tf3 "/gate.om"
+text tf4 "/links.om"
+text tf5 "/inventory.tsv"
+text tf6 "/order.tsv"
+text tf7 "/vetted.md"
+text tf8 "/gate-3c37e6fb.tsv"
+text tp1 "/compiler/evil.om"
+text tp2 "/compiler/si.om"
+text tp3 "/lnk"
+text tp4 "/evil.rs"
+text tp5 "/vendor"
+text tp6 "/gpu/x.bin"
+text tgpud "/gpu"
+text ts2 "gate.om"
+text ts3 "compiler"
+text cgood "links-minimal-tree"
+text cpearl "links-name-pearl"
+text ccrypto "links-name-crypto"
+text cname "links-name-bad"
+text chupper "links-head-upper"
+text chg "links-head-g"
+text ch41 "links-head-41"
+text ctier "links-tier-bad"
+text crlong "links-rid-long"
+text crbig "links-rid-big"
+text chdr "links-header"
+text chonly "links-header-only"
+text ccfile "links-compiler-file"
+text cclink "links-compiler-link"
+text crlink "links-root-link"
+text crfile "links-root-file"
+text crdir "links-root-dir"
+text cgfile "links-gpu-file"
+text rpearl "Omega-Pearl"
+text rcrypt "aien-CRYPTO-mv"
+text rbadn "../x"
+text rhup "ABCDEF0123456789ABCDEF0123456789ABCDEF01"
+text rhg "g123456789abcdef0123456789abcdef01234567"
+text rzero "0"
+text rtier "Core"
+text rz "z"
+text rbig "rad:zzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
+text rnam "nam"
+text mlname "bad project name"
+text mlhead "head is not a 40-digit lowercase hex commit"
+text mltier "tier is not core or rest"
+text mlhdr "repos.tsv header is not"
+text mlnone "repos.tsv lists no project"
 
 note file buffers, the path being built, the two arguments, the packed argv of a child
 global fb uchar 4194304
@@ -114,6 +177,9 @@ global hx uchar 64
 global hy uchar 64
 global dgt uchar 24
 global tally ulong 2
+note lf: start and end of the field lfind found; sb: an lstat buffer
+global lf ulong 2
+global sb uchar 256
 
 note K[0..63]: the first 32 bits of the fractional parts of the cube roots of the first 64 primes.
 note Copied mechanically from seed/qualification/om2/fixtures/sha256-k.dec (tool-computed, never typed).
@@ -1098,6 +1164,12 @@ say tnl
 ret
 end
 end
+lcheck v t m ne v 7
+end
+
+note lcheck: links on WORK/<v>-tree must exit 1 with stderr "links: " m; sh: show the sha256 change
+note of repos.tsv (hy to hx, from ldiff)
+fn lcheck v ulong t view uchar * m view uchar * sh bool to void
 r = runlk v
 if ne r 1
 bad t
@@ -1116,13 +1188,296 @@ ret
 end
 ok t
 say tsep
-if ne v 7
+if sh
 say tsha
 w = write 1 hy 0 64
 say tarrow
 w = write 1 hx 0 64
 end
 say tref
+showx v xerr
+end
+
+note badw: case t fails with the reason w
+fn badw t view uchar * w view uchar * to void
+bad t
+say w
+say tnl
+end
+
+note cfile: pb becomes WORK/<v>-tree/compiler/ and the k-th file (k 0..7) links allows there
+fn cfile v ulong k ulong to void
+pcase v xtree
+padd tcmpd
+if eq k 0
+padd tf1
+end
+if eq k 1
+padd tf2
+end
+if eq k 2
+padd tf3
+end
+if eq k 3
+padd tf4
+end
+if eq k 4
+padd tf5
+end
+if eq k 5
+padd tf6
+end
+if eq k 6
+padd tf7
+end
+if eq k 7
+padd tf8
+end
+end
+
+note lbase: WORK/<v>-tree becomes the smallest tree links accepts: the committed repos.tsv and a
+note compiler/ holding its eight allowed file names, empty (links checks names and kinds only).
+note Each file is unlinked first, so a symbolic link left by an earlier run is never written through.
+fn lbase v ulong to bool
+pcase v xtree
+r1 = makedir pb 0 get pbn 0 493
+padd tcmpd
+r2 = makedir pb 0 get pbn 0 493
+for k ulong 8
+cfile v k
+r3 = unlink pb 0 get pbn 0
+if not wrf 0
+ret false
+end
+end
+pclr
+padd trepos
+n = rdf
+if ge n 4194304
+ret false
+end
+pcase v xtrepo
+ret wrf n
+end
+
+note lfind: start and end of field f (from 0) of line ln (from 1) of fb[0, n) into lf; false when
+note the line or field is missing
+fn lfind n ulong ln ulong f ulong to bool
+p = ulong 0
+k = ulong 1
+while and lt k ln lt p n bound 4194305
+if eq get fb p 10
+k = add k 1
+end
+p = add p 1
+end
+if ne k ln
+ret false
+end
+j = ulong 0
+while and lt j f lt p n bound 4194305
+c = get fb p
+if eq c 10
+ret false
+end
+if eq c 9
+j = add j 1
+end
+p = add p 1
+end
+if ne j f
+ret false
+end
+e = p
+while lt e n bound 4194305
+d = get fb e
+if or eq d 9 eq d 10
+break
+end
+e = add e 1
+end
+put lf 0 p
+put lf 1 e
+ret true
+end
+
+note lsplit: fb[0, n) becomes fb[0, q), t, fb[e, n) (q <= e; gb holds the tail); its new length
+fn lsplit q ulong e ulong n ulong t view uchar * to ulong
+tl = sub n e
+for i ulong tl
+put gb i get fb add e i
+end
+for i ulong len t
+put fb add q i get t i
+end
+b = add q len t
+for i ulong tl
+put fb add b i get gb i
+end
+ret add b tl
+end
+
+note lsplice: WORK/<v>-tree/repos.tsv becomes the committed repos.tsv with field f of the first link
+note row (line 2) replaced by t (kind 0) or t appended to it (kind 1); or of the header (line 1)
+note replaced by t (kind 3); or cut after the header (kind 2, f 4: its last field)
+fn lsplice v ulong f ulong kind ulong t view uchar * to bool
+pclr
+padd trepos
+n = rdf
+if ge n 4194304
+ret false
+end
+ln = ulong 2
+if ge kind 2
+ln = 1
+end
+if not lfind n ln f
+ret false
+end
+e = get lf 1
+if eq kind 2
+pcase v xtrepo
+ret wrf add e 1
+end
+q = e
+if ne kind 1
+q = get lf 0
+end
+m = lsplit q get lf 1 n t
+pcase v xtrepo
+ret wrf m
+end
+
+note lprep: case v's minimal tree with its repos.tsv spliced (lsplice f kind r); 0 when it is
+note ready, 1 when a gate file could not be read or written, 2 when it equals the committed one
+fn lprep v ulong f ulong kind ulong r view uchar * to ulong
+if not lbase v
+ret 1
+end
+if not lsplice v f kind r
+ret 1
+end
+if not ldiff v
+ret 2
+end
+ret 0
+end
+
+note lrow: links case v, prepared by lprep with result why, must be refused with message m. A
+note function takes at most six argument slots and a view takes two, hence the split.
+fn lrow v ulong t view uchar * m view uchar * why ulong to void
+if eq why 1
+badw t fio
+ret
+end
+if eq why 2
+badw t fsame
+ret
+end
+lcheck v t m true
+end
+
+note lpath: append the entry plant k puts in a tree: 1 compiler/evil.om, 2 compiler/si.om,
+note 3 lnk, 4 evil.rs, 5 vendor, 6 gpu/x.bin
+fn lpath k ulong to void
+if eq k 1
+padd tp1
+end
+if eq k 2
+padd tp2
+end
+if eq k 3
+padd tp3
+end
+if eq k 4
+padd tp4
+end
+if eq k 5
+padd tp5
+end
+if eq k 6
+padd tp6
+end
+end
+
+note lsym: the plant k (2 or 3) of WORK/<v>-tree as a symbolic link: compiler/si.om to gate.om,
+note lnk to compiler. symlnk takes the packed list target, link path, as aadd builds it.
+fn lsym v ulong k ulong to void
+astart
+pclr
+if eq k 2
+padd ts2
+else
+padd ts3
+end
+aadd
+pcase v xtree
+lpath k
+aadd
+put av 0 2
+put av 1 0
+r = symlnk av 0 get avp 0
+end
+
+note lput: plant k in WORK/<v>-tree: an empty file (1, 4, 6), a symbolic link (2, 3, replacing
+note compiler/si.om for 2) or a directory (5)
+fn lput v ulong k ulong to void
+if eq k 6
+pcase v xtree
+padd tgpud
+r1 = makedir pb 0 get pbn 0 493
+end
+pcase v xtree
+lpath k
+if eq k 2
+r2 = unlink pb 0 get pbn 0
+end
+if or eq k 2 eq k 3
+lsym v k
+ret
+end
+if eq k 5
+r3 = makedir pb 0 get pbn 0 493
+ret
+end
+w = wrf 0
+end
+
+note lplant: links case v, a minimal tree with plant k (lput) that must exist (lstat), is refused as
+note "not an SI file"
+fn lplant v ulong t view uchar * k ulong to void
+if not lbase v
+badw t fio
+ret
+end
+lput v k
+pcase v xtree
+lpath k
+r = lstat pb 0 get pbn 0 sb 0 256
+if ne r 0
+badw t fplant
+ret
+end
+lcheck v t mlven false
+end
+
+note lgood: links case v, the minimal tree of lbase, passes; every other tree case is one change of it
+fn lgood v ulong to void
+if not lbase v
+badw cgood fio
+ret
+end
+r = runlk v
+if and eq r 0 lhas v xout mlpass
+ok cgood
+say tsep
+showx v xout
+ret
+end
+bad cgood
+say frc
+sayn r
+say tsep
 showx v xerr
 end
 
@@ -1166,6 +1521,24 @@ lcur
 lref 5 tlrid mlrid
 lref 6 tlcry mlcry
 lref 7 tlven mlven
+lgood 17
+lrow 18 cpearl mlcry lprep 18 0 0 rpearl
+lrow 19 ccrypto mlcry lprep 19 0 0 rcrypt
+lrow 20 cname mlname lprep 20 0 0 rbadn
+lrow 21 chupper mlhead lprep 21 2 0 rhup
+lrow 22 chg mlhead lprep 22 2 0 rhg
+lrow 23 ch41 mlhead lprep 23 2 1 rzero
+lrow 24 ctier mltier lprep 24 3 0 rtier
+lrow 25 crlong mlrid lprep 25 1 1 rz
+lrow 26 crbig mlrid lprep 26 1 0 rbig
+lrow 27 chdr mlhdr lprep 27 0 3 rnam
+lrow 28 chonly mlnone lprep 28 4 2 rz
+lplant 29 ccfile 1
+lplant 30 cclink 2
+lplant 31 crlink 3
+lplant 32 crfile 4
+lplant 33 crdir 5
+lplant 34 cgfile 6
 say tsum
 sayn get tally 0
 say tsumf

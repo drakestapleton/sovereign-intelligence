@@ -9,7 +9,8 @@ note ROOT is a checkout of this repository. links checks two things and writes n
 note   1. every row of ROOT/repos.tsv, the link table, is a project that is only linked: a
 note      name, a valid Radicle ID ("rad:z" then 27 or 28 base58 characters that decode to a
 note      20-byte id), a 40-digit head and a tier of core or rest. The withdrawn crypto
-note      projects (omega-pearl, aien-crypto, any RID that starts rad:z2ft64) are refused;
+note      projects (any name containing pearl or crypto, in any case, and any RID that starts
+note      rad:z2ft64) are refused;
 note   2. no new project source is vendored into SI. The entries of ROOT, ROOT/compiler and
 note      ROOT/gpu must each be on the lists below, with the kind named there; .git is
 note      skipped. ROOT may hold the regular files README.md, repos.tsv, CITATION.cff,
@@ -28,7 +29,7 @@ text tlk "links: "
 text tnl "\n"
 text tusage "usage: links ROOT\n"
 text tpass "pass: "
-text tpass2 " link rows, every RID valid; the tree holds only SI files\n"
+text tpass2 " link rows, every RID valid; root, compiler/ and gpu/ hold only SI entries\n"
 text targ "cannot read the command-line argument"
 text topen "cannot open "
 text tread "cannot read "
@@ -49,8 +50,8 @@ text tgpu "/gpu"
 text hdr "name\trid\thead\ttier\tdescription"
 text tradz "rad:z"
 text tbad "rad:z2ft64"
-text tpearl "omega-pearl"
-text tcrypto "aien-crypto"
+text tpearl "pearl"
+text tcrypto "crypto"
 text tcore "core"
 text trest "rest"
 text b58 "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
@@ -247,12 +248,45 @@ end
 ret true
 end
 
-note crypto: is this row one of the withdrawn crypto projects
-fn crypto no ulong nn ulong ro ulong rn ulong to bool
-if eqt no nn tpearl
+note lowc: byte i of src, an ASCII capital folded to lowercase
+fn lowc i ulong to ulong
+c = ulong get src i
+if and ge c 65 le c 90
+ret add c 32
+end
+ret c
+end
+
+note atci: do the bytes of src at o equal the lowercase text t, ignoring ASCII case
+fn atci o ulong t view uchar * to bool
+for i ulong len t
+if ne lowc add o i ulong get t i
+ret false
+end
+end
 ret true
 end
-if eqt no nn tcrypto
+
+note hasci: does [o, o+n) of src contain the lowercase text t, ignoring ASCII case
+fn hasci o ulong n ulong t view uchar * to bool
+if lt n len t
+ret false
+end
+for i ulong add sub n len t 1
+if atci add o i t
+ret true
+end
+end
+ret false
+end
+
+note crypto: is this row a withdrawn crypto project: a name containing pearl or crypto in any
+note case, or a RID that starts rad:z2ft64
+fn crypto no ulong nn ulong ro ulong rn ulong to bool
+if hasci no nn tpearl
+ret true
+end
+if hasci no nn tcrypto
 ret true
 end
 if lt rn len tbad
@@ -398,7 +432,10 @@ end
 note entry: check the getdents64 record at p of db in directory pb[0, base) of set w; its length.
 note The entry's type is the record's d_type (byte 18: 4 directory, 8 regular file), whose layout
 note is the same on AArch64 and x86-64 (an lstat buffer is not). Any other d_type, including a
-note symbolic link or DT_UNKNOWN, is not allowed: the check fails closed.
+note symbolic link or DT_UNKNOWN, is not allowed: the check fails closed. compiler/gate.om plants
+note stray files, symbolic links and a stray directory in ROOT, ROOT/compiler and ROOT/gpu; it cannot
+note plant DT_UNKNOWN, which ext4 and tmpfs never return, so a mutant that read DT_UNKNOWN as a
+note directory would pass the gate there.
 fn entry w ulong base ulong p ulong to ulong
 rl = add ulong get db add p 16 mul ulong get db add p 17 256
 if eq rl 0
