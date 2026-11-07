@@ -109,13 +109,15 @@ text ag3 "`'s agent prompt link appears here as soon as it is on Radicle.\n"
 text tsec "## "
 text ix1 "**"
 text ix2 " public projects**, "
-text ix3 " of them core, listed by `compiler/si.om` from my Radicle node's inventory. Full commit ids are in [`repos.tsv`](repos.tsv).\n\n| # | Project | Radicle ID | Head | About |\n|---:|---|---|---|---|\n"
+text ix3 " of them core, listed by `compiler/si.om` from my Radicle node's inventory. Project code lives only on Radicle; this repository holds only these links. Each project is one Radicle repository: clone it peer-to-peer with `rad clone`, or read-only with `git clone` from its mirror on my own seed. Full commit ids are in [`repos.tsv`](repos.tsv).\n\n| # | Project | Radicle ID | Get it | Head | About |\n|---:|---|---|---|---|---|\n"
 text ix4 "| "
 text ix5 " | **"
 text ix6 "**"
 text ix7 " (core)"
 text ix8 " | `"
-text ix9 "` | `"
+text ix9 "` | `rad clone "
+text ixa "`, [git mirror](https://www.aienos.com/rad/"
+text ixb ".git) | `"
 text ix10 "` | "
 text ix11 " |\n"
 text rphdr "name\trid\thead\ttier\tdescription\n"
@@ -795,6 +797,10 @@ end
 em ix8
 ems fldo r 1 fldn r 1
 em ix9
+ems fldo r 1 fldn r 1
+em ixa
+ems add fldo r 1 4 sub fldn r 1 4
+em ixb
 ems fldo r 3 7
 em ix10
 emit_desc r

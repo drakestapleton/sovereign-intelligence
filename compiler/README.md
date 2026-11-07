@@ -49,12 +49,22 @@ sha256sum si.sh
 
 The two hashes match when the served script was built from the inventory committed here.
 
+## Links
+
+`links.om` is the link check, also in pure seeded Omega. Every project lives in its own Radicle repository; this repository only links to it. From the repository root, with the pinned `omc`:
+
+```sh
+"$OMC" < compiler/links.om > links && chmod +x links && ./links .
+```
+
+It writes nothing and checks two things. Every row of `repos.tsv` is a name, a valid Radicle ID (`rad:z` then 27 or 28 base58 characters that decode to a 20-byte id), a 40-digit head and a tier of `core` or `rest`; the withdrawn crypto projects (`omega-pearl`, `aien-crypto`, any RID starting `rad:z2ft64`) are refused. And no project source is copied in: the entries of the root, `compiler/` and `gpu/` must be on the fixed lists in `links.om` (the root's files and the directories the GitHub line already had, `gpu/cuda-crack` only, and the eight files of `compiler/`), `.git` skipped. It prints `links: pass: N link rows, every RID valid; the tree holds only SI files` and exits 0, or `links: ` and the first refusal on stderr and exits 1. `build.sh` step 5b runs it on both targets, with a crypto-RID control.
+
 ## Gate
 
-`gate.om` is the gate of `si.om`, also in pure seeded Omega. From the repository root, with the pinned `omc` and an existing scratch directory `$W`:
+`gate.om` is the gate of `si.om` and `links.om`, also in pure seeded Omega. From the repository root, with the pinned `omc` and an existing scratch directory `$W`:
 
 ```sh
 "$OMC" < compiler/gate.om > "$W/gate" && chmod +x "$W/gate" && "$W/gate" "$OMC" "$W"
 ```
 
-It first checks the `omc` it is given by its sha256: any other `omc`, or none, prints `SI NOT_RUN` and exits 3. It then builds `si` from `si.om` and checks four cases: the committed inputs regenerate `README.md` and `repos.tsv` byte-identically; an inventory with one head digit changed, an inventory with one RID character changed (both written by the gate), and the stale inventory of commit `3c37e6fb` (`gate-3c37e6fb.tsv`) are each refused with exit 1, the matching message, the README unchanged and nothing written. Each refused input must have a sha256 different from the committed inventory's, so a mutation that did not apply counts as a failure. It prints `SI pass=4 fail=0` and exits 0.
+It first checks the `omc` it is given by its sha256: any other `omc`, or none, prints `SI NOT_RUN` and exits 3. It then builds `si` from `si.om` and `links` from `links.om` and checks eight cases. For `si`: the committed inputs regenerate `README.md` and `repos.tsv` byte-identically; an inventory with one head digit changed, an inventory with one RID character changed (both written by the gate), and the stale inventory of commit `3c37e6fb` (`gate-3c37e6fb.tsv`) are each refused with exit 1, the matching message, the README unchanged and nothing written. For `links`: the repository root passes; a `repos.tsv` whose first RID ends in `0` (not base58), one whose first RID starts `rad:z2ft64`, and the committed `repos.tsv` beside a planted project directory `omega-mv/main.om` are each refused with exit 1 and the matching message. Each mutated input must have a sha256 different from the committed file's (the planted file must exist), so a mutation that did not apply counts as a failure. It prints `SI pass=8 fail=0` and exits 0.

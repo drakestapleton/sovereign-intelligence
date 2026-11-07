@@ -1,0 +1,510 @@
+om2
+note compiler/links.om: the link check of sovereign-intelligence, in pure seeded Omega.
+note
+note Build with the pinned seeded compiler (compiler/README.md names the pin):
+note   omc < compiler/links.om > links && chmod +x links
+note Run, from anywhere:
+note   links ROOT
+note ROOT is a checkout of this repository. links checks two things and writes nothing:
+note   1. every row of ROOT/repos.tsv, the link table, is a project that is only linked: a
+note      name, a valid Radicle ID ("rad:z" then 27 or 28 base58 characters that decode to a
+note      20-byte id), a 40-digit head and a tier of core or rest. The withdrawn crypto
+note      projects (omega-pearl, aien-crypto, any RID that starts rad:z2ft64) are refused;
+note   2. no new project source is vendored into SI. The entries of ROOT, ROOT/compiler and
+note      ROOT/gpu must each be on the lists below, with the kind named there; .git is
+note      skipped. ROOT may hold the regular files README.md, repos.tsv, CITATION.cff,
+note      LICENSE, .gitignore and build.sh, the untracked build outputs si, si.sh and links
+note      (files) and out (build.sh's directory), and the directories .claude, compiler, docs,
+note      evidence, gpu, harness, seed, stack, tests and tools: the GitHub line's existing
+note      directories, grandfathered as they are, contents unchecked (Drake, 2026-11-07).
+note      ROOT/gpu may hold only the directory cuda-crack. ROOT/compiler
+note      may hold only the regular files README.md, si.om, gate.om, links.om, inventory.tsv,
+note      order.tsv, vetted.md and gate-3c37e6fb.tsv. Any other file, directory or symbolic
+note      link there is refused: a project is linked by its RID, never copied in.
+note It prints "links: pass" and the row count, exit 0; or "links: " and the first refusal on
+note stderr, exit 1. Usage errors exit 2.
+
+text tlk "links: "
+text tnl "\n"
+text tusage "usage: links ROOT\n"
+text tpass "pass: "
+text tpass2 " link rows, every RID valid; the tree holds only SI files\n"
+text targ "cannot read the command-line argument"
+text topen "cannot open "
+text tread "cannot read "
+text tbig "file over the 1 MiB buffer: "
+text tlong "path over 4000 bytes: "
+text thdr "repos.tsv header is not name TAB rid TAB head TAB tier TAB description: "
+text tcols "repos.tsv line needs 5 tab-separated fields: "
+text tbname "bad project name (letters, digits, . _ - only): "
+text tbrid "RID is not rad:z then 27 or 28 base58 characters of a 20-byte id: "
+text tcrypt "withdrawn crypto project is never linked: "
+text tbhead "head is not a 40-digit lowercase hex commit: "
+text tbtier "tier is not core or rest: "
+text tnone "repos.tsv lists no project"
+text tvend "not an SI file; project source lives on Radicle, never in SI: "
+text trepos "/repos.tsv"
+text tcomp "/compiler"
+text tgpu "/gpu"
+text hdr "name\trid\thead\ttier\tdescription"
+text tradz "rad:z"
+text tbad "rad:z2ft64"
+text tpearl "omega-pearl"
+text tcrypto "aien-crypto"
+text tcore "core"
+text trest "rest"
+text b58 "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+text tdot "."
+text tdotdot ".."
+text tgit ".git"
+text tcdir "compiler"
+text a1 "README.md"
+text a2 "repos.tsv"
+text a3 "CITATION.cff"
+text a4 "LICENSE"
+text a5 ".gitignore"
+text a6 "si"
+text a7 "si.sh"
+text a8 "links"
+text a9 "build.sh"
+text d1 ".claude"
+text d2 "docs"
+text d3 "evidence"
+text d4 "gpu"
+text d5 "harness"
+text d6 "seed"
+text d7 "stack"
+text d8 "tests"
+text d9 "tools"
+text g1 "cuda-crack"
+text tout "out"
+text c1 "si.om"
+text c2 "gate.om"
+text c3 "links.om"
+text c4 "inventory.tsv"
+text c5 "order.tsv"
+text c6 "vetted.md"
+text c7 "gate-3c37e6fb.tsv"
+
+note src: repos.tsv; pb: the path being checked; rt: ROOT; db: getdents64 records; sb: stat
+global src uchar 1048576
+global pb uchar 4096
+global pbn ulong 1
+global rt uchar 4096
+global rtn ulong 1
+global db uchar 32768
+global sb uchar 128
+note bn: a base58 RID decoded big-endian into 21 bytes; byte 0 must stay 0
+global bn uchar 21
+
+note die: "links: " m, then n bytes of src from o (at most 200), on stderr; exit 1
+fn die m view uchar * o ulong n ulong to void
+k = n
+if gt k 200
+k = 200
+end
+w = write 2 tlk 0 len tlk
+w = write 2 m 0 len m
+if gt k 0
+w = write 2 src o k
+end
+w = write 2 tnl 0 len tnl
+exit 1
+end
+
+note dief: "links: " m and the path pb on stderr; exit 1
+fn dief m view uchar * to void
+w = write 2 tlk 0 len tlk
+w = write 2 m 0 len m
+w = write 2 pb 0 get pbn 0
+w = write 2 tnl 0 len tnl
+exit 1
+end
+
+note proot: pb becomes ROOT
+fn proot to void
+n = get rtn 0
+for i ulong n
+put pb i get rt i
+end
+put pbn 0 n
+end
+
+note padd: append a text to pb
+fn padd t view uchar * to void
+p = get pbn 0
+n = len t
+if gt add p n 4000
+dief tlong
+end
+for i ulong n
+put pb add p i get t i
+end
+put pbn 0 add p n
+end
+
+note eqt: do the n bytes of src at o equal the text t
+fn eqt o ulong n ulong t view uchar * to bool
+if ne n len t
+ret false
+end
+for i ulong n
+if ne get src add o i get t i
+ret false
+end
+end
+ret true
+end
+
+note eqd: do the n bytes of db at o equal the text t
+fn eqd o ulong n ulong t view uchar * to bool
+if ne n len t
+ret false
+end
+for i ulong n
+if ne get db add o i get t i
+ret false
+end
+end
+ret true
+end
+
+fn isaln c uchar to bool
+ret or or and ge c 48 le c 57 and ge c 65 le c 90 and ge c 97 le c 122
+end
+
+note okname: 1..64 bytes of letters, digits, dot, dash, underscore; not ".", "..", or a leading dash
+fn okname o ulong n ulong to bool
+if or eq n 0 gt n 64
+ret false
+end
+if eq get src o 45
+ret false
+end
+for i ulong n
+c = get src add o i
+if not or isaln c or eq c 46 or eq c 45 eq c 95
+ret false
+end
+end
+if eqt o n tdot
+ret false
+end
+ret not eqt o n tdotdot
+end
+
+note b58v: the base58 value of c, or 58 when c is not a base58 character
+fn b58v c uchar to ulong
+for k ulong 58
+if eq c get b58 k
+ret k
+end
+end
+ret 58
+end
+
+note okrid: "rad:z" then 27 or 28 base58 characters whose value fits in 20 bytes
+fn okrid o ulong n ulong to bool
+if or lt n 32 gt n 33
+ret false
+end
+if not eqt o 5 tradz
+ret false
+end
+for j ulong 21
+put bn j 0
+end
+for i ulong sub n 5
+v = b58v get src add add o 5 i
+if eq v 58
+ret false
+end
+cy = v
+for j ulong 21
+q = sub 20 j
+x = add mul ulong get bn q 58 cy
+put bn q uchar and x 255
+cy = shr x 8
+end
+if ne cy 0
+ret false
+end
+end
+ret eq get bn 0 0
+end
+
+note okhex: exactly 40 lowercase hex digits
+fn okhex o ulong n ulong to bool
+if ne n 40
+ret false
+end
+for i ulong n
+c = get src add o i
+if not or and ge c 48 le c 57 and ge c 97 le c 102
+ret false
+end
+end
+ret true
+end
+
+note crypto: is this row one of the withdrawn crypto projects
+fn crypto no ulong nn ulong ro ulong rn ulong to bool
+if eqt no nn tpearl
+ret true
+end
+if eqt no nn tcrypto
+ret true
+end
+if lt rn len tbad
+ret false
+end
+ret eqt ro len tbad tbad
+end
+
+note fo, fe: start and end of the five fields of the current repos.tsv line; fln: field k's length
+global fo ulong 5
+global fe ulong 5
+
+fn fln k ulong to ulong
+ret sub get fe k get fo k
+end
+
+note row: check one repos.tsv line [p, q)
+fn row p ulong q ulong to void
+k = ulong 0
+put fo 0 p
+c = p
+while lt c q bound 1048577
+if eq get src c 9
+if ge k 4
+die tcols p sub q p
+end
+put fe k c
+k = add k 1
+put fo k add c 1
+end
+c = add c 1
+end
+if ne k 4
+die tcols p sub q p
+end
+put fe 4 q
+if not okname get fo 0 fln 0
+die tbname p sub q p
+end
+if crypto get fo 0 fln 0 get fo 1 fln 1
+die tcrypt p sub q p
+end
+if not okrid get fo 1 fln 1
+die tbrid p sub q p
+end
+if not okhex get fo 2 fln 2
+die tbhead p sub q p
+end
+if not or eqt get fo 3 fln 3 tcore eqt get fo 3 fln 3 trest
+die tbtier p sub q p
+end
+end
+
+note rows: read ROOT/repos.tsv, check its header and every row; the row count
+fn rows to ulong
+proot
+padd trepos
+fd = fopen pb 0 get pbn 0 524288 0
+if lt fd 0
+dief topen
+end
+p = ulong 0
+while lt p 1048576 bound 1048577
+k = read int fd src p sub 1048576 p
+if lt k 0
+dief tread
+end
+if eq k 0
+break
+end
+p = add p ulong k
+end
+c = fclose int fd
+if ge p 1048576
+dief tbig
+end
+e = p
+q = ulong 0
+while lt q e bound 1048577
+if eq get src q 10
+break
+end
+q = add q 1
+end
+if not eqt 0 q hdr
+die thdr 0 q
+end
+nr = ulong 0
+s = add q 1
+while lt s e bound 1048577
+t = s
+while lt t e bound 1048577
+if eq get src t 10
+break
+end
+t = add t 1
+end
+row s t
+nr = add nr 1
+s = add t 1
+end
+if eq nr 0
+die tnone 0 0
+end
+ret nr
+end
+
+note rootf, rootd: may [o, o+n) of db stand in ROOT as a regular file, as a directory
+fn rootf o ulong n ulong to bool
+if or or or or eqd o n a1 eqd o n a2 eqd o n a3 eqd o n a4 eqd o n a5
+ret true
+end
+ret or or or eqd o n a6 eqd o n a7 eqd o n a8 eqd o n a9
+end
+
+fn rootd o ulong n ulong to bool
+if or or or or or eqd o n tcdir eqd o n d1 eqd o n d2 eqd o n d3 eqd o n d4 eqd o n d5
+ret true
+end
+ret or or or or eqd o n d6 eqd o n d7 eqd o n d8 eqd o n d9 eqd o n tout
+end
+
+note allowed: may the entry [o, o+n) of db, of file type m, stand in directory set w
+note (1 ROOT, 2 compiler, 3 gpu)
+fn allowed w ulong o ulong n ulong m ulong to bool
+reg = eq m 32768
+dir = eq m 16384
+if eq w 1
+ret or and reg rootf o n and dir rootd o n
+end
+if eq w 3
+ret and dir eqd o n g1
+end
+if not reg
+ret false
+end
+if or or or eqd o n a1 eqd o n c1 eqd o n c2 eqd o n c3
+ret true
+end
+ret or or or eqd o n c4 eqd o n c5 eqd o n c6 eqd o n c7
+end
+
+note entry: check the getdents64 record at p of db in directory pb[0, base) of set w; its length.
+note The entry's type is the record's d_type (byte 18: 4 directory, 8 regular file), whose layout
+note is the same on AArch64 and x86-64 (an lstat buffer is not). Any other d_type, including a
+note symbolic link or DT_UNKNOWN, is not allowed: the check fails closed.
+fn entry w ulong base ulong p ulong to ulong
+rl = add ulong get db add p 16 mul ulong get db add p 17 256
+if eq rl 0
+dief tread
+end
+o = add p 19
+n = ulong 0
+while lt add o n add p rl bound 32769
+if eq get db add o n 0
+break
+end
+n = add n 1
+end
+if or eqd o n tdot eqd o n tdotdot
+ret rl
+end
+if and eq w 1 eqd o n tgit
+ret rl
+end
+put pb base 47
+if gt add add base 1 n 4000
+dief tlong
+end
+for i ulong n
+put pb add add base 1 i get db add o i
+end
+put pbn 0 add add base 1 n
+t = get db add p 18
+m = ulong 0
+if eq t 8
+m = ulong 32768
+end
+if eq t 4
+m = ulong 16384
+end
+good = allowed w o n m
+if not good
+dief tvend
+end
+put pbn 0 base
+ret rl
+end
+
+note walk: check every entry of the directory pb (set w); pb is restored on return
+fn walk w ulong to void
+base = get pbn 0
+fd = fopen pb 0 base 524288 0
+if lt fd 0
+dief topen
+end
+while true bound 1048577
+k = getdnts int fd db 0 32768
+if lt k 0
+dief tread
+end
+if eq k 0
+break
+end
+p = ulong 0
+while lt p ulong k bound 32769
+p = add p entry w base p
+end
+end
+c = fclose int fd
+end
+
+fn main to int
+if ne argcnt 2
+w = write 2 tusage 0 len tusage
+ret 2
+end
+n = argread 1 rt 0 3900
+if le n 0
+w = write 2 tusage 0 len tusage
+ret 2
+end
+put rtn 0 ulong n
+nr = rows
+proot
+walk 1
+proot
+padd tcomp
+walk 2
+proot
+padd tgpu
+r = lstat pb 0 get pbn 0 sb 0 128
+if eq r 0
+walk 3
+end
+w = write 1 tlk 0 len tlk
+w = write 1 tpass 0 len tpass
+d = new uchar 20 0
+x = nr
+k = ulong 0
+while true bound 21
+put d k uchar add rem x 10 48
+k = add k 1
+x = div x 10
+if eq x 0
+break
+end
+end
+while gt k 0 bound 21
+k = sub k 1
+w = write 1 d k 1
+end
+w = write 1 tpass2 0 len tpass2
+ret 0
+end

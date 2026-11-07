@@ -22,6 +22,8 @@
 #      born, so the pins catch them
 #   5. compiler/si.om, built for both targets, must regenerate the committed README.md and repos.tsv
 #      byte for byte, and both builds must write the same si.sh
+#      5b. compiler/links.om, built for both targets, must accept this checkout's link table and
+#      tree, and refuse a repos.tsv whose first row carries a withdrawn crypto RID
 #   6. tools/ledger.om, built for both targets, must print tests/ledger/expected.tsv
 #   7. the Omega harness examples and the compiler regressions in tests/regress, on both targets
 #      (tests/examples.sh)
@@ -166,6 +168,26 @@ if [ -f $O/si-x86/si.sh ]; then
 fi
 cp $O/si-a64/si.sh $O/si.sh
 note "si.sh sha256 $(sha $O/si.sh); compare: curl -fsSL https://www.aienos.com/si | sha256sum"
+
+# 5b. The link table: compiler/links.om must accept this checkout (every repos.tsv row a valid,
+# non-crypto RID; no project source vendored in) and refuse the same checkout with one RID broken.
+for t in a64 x86; do
+  if [ $t = x86 ] && [ "$X86" = none ]; then note "NOT_RUN links on x86-64"; continue; fi
+  if [ $t = a64 ]; then
+    a64 $O/omc < compiler/links.om > $O/links-$t
+  else
+    { printf 'target x86linux\n'; cat compiler/links.om; } | x86 $O/omc-x86 > $O/links-$t
+  fi
+  mk $O/links-$t
+  $t $O/links-$t . > $O/links-$t.out 2>&1 || fail "links ($t) refused this checkout: $(cat $O/links-$t.out)"
+  w=$O/links-bad-$t
+  rm -rf $w && mkdir -p $w/compiler
+  awk -F'\t' 'BEGIN{OFS="\t"} NR==2{$2="rad:z2ft64" substr($2,11)} {print}' repos.tsv > $w/repos.tsv
+  ! cmp -s $w/repos.tsv repos.tsv || fail "links ($t): the crypto-RID control did not change repos.tsv"
+  if $t $O/links-$t $w > /dev/null 2> $w.err; then fail "links ($t) accepted a repos.tsv row with a crypto RID"; fi
+  grep -q 'withdrawn crypto project is never linked' $w.err || fail "links ($t) refused the crypto-RID control for another reason: $(cat $w.err)"
+  pass "links ($t) accepts this checkout and refuses a crypto RID"
+done
 
 # 6. The stack ledger tool.
 for t in a64 x86; do

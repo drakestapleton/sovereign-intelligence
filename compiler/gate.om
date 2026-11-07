@@ -5,15 +5,25 @@ note Build and run from the repository root, with the pinned seeded compiler and
 note scratch directory WORK:
 note   "$OMC" < compiler/gate.om > WORK/gate && chmod +x WORK/gate && WORK/gate "$OMC" WORK
 note It checks that OMC is the pinned omc by its sha256 (any other omc, or none: SI NOT_RUN, exit 3),
-note builds si from compiler/si.om with it into WORK/si, then runs four cases:
+note builds si from compiler/si.om and links from compiler/links.om with it into WORK/si and
+note WORK/links, then runs eight cases:
 note   1 the committed inputs regenerate README.md and repos.tsv byte-identically (exit 0)
 note   2 head mutant: the last digit of the first inventory row's head moved on by one is refused
 note   3 RID mutant: the last character of the first inventory row's RID changed is refused
 note   4 the stale inventory of commit 3c37e6fb (compiler/gate-3c37e6fb.tsv) is refused
-note The mutants are written here, to WORK/head.tsv and WORK/rid.tsv. Cases 2-4 first check that the
-note input's sha256 differs from the committed inventory's, so an edit that did not apply cannot pass
-note as a refusal. A refusal must be exit 1, stderr starting "si: " and the expected message, the
-note README copy unchanged and no repos.tsv written. Each case prints PASS or FAIL with the evidence,
+note   5 links on the repository root passes: every link row valid, no project source vendored
+note   6 link RID mutant: WORK/5-tree/repos.tsv, the first link row's RID ending in 0 (not base58),
+note     is refused by links
+note   7 link crypto mutant: WORK/6-tree/repos.tsv, the first link row's RID starting rad:z2ft64
+note     (the withdrawn crypto project), is refused by links
+note   8 vendored mutant: WORK/7-tree, the committed repos.tsv beside a planted project directory
+note     omega-mv holding main.om, is refused by links
+note The si mutants are written to WORK/head.tsv and WORK/rid.tsv. Cases 2-4, 6 and 7 first check that
+note the input's sha256 differs from the committed file's, and case 8 that the planted file exists, so
+note an edit that did not apply cannot pass as a refusal. An si refusal must be exit 1, stderr
+note starting "si: " and the expected message, the README copy unchanged and no repos.tsv written; a
+note links refusal exit 1 and stderr starting "links: " and the expected message; links passing exit
+note 0 and stdout starting "links: pass: ". Each case prints PASS or FAIL with the evidence,
 note then "SI pass=N fail=M"; exit 0 when no case fails, 1 otherwise, 2 on a usage error.
 note SHA-256 (fn kinit to fn finish) is copied unchanged from omega-mv om/sha256/sha256-om2.om
 note at f4df82394e35893dcf1354dda69a2fe028d94bc1 (Apache-2.0, FIPS 180-4).
@@ -47,6 +57,25 @@ text xsh "-si.sh"
 text xout "-out"
 text xerr "-err"
 text tcomp "build si from compiler/si.om"
+text tlom "compiler/links.om"
+text tlinks "links"
+text tlcomp "build links from compiler/links.om"
+text tdot "."
+text xtree "-tree"
+text xtrepo "-tree/repos.tsv"
+text xvdir "-tree/omega-mv"
+text xvfile "-tree/omega-mv/main.om"
+text tlcur "links-current"
+text tlrid "links-rid-mutant"
+text tlcry "links-crypto-mutant"
+text tlven "links-vendored-mutant"
+text mlk "links: "
+text mlpass "pass: "
+text mlrid "RID is not rad:z"
+text mlcry "withdrawn crypto project is never linked"
+text mlven "not an SI file"
+text tz2ft "2ft64"
+text fplant "the planted project file is missing"
 text tcur "current inventory regenerates README.md and repos.tsv byte-identically"
 text thm "head-mutant"
 text trm "rid-mutant"
@@ -576,8 +605,8 @@ say tnl
 exit 1
 end
 
-note build: OMC < compiler/si.om > WORK/si, with nothing on stderr, then chmod 0755
-fn build to void
+note build: OMC < source s > WORK/b, with nothing on stderr, then chmod 0755; step t names it
+fn build s view uchar * b view uchar * t view uchar * to void
 astart
 n = get omn 0
 for i ulong n
@@ -586,10 +615,10 @@ end
 put pbn 0 n
 aadd
 pclr
-padd tsiom
+padd s
 i = opr
 pwd
-padd tsi
+padd b
 o = opw
 pwd
 padd tomcerr
@@ -602,10 +631,10 @@ pwd
 padd tomcerr
 n = rdf
 if or ne r 0 ne n 0
-fatal tcomp r
+fatal t r
 end
 pwd
-padd tsi
+padd b
 c = chmod pb 0 get pbn 0 493
 if ne c 0
 fatal fio 0
@@ -678,9 +707,9 @@ end
 ret true
 end
 
-note showerr: the first line of case v's stderr, at most 300 bytes, then a newline
-fn showerr v ulong to void
-pcase v xerr
+note showx: the first line of case v's file WORK/<v><x>, at most 300 bytes, then a newline
+fn showx v ulong x view uchar * to void
+pcase v x
 n = rdf
 if ge n 4194304
 n = 0
@@ -694,6 +723,11 @@ k = add k 1
 end
 w = write 1 fb 0 k
 say tnl
+end
+
+note showerr: the first line of case v's stderr
+fn showerr v ulong to void
+showx v xerr
 end
 
 note errhas: does case v's stderr start with "si: " and the text m
@@ -895,6 +929,203 @@ say tref
 showerr v
 end
 
+note lmut: write case v's links tree WORK/<v>-tree/repos.tsv from the committed repos.tsv: v 5 ends
+note the first link row's RID in 0 (not base58), v 6 starts it rad:z2ft64, v 7 copies it unchanged
+fn lmut v ulong to bool
+pcase v xtree
+r = makedir pb 0 get pbn 0 493
+pclr
+padd trepos
+n = rdf
+if ge n 4194304
+ret false
+end
+p = ulong 0
+while lt p n bound 4194305
+if eq get fb p 10
+break
+end
+p = add p 1
+end
+while lt p n bound 4194305
+if eq get fb p 9
+break
+end
+p = add p 1
+end
+p = add p 1
+e = p
+while lt e n bound 4194305
+if eq get fb e 9
+break
+end
+e = add e 1
+end
+if or ge e n lt sub e p 10
+ret false
+end
+if eq v 5
+put fb sub e 1 48
+end
+if eq v 6
+for i ulong 5
+put fb add add p 5 i get tz2ft i
+end
+end
+pcase v xtrepo
+ret wrf n
+end
+
+note ldiff: the committed repos.tsv's sha256 into hy, case v's tree copy's into hx; do they differ
+fn ldiff v ulong to bool
+pclr
+padd trepos
+if not shafile
+ret false
+end
+for i ulong 64
+put hy i get hx i
+end
+pcase v xtrepo
+if not shafile
+ret false
+end
+for i ulong 64
+if ne get hx i get hy i
+ret true
+end
+end
+ret false
+end
+
+note runlk: run WORK/links on the repository root (v 4) or on WORK/<v>-tree, stdout to
+note WORK/<v>-out, stderr to WORK/<v>-err; its exit status
+fn runlk v ulong to ulong
+astart
+pwd
+padd tlinks
+aadd
+pclr
+if eq v 4
+padd tdot
+else
+pcase v xtree
+end
+aadd
+pclr
+padd tvet
+i = opr
+pcase v xout
+o = opw
+pcase v xerr
+e = opw
+if or lt i 0 or lt o 0 lt e 0
+ret 513
+end
+ret spawn i o e
+end
+
+note lhas: does case v's file WORK/<v><x> start with "links: " and the text m
+fn lhas v ulong x view uchar * m view uchar * to bool
+pcase v x
+n = rdf
+a = len mlk
+if or ge n 4194304 lt n add a len m
+ret false
+end
+for i ulong a
+if ne get fb i get mlk i
+ret false
+end
+end
+for i ulong len m
+if ne get fb add a i get m i
+ret false
+end
+end
+ret true
+end
+
+note lcur: case 5, links passes on the repository root
+fn lcur to void
+r = runlk 4
+if and eq r 0 lhas 4 xout mlpass
+ok tlcur
+say tsep
+showx 4 xout
+ret
+end
+bad tlcur
+say frc
+sayn r
+say tsep
+showx 4 xerr
+end
+
+note lref: links case v (5 RID, 6 crypto, 7 vendored) must be refused with message m. The v 5 and 6
+note trees must differ from the committed repos.tsv; the v 7 tree must hold the planted file.
+fn lref v ulong t view uchar * m view uchar * to void
+if not lmut v
+bad t
+say fio
+say tnl
+ret
+end
+if eq v 7
+pcase v xvdir
+r = makedir pb 0 get pbn 0 493
+put fb 0 10
+pcase v xvfile
+if not wrf 1
+bad t
+say fio
+say tnl
+ret
+end
+pcase v xvfile
+n = rdf
+if ne n 1
+bad t
+say fplant
+say tnl
+ret
+end
+else
+if not ldiff v
+bad t
+say fsame
+say tnl
+ret
+end
+end
+r = runlk v
+if ne r 1
+bad t
+say frc
+sayn r
+say tsep
+showx v xerr
+ret
+end
+if not lhas v xerr m
+bad t
+say fmsg
+say tsep
+showx v xerr
+ret
+end
+ok t
+say tsep
+if ne v 7
+say tsha
+w = write 1 hy 0 64
+say tarrow
+w = write 1 hx 0 64
+end
+say tref
+showx v xerr
+end
+
 fn main to int
 if ne argcnt 3
 say tusage
@@ -913,7 +1144,8 @@ ret 2
 end
 put wdn 0 ulong n
 pin
-build
+build tsiom tsi tcomp
+build tlom tlinks tlcomp
 current
 if mutate 1
 refused 1 thm mhead
@@ -930,6 +1162,10 @@ say fio
 say tnl
 end
 refused 3 tom mhead
+lcur
+lref 5 tlrid mlrid
+lref 6 tlcry mlcry
+lref 7 tlven mlven
 say tsum
 sayn get tally 0
 say tsumf

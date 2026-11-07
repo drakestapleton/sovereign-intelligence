@@ -1,5 +1,6 @@
-# Build outputs of compiler/si.om. si.sh is served from https://www.aienos.com/si, never committed.
+# Build outputs of compiler/si.om and compiler/links.om. si.sh is served from https://www.aienos.com/si, never committed.
 si
 si.sh
+links
 # Everything build.sh makes: the seed-born compilers and every program they build.
 /out/
