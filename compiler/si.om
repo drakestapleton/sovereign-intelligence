@@ -73,7 +73,7 @@ text tdupr "duplicate RID: "
 text tcmiss "core project is not in the inventory: "
 text tcpriv "core project is private, denied, not vetted or listed twice: "
 text tmvet "more than 1024 vetted rows at: "
-text tnomark "README lacks <!-- si:lead:begin -->, <!-- si:lead:end -->, <!-- si:index:begin --> and <!-- si:index:end -->, in that order"
+text tnomark "README lacks <!-- si:lead:begin -->, <!-- si:lead:end -->, <!-- si:agent:begin -->, <!-- si:agent:end -->, <!-- si:index:begin --> and <!-- si:index:end -->, in that order"
 text tdot "."
 text tdotdot ".."
 text tradz "rad:z"
@@ -97,6 +97,12 @@ text ld3 "   # "
 text ld4 "\n```\n\nOn the web: [radicle.network/nodes/rosa.radicle.network/"
 text ld5 "](https://radicle.network/nodes/rosa.radicle.network/"
 text ld6 ")\n"
+text tabeg "<!-- si:agent:begin -->"
+text taend "<!-- si:agent:end -->"
+text ag1 "<https://radicle.network/nodes/rosa.radicle.network/"
+text ag2 "/tree/AGENT-PROMPT.md>\n"
+text ag3 "`'s agent prompt link appears here as soon as it is on Radicle.\n"
+text tsec "## "
 text ix1 "**"
 text ix2 " public projects**, "
 text ix3 " of them core, listed by `compiler/si.om` from my Radicle node's inventory. Full commit ids are in [`repos.tsv`](repos.tsv).\n\n| # | Project | Radicle ID | Head | About |\n|---:|---|---|---|---|\n"
@@ -567,10 +573,17 @@ put vet add mul k 4 3 sub d c
 put nvet 0 add k 1
 end
 
+note parse_vetted: the vetted rows are those before the first "## " section line,
+note so WITHDRAWN, Extra branches and any later section are never vetted
 fn parse_vetted s ulong e ulong to void
 p = s
 while lt p e bound 4194305
 q = eol p e
+if ge sub q p 3
+if eq find p add p 3 tsec p
+ret
+end
+end
 vet_row p q
 p = add q 1
 end
@@ -773,33 +786,52 @@ ems fldo r 1 fldn r 1
 em ld6
 end
 
-note gen_readme: README [rs, re) with the lead block and the index put between their markers
+note gen_agent: the link to the lead project's AGENT-PROMPT.md, or a note that it is not on Radicle yet
+fn gen_agent to void
+if eq get nled 0 0
+ret
+end
+lo = get led 0
+ln = get led 1
+r = findlead lo ln
+if eq r get nrec 0
+em ld0
+ems lo ln
+em ag3
+ret
+end
+em ag1
+ems fldo r 1 fldn r 1
+em ag2
+end
+
+note mark: where t first starts in src [s, e); a README without it dies
+fn mark s ulong e ulong t view uchar * to ulong
+y = find s e t
+if eq y e
+die tnomark 0 0
+end
+ret y
+end
+
+note gen_readme: README [rs, re) with the lead block, the agent link and the index put between their markers
 fn gen_readme rs ulong re ulong to void
-b = find rs re tlbeg
-if eq b re
-die tnomark 0 0
-end
-be = add b len tlbeg
-x = find be re tlend
-if eq x re
-die tnomark 0 0
-end
-b2 = find x re tbeg
-if eq b2 re
-die tnomark 0 0
-end
-be2 = add b2 len tbeg
-x2 = find be2 re tend
-if eq x2 re
-die tnomark 0 0
-end
+be = add mark rs re tlbeg len tlbeg
+x = mark be re tlend
+be2 = add mark x re tabeg len tabeg
+x2 = mark be2 re taend
+be3 = add mark x2 re tbeg len tbeg
+x3 = mark be3 re tend
 ems rs sub be rs
 emb 10
 gen_lead
 ems x sub be2 x
 emb 10
+gen_agent
+ems x2 sub be3 x2
+emb 10
 gen_index
-ems x2 sub re x2
+ems x3 sub re x3
 end
 
 note gen_repos: the manifest, name TAB rid TAB head TAB tier TAB description

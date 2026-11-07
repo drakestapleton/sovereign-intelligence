@@ -4,7 +4,7 @@
 |---|---|---|---|
 | aien-sovereign-core-mv | rad:z44GqrPVAPjZkhoD2MWVjqy18ighN | main | 9d7b3433c9b2af99e64bd818f1b3ffb4ff7bd2a4 |
 | omega-mv | rad:z6do9WDBhuSnvopDkgFdFr1yWA62 | main | 6efc45728d5080b0fc5d74016a00ba8bbfcf9698 |
-| omega-harness | rad:z39gvwWsnkRZsAConQLjaKiNVLHfW | main | 6b4503595fc06b72f523d52560bf5deb230ec32d |
+| omega-harness | rad:z39gvwWsnkRZsAConQLjaKiNVLHfW | main | c38640db4fe8ee49eff589123415d4a1ba80567a |
 | aien-architecture-mv | rad:z37zcFYooiuCCZsf5L74eeFJYiwWM | main | 4c195641588b356bbf698942f1994e13b3c44370 |
 | omega-bridge | rad:z3Hr9ZaiKHwwuNzPK5M8c7uw6pj7y | main | d8174eddf953ad53e16f19eb5841459df99e24bb |
 | aien-train | rad:zKrfazKqYNFuXDDkYdptxJicGLEq | main | 0518c915dea370b3bffbb90d579b1daa5ba8b8f5 |
@@ -28,3 +28,4 @@
 | gpu-head-to-head | rad:z3ZSvMF8VFFGa5FyyKXGh4Vv6NBpS | main | 173c9b48479c83649072acb19d7c31d3d526b5f5 |
 | omega-blas | rad:z47VdC9EFsF4dFyH1QJ1C2JNJK4JS | main | e3f1b403839b1fc23d54c060c9c0c0c751774edd |
 | omega-gpu-driver | rad:z2xjD5kxUTTBNCryJ6rg9QXpemzei | main | 1ac3589c525657cf0698ff0f95557d922d2162ce |
+| cuda-crack | rad:z631r2JJiVT8it4tST7RK24hpowi | main | c17646e7bc4215aa413a8acfb66fa9dd3794062c |
