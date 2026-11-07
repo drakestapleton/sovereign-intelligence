@@ -1,0 +1,19 @@
+== real tables: isa/sm121-forms.txt sha256 587d81e2bc8b3dc6fdb48d477a76b717300732ccdb984f05f5b3df658e58e2d7
+D records vs F records: reencode exit 0
+PASS: fields never overlap, field union = form mask, every width>0 field is exactly its bit span
+kernels 70 instructions 13520 unmatched 0
+PASS: all 70 rebuilt kernels match kernels-om.sha256 byte for byte
+== mutant 1: bit 0 of word 0 flipped in every form that has the NOP's fixed bits and mask
+mutated forms: 2
+kernels 70 instructions 13520 unmatched 540 sha-mismatched kernels 67
+PASS: mutant table caught
+== mutant 2: bit 0 of word 0 flipped in the first instruction of the first kernel
+reencode exit 4, instructions unmatched: 128 1
+PASS: corrupted instruction matches no form
+== mutant 3: width of the first D record with width > 1 reduced by one
+reencode exit 7
+PASS: wrong field width caught
+== mutant 4: lowest bit cleared in the mask of the first D record with width > 0
+reencode exit 7
+PASS: wrong field mask caught
+ALL CHECKS PASS

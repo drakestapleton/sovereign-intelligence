@@ -1,0 +1,6 @@
+# Seed-born Omega compiler source. sovereign-intelligence pins omega-mv and the
+# sha256 of the omc it births (the child-repo pin pattern, omega-mv README).
+rid     rad:z6do9WDBhuSnvopDkgFdFr1yWA62
+commit  6fbc6cbe4bfa4092608e2b5f06d2e8f537893992
+omc.sha256      cfd96b48b0460ab5557853d6856f9c741b96ac8d0d624e06198defb4cbfa0d8a
+omc.om.sha256   062c9649af6a1d499b911e5b2f39b5419d7b75047616fe59fbcdc25f7b7b5b73

@@ -1,0 +1,4 @@
+# project	rid	head	dest	status	date	notes
+omega-mv	rad:z6do9WDBhuSnvopDkgFdFr1yWA62	6fbc6cbe4bfa4092608e2b5f06d2e8f537893992	out/	foundation	2026-11-07	seed-born omc + omc-x86; self-hosting fixpoint re-verified
+omega-harness	rad:z39gvwWsnkRZsAConQLjaKiNVLHfW	c38640db4fe8ee49eff589123415d4a1ba80567a	harness/	foundation	2026-11-07	skills for writing/operating seeded Omega
+cuda-crack	rad:z631r2JJiVT8it4tST7RK24hpowi	7e3c9a731d8607ceb60b5a257c8c3652becd544f	gpu/cuda-crack/	partial	2026-11-07	host checks green on both targets; shell->Omega partial: tblmut.om done (differential), check.sh/gen/run.sh pending CT-1..CT-3; GPU execution NOT_RUN (no GB10)

@@ -1,0 +1,10 @@
+OMEGA-SEED self-hosting fixpoint (recorded 2026-11-07)
+host: x86_64 linux; AArch64 omc run under qemu-aarch64-static
+input source: out/omc.om   (seed/omc/omc.om from omega-mv 6fbc6cbe4bfa4092608e2b5f06d2e8f537893992)
+command: qemu-aarch64-static out/omc < out/omc.om > omc.rebuilt
+vendored out/omc sha256: cfd96b48b0460ab5557853d6856f9c741b96ac8d0d624e06198defb4cbfa0d8a
+rebuilt       sha256: cfd96b48b0460ab5557853d6856f9c741b96ac8d0d624e06198defb4cbfa0d8a
+result: PASS  (omc compiles its own source to itself, byte-for-byte)
+note: upstream omega-mv reproduces out/omc from the 408-byte seed0 via sh seed/omega-from-seed.sh
+      (chain seed0 -> hex1 -> asm2 -> om4 -> omc) and the DDC gate seed/qualification/ddc650;
+      here we re-verify the terminal self-hosting fixpoint only.

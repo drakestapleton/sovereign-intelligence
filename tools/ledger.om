@@ -1,0 +1,248 @@
+note ledger.om: count Omega lines against foreign (shell/C/py/...) lines.
+note stdin: a list of file paths, one per line (the seed subset has no directory
+note read, so the caller supplies the list; build.sh feeds `git ls-files`).
+note For each path: classify by extension (.om = omega; .sh .c .h .py .awk .pl .rs
+note = foreign; anything else = other), open it, count newline bytes, accumulate.
+note stdout: four lines "class files lines" for omega, foreign, other, total.
+note exit 0 on success; 2 on a stdin read error.
+
+global pbuf uchar 1048576
+global fbuf uchar 262144
+global ob uchar 32
+global of ulong 1
+global ol ulong 1
+global ff ulong 1
+global fl ulong 1
+global xf ulong 1
+global xl ulong 1
+text lo "omega   "
+text lf "foreign "
+text lx "other   "
+text ltot "total   "
+
+note print ob[off..off+n)
+fn outb off ulong n ulong to void
+e = add off n
+p = off
+while lt p e bound 32
+k = write 1 ob p sub e p
+if le k 0
+exit 90
+end
+p = add p ulong k
+end
+end
+
+note print an unsigned decimal followed by one space
+fn putu v ulong to void
+i = ulong 31
+put ob 31 32
+n = v
+while true bound 24
+i = sub i 1
+put ob i uchar add rem n 10 48
+n = div n 10
+if eq n 0
+break
+end
+end
+outb i sub 32 i
+end
+
+note classify pbuf[s..e): 0 omega, 1 foreign, 2 other. Looks at the bytes after
+note the last '.' that follows the last '/'.
+fn classify s ulong e ulong to uint
+dot = e
+p = s
+while lt p e bound 100000
+c = get pbuf p
+if eq c 46
+dot = p
+end
+if eq c 47
+dot = e
+end
+p = add p 1
+end
+if eq dot e
+ret uint 2
+end
+x = add dot 1
+m = sub e x
+note ".om"
+if eq m ulong 2
+if eq get pbuf x 111
+if eq get pbuf add x 1 109
+ret uint 0
+end
+end
+end
+note one-char code exts: c h
+if eq m ulong 1
+c0 = get pbuf x
+if eq c0 99
+ret uint 1
+end
+if eq c0 104
+ret uint 1
+end
+end
+note two-char foreign: sh py pl rs
+if eq m ulong 2
+a = get pbuf x
+b = get pbuf add x 1
+if eq a 115
+if eq b 104
+ret uint 1
+end
+end
+if eq a 112
+if eq b 121
+ret uint 1
+end
+end
+if eq a 112
+if eq b 108
+ret uint 1
+end
+end
+if eq a 114
+if eq b 115
+ret uint 1
+end
+end
+end
+note three-char foreign: awk
+if eq m ulong 3
+if eq get pbuf x 97
+if eq get pbuf add x 1 119
+if eq get pbuf add x 2 107
+ret uint 1
+end
+end
+end
+end
+ret uint 2
+end
+
+note count newline bytes in the file named by pbuf[s..e). returns -1 if open fails.
+fn countlines s ulong e ulong to long
+fd = fopen pbuf s sub e s 0 0
+if lt fd 0
+ret neg long 1
+end
+ln = ulong 0
+while true bound 100000
+k = read int fd fbuf 0 262144
+if lt k 0
+fo = fclose int fd
+ret neg long 1
+end
+if eq k 0
+break
+end
+m = ulong k
+for i ulong m bound 300000
+if eq get fbuf i 10
+ln = add ln 1
+end
+end
+end
+fo = fclose int fd
+ret long ln
+end
+
+note read all of stdin (the path list) into pbuf; return byte count or -1
+fn rdpaths to long
+t = ulong 0
+while lt t len pbuf bound 100000
+k = read 0 pbuf t sub len pbuf t
+if lt k 0
+ret neg long 1
+end
+if eq k 0
+ret long t
+end
+t = add t ulong k
+end
+ret long t
+end
+
+fn tally cls uint lines ulong to void
+if eq cls 0
+put of 0 add get of 0 1
+put ol 0 add get ol 0 lines
+end
+if eq cls 1
+put ff 0 add get ff 0 1
+put fl 0 add get fl 0 lines
+end
+if eq cls 2
+put xf 0 add get xf 0 1
+put xl 0 add get xl 0 lines
+end
+end
+
+fn main to int
+put of 0 0
+put ol 0 0
+put ff 0 0
+put fl 0 0
+put xf 0 0
+put xl 0 0
+total = rdpaths
+if lt total 0
+ret 2
+end
+n = ulong total
+s = ulong 0
+p = ulong 0
+while le p n bound 200000
+atend = uint 0
+if eq p n
+atend = uint 1
+end
+nl = uint 0
+if eq atend 0
+if eq get pbuf p 10
+nl = uint 1
+end
+end
+if or eq nl 1 eq atend 1
+if gt p s
+cls = classify s p
+lc = countlines s p
+if ge lc 0
+tally cls ulong lc
+end
+end
+s = add p 1
+end
+if eq atend 1
+break
+end
+p = add p 1
+end
+note labels then counts
+k = write 1 lo 0 len lo
+putu get of 0
+putu get ol 0
+put ob 0 10
+k = write 1 ob 0 1
+k = write 1 lf 0 len lf
+putu get ff 0
+putu get fl 0
+put ob 0 10
+k = write 1 ob 0 1
+k = write 1 lx 0 len lx
+putu get xf 0
+putu get xl 0
+put ob 0 10
+k = write 1 ob 0 1
+k = write 1 ltot 0 len ltot
+putu add add get of 0 get ff 0 get xf 0
+putu add add get ol 0 get fl 0 get xl 0
+put ob 0 10
+k = write 1 ob 0 1
+ret 0
+end

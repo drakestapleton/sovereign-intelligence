@@ -1,0 +1,145 @@
+note tblmut.om: seeded-Omega rewrite of check/check.sh's "mutant 3" table transform.
+note The shell original is:  awk 'd==0 && $1=="D" && $8>1 {$8=$8-1; d=1} {print}'
+note It finds the first D record whose width field (the last field, field 8) is > 1,
+note reduces it by one, and prints the table otherwise byte-for-byte. Feeding the
+note result to reencode must make it refuse with exit 7 -- the negative control that
+note proves the field checks have teeth. stdin: the forms table. stdout: the mutated
+note table. A differential test (check/difftest.sh) pins its output equal to the awk
+note original, byte for byte, on both targets.
+note exit 0 on success; 2 on a stdin read error.
+
+global inb uchar 1048576
+global ob uchar 32
+
+fn rdall to long
+t = ulong 0
+while lt t len inb bound 100000
+k = read 0 inb t sub len inb t
+if lt k 0
+ret neg long 1
+end
+if eq k 0
+ret long t
+end
+t = add t ulong k
+end
+ret long t
+end
+
+note write inb[off..off+n) to stdout
+fn emit off ulong n ulong to void
+e = add off n
+p = off
+while lt p e bound 2000000
+k = write 1 inb p sub e p
+if le k 0
+exit 90
+end
+p = add p ulong k
+end
+end
+
+note print v as decimal (no leading zeros, no trailing space)
+fn putdec v ulong to void
+i = ulong 32
+n = v
+if eq n 0
+put ob 31 48
+i = ulong 31
+else
+while gt n 0 bound 24
+i = sub i 1
+put ob i uchar add rem n 10 48
+n = div n 10
+end
+end
+e = ulong 32
+p = i
+while lt p e bound 32
+k = write 1 ob p sub e p
+if le k 0
+exit 90
+end
+p = add p ulong k
+end
+end
+
+note index of the newline at/after s, or n
+fn lineend s ulong n ulong to ulong
+p = s
+while lt p n bound 2000000
+if eq get inb p 10
+ret p
+end
+p = add p 1
+end
+ret n
+end
+
+note start index of the last whitespace-delimited token in [s,e)
+fn lasttok s ulong e ulong to ulong
+t = e
+while gt t s bound 2000000
+if eq get inb sub t 1 32
+ret t
+end
+t = sub t 1
+end
+ret s
+end
+
+note parse inb[s..e) as an unsigned decimal
+fn parsetok s ulong e ulong to ulong
+v = ulong 0
+p = s
+while lt p e bound 64
+c = ulong sub get inb p 48
+v = add mul v 10 c
+p = add p 1
+end
+ret v
+end
+
+fn main to int
+total = rdall
+if lt total 0
+ret 2
+end
+n = ulong total
+ls = ulong 0
+done = uint 0
+while lt ls n bound 2000000
+lend = lineend ls n
+hit = uint 0
+if eq done 0
+if gt sub lend ls ulong 2
+if eq get inb ls 68
+if eq get inb add ls 1 32
+hit = uint 1
+end
+end
+end
+end
+if eq hit 1
+ts = lasttok ls lend
+val = parsetok ts lend
+if gt val 1
+emit ls sub ts ls
+putdec sub val 1
+done = uint 1
+else
+emit ls sub lend ls
+end
+else
+emit ls sub lend ls
+end
+if lt lend n
+k = write 1 inb lend 1
+if le k 0
+exit 90
+end
+end
+ls = add lend 1
+end
+ret 0
+end

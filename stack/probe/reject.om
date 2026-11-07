@@ -1,0 +1,5 @@
+note reject: negative control. References an undefined name; omc must refuse
+note this with a nonzero exit. If it ever compiles, the checks have no teeth.
+fn main to int
+ret notaname
+end
