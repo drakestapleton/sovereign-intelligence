@@ -12,12 +12,14 @@ two, as seeded Omega that anyone can rebuild from the 408-byte seed and check.
 | Repositories, forks, clones | Radicle repositories, served from my own seed | in use (README) |
 | Pull requests | Radicle patches: `git push rad HEAD:refs/patches` | Radicle, in use |
 | Review comments | Radicle patch comments and reviews | Radicle; flow posts every gate verdict as a comment |
-| Issues | Radicle issues: `rad issue` | Radicle |
+| Issues | Radicle issues: `rad issue`, or the forge's web form for people without Radicle | Radicle; the form is HOST_TESTED ([`FORGE.md`](FORGE.md)) |
 | Identity, permissions | Radicle node keys, delegates and their threshold | Radicle |
 | Actions (CI) | `tools/flow.om` gates every patch with the default branch's `build.sh` | HOST_TESTED 2026-11-08 |
 | Required status checks, branch protection | flow merges only a fast-forward whose exact tree has a pass receipt | HOST_TESTED; Lean model, see below |
 | Merge queue | flow merges one patch per cycle, queues the rest, refuses a stale plan | HOST_TESTED |
 | Pages | www.aienos.com on my own hardware | in use |
+| Insights and traffic: clones, cloners | the Omega forge counts every pull my seed serves, per project and day, public ([`FORGE.md`](FORGE.md)) | HOST_TESTED, not deployed |
+| Project, issue and pull request pages | the forge's static pages, built from Radicle's own data | HOST_TESTED, not deployed |
 | Discovery | `repos.tsv`, the README's link table, radicle.network | in use |
 | A read-only copy for people who look there | the GitHub mirror of this one repository | in use |
 
@@ -58,7 +60,7 @@ abuse filters refused.
 | the installer refuses a bad ID, a foreign working copy and an identity that is not a delegate; installs; its units pass `systemd-analyze --user verify` with no warning; two cycles never overlap; reinstalling keeps the ledger | `tests/flow/install.sh`, step 12b | 5 of 5 PASS |
 | a rehearsal of the seed: SI as a throwaway Radicle repository, this branch as a patch, installed with the seed build; gated in the sandbox by `main`'s `build.sh`, pass, merged; a second patch gated by the merged `build.sh` (now with step 12), pass, merged | by hand, x86-64 | PASS; a gate of SI takes about 14 s there |
 | the merged tree has a pass receipt after every cycle; a stale plan refuses to run | e2e | PASS |
-| merge only to a passing fast-forward, at most one merge, each tree gated once, a failed tree never merges | `tests/flow/Flow.lean` | Lean 4.15.0 accepts all six theorems; `#print axioms`: `propext`, `Quot.sound` only, no `sorry` (commit `8f9cce0`) |
+| merge only to a passing fast-forward, at most one merge, each tree gated once, a failed tree never merges | `tests/flow/Flow.lean` | Lean 4.15.0 accepts all six theorems; `#print axioms`: `propext`, `Quot.sound` only, no `sorry` (commit `8f9cce0`); `build.sh` step 12c re-checks it, with the axioms of all 13 theorems, when `lean` is installed |
 
 The Lean file models the decision rules, not the Omega program: the fixtures and the e2e run test
 that flow.om follows the model; they do not prove it.

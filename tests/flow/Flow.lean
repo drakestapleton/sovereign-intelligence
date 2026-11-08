@@ -23,8 +23,9 @@ and the end-to-end run in tests/flow/e2e.sh test that, they do not prove it), no
 about git, Radicle or the gate itself.
 
 Check: lean tests/flow/Flow.lean (core Lean 4, no Mathlib). Checked 2026-11-08 with Lean 4.15.0
-(x86_64-unknown-linux-gnu, commit 11651562caae): no output, exit 0; #print axioms gives
-[propext, Quot.sound] for each of the six theorems and fixture_plan.
+(x86_64-unknown-linux-gnu, commit 11651562caae): exit 0, and the only output is the
+#print axioms lines at the end, [propext, Quot.sound] for every theorem, the six safety theorems
+and fixture_plan included. build.sh step 12c repeats this check whenever lean is installed.
 -/
 namespace Flow
 
@@ -191,5 +192,21 @@ def fixtureState : List Row :=
 theorem fixture_plan : flow fixtureReceipts fixtureState =
     [.merge, .queued, .rebase, .fail, .gate, .same, .gate, .queued, .merged] := by
   decide
+
+-- What each theorem rests on: tests/flow and build.sh step 12c require propext,
+-- Classical.choice and Quot.sound at most (no sorryAx, no native_decide).
+#print axioms decide1_merge
+#print axioms decide1_gate
+#print axioms plan_length
+#print axioms merge_safe_gen
+#print axioms merge_safe
+#print axioms no_merge_after_merge
+#print axioms merge_count_le
+#print axioms merge_at_most_one
+#print axioms gate_gen
+#print axioms gate_once
+#print axioms gate_needs_none
+#print axioms fail_never_merges
+#print axioms fixture_plan
 
 end Flow

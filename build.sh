@@ -39,7 +39,14 @@
 #      tests/flow/expected.sh and expected-empty.sh and refuse every tests/flow/bad/*.tsv and three
 #      malformed arguments; 12b. with rad, git-remote-rad and bwrap installed, tests/flow/e2e.sh
 #      runs the whole queue, sandboxed, against a throwaway Radicle repository with each build, and
-#      tests/flow/install.sh deploys it on a throwaway seed with tools/flow-install.sh; else NOT_RUN
+#      tests/flow/install.sh deploys it on a throwaway seed with tools/flow-install.sh; else NOT_RUN;
+#      12c. with lean installed, tests/flow/Flow.lean must check, its theorems resting on propext,
+#      Classical.choice and Quot.sound at most, else NOT_RUN
+#  13. the Omega forge (tools/FORGE.md): tools/tally.om, tools/forge.om and tools/intake.om, each built
+#      for both targets, must pass tests/forge/tally.sh, forge.sh and intake.sh; with lean installed,
+#      tests/forge/lean.sh machine-checks tests/forge/Forge.lean, else NOT_RUN; 13b. with rad and
+#      git-remote-rad installed, tests/forge/e2e.sh runs a whole forge cycle against throwaway Radicle
+#      nodes with each build, else NOT_RUN
 # Last line: RC=0 when every step passed.
 set -eu
 R=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
@@ -426,6 +433,54 @@ else
   else
     note "NOT_RUN flow install: no native planner"
   fi
+fi
+
+#  12c. The Lean 4 model of the merge queue's rules, machine-checked, when lean is installed.
+if command -v lean > /dev/null 2>&1; then
+  lean tests/flow/Flow.lean > $O/flow-lean.log 2>&1 || fail "flow Lean model does not check: $(head -1 $O/flow-lean.log)"
+  ! grep -v 'depends on axioms\|does not depend on any axioms' $O/flow-lean.log | grep -q . || fail "flow Lean model checks with messages: $(head -1 $O/flow-lean.log)"
+  nt=$(grep -c '^theorem' tests/flow/Flow.lean)
+  [ "$(grep -c 'depends on axioms\|does not depend on any axioms' $O/flow-lean.log)" -eq "$nt" ] || fail "flow Lean model: not one axioms line per theorem"
+  ! sed -n 's/.*depends on axioms: \[\(.*\)\]/\1/p' $O/flow-lean.log | tr ',' '\n' | tr -d ' ' | grep -vx 'propext\|Classical.choice\|Quot.sound' | grep -q . || fail "flow Lean model rests on another axiom"
+  pass "flow Lean model: tests/flow/Flow.lean checks with $(lean --version | cut -d, -f1): $nt theorems on standard axioms only"
+else
+  note "NOT_RUN flow Lean model: no lean (Lean 4 v4.15.0)"
+fi
+
+# 13. The Omega forge: the pull counter, the page generator and the intake, on both targets.
+for t in a64 x86; do
+  if [ $t = x86 ] && [ "$X86" = none ]; then note "NOT_RUN forge on x86-64"; continue; fi
+  if [ $t = a64 ]; then q=$A64; else q=$X86; fi
+  for tool in tally forge intake; do
+    if [ $t = a64 ]; then
+      a64 $O/omc < tools/$tool.om > $O/$tool-$t || fail "$tool ($t): tools/$tool.om does not compile"
+    else
+      { printf 'target x86linux\n'; cat tools/$tool.om; } | x86 $O/omc-x86 > $O/$tool-$t || fail "$tool ($t): tools/$tool.om does not compile"
+    fi
+    mk $O/$tool-$t
+    printf '#!/bin/sh\nexec %s "%s" "$@"\n' "$q" "$R/$O/$tool-$t" > $O/$tool-$t.run
+    mk $O/$tool-$t.run
+    sh tests/forge/$tool.sh $O/$tool-$t.run > $O/$tool-$t.log 2>&1 || fail "$tool ($t): $(grep '^FAIL' $O/$tool-$t.log | head -1)"
+    tail -1 $O/$tool-$t.log | grep -qx 'RC=0' || fail "$tool ($t): tests/forge/$tool.sh did not finish"
+    pass "$tool ($t): $(grep -c '^PASS' $O/$tool-$t.log) checks of tests/forge/$tool.sh"
+  done
+done
+rc=0; sh tests/forge/lean.sh > $O/forge-lean.log 2>&1 || rc=$?
+case $rc in
+  0) pass "forge Lean model: $(sed -n 's/^PASS //p' $O/forge-lean.log | head -1)" ;;
+  3) note "$(head -1 $O/forge-lean.log)" ;;
+  *) fail "forge Lean model: $(grep '^FAIL' $O/forge-lean.log | head -1)" ;;
+esac
+#  13b. A whole forge cycle against throwaway Radicle nodes, when rad is installed.
+if command -v rad > /dev/null 2>&1 && command -v git-remote-rad > /dev/null 2>&1; then
+  for t in a64 x86; do
+    [ -x $O/forge-$t ] || { note "NOT_RUN forge e2e on $t"; continue; }
+    sh tests/forge/e2e.sh $O/forge-$t.run $O/tally-$t.run $O/intake-$t.run > $O/forge-e2e-$t.log 2>&1 || fail "forge e2e ($t): $(grep '^FAIL' $O/forge-e2e-$t.log | head -1)"
+    tail -1 $O/forge-e2e-$t.log | grep -qx 'RC=0' || fail "forge e2e ($t) did not finish"
+    pass "forge e2e ($t): $(grep -c '^PASS' $O/forge-e2e-$t.log) checks of a whole cycle on real Radicle nodes"
+  done
+else
+  note "NOT_RUN forge e2e: needs rad and git-remote-rad (https://radicle.xyz)"
 fi
 
 printf 'RC=0\n'
