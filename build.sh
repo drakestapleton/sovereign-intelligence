@@ -37,8 +37,9 @@
 #      examples of count on every target that runs, while count_word still passes
 #  12. tools/flow.om, the merge queue's planner, built for both targets, must print
 #      tests/flow/expected.sh and expected-empty.sh and refuse every tests/flow/bad/*.tsv and three
-#      malformed arguments; 12b. with rad and git-remote-rad installed, tests/flow/e2e.sh runs the
-#      whole queue against a throwaway Radicle repository with each build, else NOT_RUN
+#      malformed arguments; 12b. with rad, git-remote-rad and bwrap installed, tests/flow/e2e.sh
+#      runs the whole queue, sandboxed, against a throwaway Radicle repository with each build, and
+#      tests/flow/install.sh deploys it on a throwaway seed with tools/flow-install.sh; else NOT_RUN
 # Last line: RC=0 when every step passed.
 set -eu
 R=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
@@ -394,8 +395,18 @@ for t in a64 x86; do
   [ $rc -eq 2 ] || fail "flow ($t) exited $rc, not 2, for four arguments"
   pass "flow ($t) prints tests/flow/expected.sh and expected-empty.sh, refuses all $nbad bad inputs and 3 bad arguments"
 done
-#  12b. The merge queue against a real Radicle repository, offline, when rad is installed.
-if command -v rad > /dev/null 2>&1 && command -v git-remote-rad > /dev/null 2>&1; then
+#  12b. The merge queue against a real Radicle repository, offline, and its installer, when rad
+#  and bwrap are installed and flow.sh's sandbox can start here. It cannot inside another such
+#  sandbox (procfs will not mount there), which is where this gate runs when flow gates SI itself.
+fbox() { # the sandbox fl_box gives a gate, around true
+  bwrap --ro-bind / / --tmpfs /home --tmpfs /root --tmpfs /run --tmpfs /tmp --dir /tmp/home \
+    --dev /dev --proc /proc --unshare-all --die-with-parent --new-session --clearenv true 2> /dev/null
+}
+if ! { command -v rad && command -v git-remote-rad && command -v bwrap; } > /dev/null 2>&1; then
+  note "NOT_RUN flow e2e and install: need rad, git-remote-rad and bwrap (https://radicle.xyz)"
+elif ! fbox; then
+  note "NOT_RUN flow e2e and install: flow.sh's bwrap sandbox cannot start on this host"
+else
   for t in a64 x86; do
     [ -x $O/flow-$t ] || { note "NOT_RUN flow e2e on $t"; continue; }
     if [ $t = a64 ]; then q=$A64; else q=$X86; fi
@@ -405,8 +416,16 @@ if command -v rad > /dev/null 2>&1 && command -v git-remote-rad > /dev/null 2>&1
     tail -1 $O/flow-e2e-$t.log | grep -qx 'RC=0' || fail "flow e2e ($t) did not finish"
     pass "flow e2e ($t): $(grep -c '^PASS' $O/flow-e2e-$t.log) checks against a real Radicle repository"
   done
-else
-  note "NOT_RUN flow e2e: needs rad and git-remote-rad (https://radicle.xyz)"
+  # the installer, with this host's native planner (it installs the native build)
+  case $host in aarch64|arm64) nt=a64 ;; *) nt=x86 ;; esac
+  if [ -x $O/flow-$nt ]; then
+    sh tests/flow/install.sh $O/flow-$nt > $O/flow-install.log 2>&1 || fail "flow install: $(grep '^FAIL' $O/flow-install.log | head -1)"
+    tail -1 $O/flow-install.log | grep -qx 'RC=0' || fail "flow install did not finish"
+    grep '^NOTE' $O/flow-install.log | while IFS= read -r l; do printf '%s\n' "$l"; done
+    pass "flow install: $(grep -c '^PASS' $O/flow-install.log) checks of tools/flow-install.sh on a throwaway seed"
+  else
+    note "NOT_RUN flow install: no native planner"
+  fi
 fi
 
 printf 'RC=0\n'

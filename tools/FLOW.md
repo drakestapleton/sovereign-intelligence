@@ -33,8 +33,10 @@ middle part decides anything, and it is seeded Omega:
    `merged`, `merge`, `queued`, `rebase`, `fail`, `gate` or `same`, and write the script `flow.sh`
    that carries them out. The output depends only on the input bytes.
 3. **Act** (`flow.sh`): refuse if the default branch moved since step 1; gate each new tree in a
-   worktree with the *default branch's* `build.sh`, never the patch's own; append the verdict to
-   the ledger and post it on the patch; fast-forward the default branch to at most one patch.
+   worktree with the *default branch's* `build.sh`, never the patch's own, inside a bubblewrap
+   sandbox (no network; `/home`, `/root`, `/run`, `/tmp` and the Radicle home hidden; a clean
+   environment); append the verdict to the ledger and post it on the patch; fast-forward the
+   default branch to at most one patch.
 
 Receipts are keyed by (tree, gate): the git tree of the patch head and the blob id of the gate
 that judged it. A tree is gated once, however many patches carry it and however often agents
@@ -51,21 +53,42 @@ abuse filters refused.
 | 4096 patches against 16384 receipts | by hand | 0.06 s native x86-64, 0.13 s AArch64 under qemu |
 | the whole queue against a real, offline Radicle repository: 5 patches, 3 cycles | `tests/flow/e2e.sh`, step 12b | 7 of 7 PASS with each build (radicle-cli 0.23.0, radicle-node 0.21.1, radicle-remote-helper 0.18.1) |
 | a patch that rewrites its own `build.sh` to `exit 0` still fails | e2e cycle 1 | PASS |
-| the gate runs without the delegate's `RAD_PASSPHRASE`, `RAD_HOME`, `SSH_AUTH_SOCK` or `HOME`; a planner built without that scrub fails e2e | e2e cycle 1, control by hand | PASS |
+| a gate in the sandbox sees no network, no Radicle key directory and none of the delegate's environment; unsandboxed (`FLOW_SANDBOX=none`), e2e fails | e2e cycle 1, control by hand | PASS |
+| a sandbox that cannot start stops the step with bwrap's error, never records a fail; SI's own `build.sh` passes inside the sandbox, with step 12b NOT_RUN there | `flow.sh` probe; by hand | PASS, `RC=0` |
+| the installer refuses a bad ID, a foreign working copy and an identity that is not a delegate; installs; its units pass `systemd-analyze --user verify` with no warning; two cycles never overlap; reinstalling keeps the ledger | `tests/flow/install.sh`, step 12b | 5 of 5 PASS |
+| a rehearsal of the seed: SI as a throwaway Radicle repository, this branch as a patch, installed with the seed build; gated in the sandbox by `main`'s `build.sh`, pass, merged; a second patch gated by the merged `build.sh` (now with step 12), pass, merged | by hand, x86-64 | PASS; a gate of SI takes about 14 s there |
 | the merged tree has a pass receipt after every cycle; a stale plan refuses to run | e2e | PASS |
-| merge only to a passing fast-forward, at most one merge, each tree gated once, a failed tree never merges | `tests/flow/Flow.lean` | written, **not yet machine-checked** |
+| merge only to a passing fast-forward, at most one merge, each tree gated once, a failed tree never merges | `tests/flow/Flow.lean` | Lean 4.15.0 accepts all six theorems; `#print axioms`: `propext`, `Quot.sound` only, no `sorry` (commit `8f9cce0`) |
 
 The Lean file models the decision rules, not the Omega program: the fixtures and the e2e run test
 that flow.om follows the model; they do not prove it.
 
+## Deploy on a seed
+
+On the seed, as the user whose Radicle key is a delegate of the repository, with the node running
+(`rad node start`) and the repository seeded there:
+
+```sh
+sudo apt-get install -y bubblewrap
+cd sovereign-intelligence            # a checkout that has tools/flow-install.sh
+sh tools/flow-install.sh --once rad:z2JJz4RDfZZxKGBLn6UhmW5p9VJQj
+sudo loginctl enable-linger "$USER"  # keep the timer running after logout
+journalctl --user -u flow-z2JJz4RDfZZxKGBLn6UhmW5p9VJQj.service -f
+```
+
+The installer builds the planner from the seed (`build.sh` must end `RC=0`), checks the working
+copy out of the node's storage, and enables `flow-ID.timer`: a cycle 15 s after the last one ended.
+Each cycle's facts and plan stay in `~/.local/share/flow/ID/last`, the ledger in
+`~/.local/share/flow/ID/receipts.tsv`. If the key has a passphrase, put `RAD_PASSPHRASE=...` in
+`~/.local/share/flow/ID/secret.env` (mode 0600); the service reads it and no gate sees it. If the
+installer says bwrap cannot make a sandbox, the kernel forbids unprivileged user namespaces (Ubuntu
+24.04 restricts them through AppArmor); allow them for bwrap before going on, because flow never
+gates other people's patches without the sandbox. Run the installer again to upgrade.
+
 ## Next, in order
 
-1. **Run it on the seed.** A timer or a `rad node events` watcher on the seed node runs
-   `flow-cycle.sh` for SI with the delegate's key, so a patch is gated within seconds of reaching
-   the seed. This is the step that makes GitHub unnecessary for day-to-day work. A gate runs the
-   patch's code: flow already keeps the delegate's passphrase, Radicle home and agent socket out of
-   its environment, but on the seed it must also run as its own user with no network and no read
-   access to the delegate's key file, before it gates anyone else's patches.
+1. **Turn it on for SI.** Run the commands above on the seed. Until then the queue is tested and
+   rehearsed, not deployed.
 2. **Patches from other peers.** e2e today opens patches as the delegate itself. Next: agents as
    separate Radicle peers on two local nodes, with the delegate's node gating and merging.
 3. **Signed, shared receipts.** Move the ledger from a local file into a Radicle collaborative

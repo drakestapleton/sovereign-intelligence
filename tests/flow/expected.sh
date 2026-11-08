@@ -9,6 +9,9 @@
 # the default branch's build.sh, never the patch's own, runs in a worktree of the patch head,
 # and the verdict goes into the ledger and onto the patch as a comment. A tree is gated once,
 # however many patches carry it, and never again while the gate is unchanged.
+# A gate runs the patch's code, so it runs in a bubblewrap sandbox: no network, no home
+# directories, no Radicle key or node socket, a clean environment. FLOW_SANDBOX=none runs it
+# unsandboxed, only for a repository whose every patch author is trusted.
 #
 #   sh flow.sh REPO DEFAULT RECEIPTS
 # REPO      a Radicle working copy, fetched, with its delegate's key authenticated (rad auth)
@@ -41,14 +44,32 @@ trap 'exit 1' HUP INT TERM
 fl_tree() { # fl_tree PATCH HEAD TREE: HEAD must be a commit whose tree is TREE
   [ "$(fl_git rev-parse --verify -q "$2^{tree}")" = "$3" ] || fl_die "patch $1: $2 is not a commit with tree $3"
 }
+fl_box() { # fl_box DIR CMD...: run CMD in DIR, sandboxed unless FLOW_SANDBOX=none, with a clean environment
+  d=$1; shift
+  if [ "${FLOW_SANDBOX:-bwrap}" = none ]; then
+    mkdir -p "$d.home"
+    (cd "$d" && env -i PATH="$PATH" HOME="$d.home" "$@")
+  else
+    k=${RAD_HOME:-${HOME:-/nonexistent}/.radicle}; [ -d "$k" ] || k=/tmp/.flow-no-radicle
+    bwrap --ro-bind / / --tmpfs /home --tmpfs /root --tmpfs /run --tmpfs /tmp --tmpfs "$k" \
+      --bind "$d" "$d" --dir /tmp/home --dev /dev --proc /proc \
+      --unshare-all --die-with-parent --new-session --clearenv \
+      --setenv PATH "$PATH" --setenv HOME /tmp/home --chdir "$d" "$@"
+  fi
+}
+fl_box_ok() { # fl_box_ok PATCH: the very sandbox a gate gets must start first, so it never records a false fail
+  [ "${FLOW_SANDBOX:-bwrap}" = none ] && return 0
+  command -v bwrap > /dev/null 2>&1 || fl_die "patch $1: bwrap is required to gate (FLOW_SANDBOX=none runs gates unsandboxed)"
+  mkdir -p "$fl_work/probe"
+  e=$(fl_box "$fl_work/probe" true 2>&1) || fl_die "patch $1: the gate's sandbox does not start here: $e"
+}
 fl_gate() { # fl_gate PATCH HEAD TREE: run the default branch's build.sh on HEAD; record and post the verdict
   fl_tree "$@"
   w=$fl_work/$3
   fl_git worktree add -q --detach "$w" "$2" || fl_die "patch $1: cannot check out $2"
   fl_git cat-file blob "$gate" > "$w/build.sh"
-  mkdir "$w.home"
-  # the gate never sees the delegate's key: no RAD_PASSPHRASE, RAD_SECRET, RAD_HOME, SSH_AUTH_SOCK or HOME
-  if (cd "$w" && env -u RAD_PASSPHRASE -u RAD_SECRET -u RAD_HOME -u SSH_AUTH_SOCK HOME="$w.home" sh ./build.sh) > "$w.log" 2>&1; then v=pass; else v=fail; fi
+  fl_box_ok "$1"
+  if fl_box "$w" sh ./build.sh > "$w.log" 2>&1; then v=pass; else v=fail; fi
   l=$(sha256sum < "$w.log" | cut -c1-64)
   printf '%s\t%s\t%s\t%s\n' "$3" "$gate" "$v" "$l" >> "$rec"
   m="flow gate $v tree $3 gate $gate log $l"

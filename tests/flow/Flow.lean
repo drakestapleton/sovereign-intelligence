@@ -22,7 +22,9 @@ What this does not prove: that tools/flow.om implements this model (the fixtures
 and the end-to-end run in tests/flow/e2e.sh test that, they do not prove it), nor anything
 about git, Radicle or the gate itself.
 
-Check: lean tests/flow/Flow.lean (core Lean 4, no Mathlib; checked with leanprover/lean4:v4.15.0).
+Check: lean tests/flow/Flow.lean (core Lean 4, no Mathlib). Checked 2026-11-08 with Lean 4.15.0
+(x86_64-unknown-linux-gnu, commit 11651562caae): no output, exit 0; #print axioms gives
+[propext, Quot.sound] for each of the six theorems and fixture_plan.
 -/
 namespace Flow
 

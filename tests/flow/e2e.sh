@@ -9,7 +9,8 @@
 # exits 3.
 #
 # The repository's gate, build.sh, passes when the file state says good, and fails if it can
-# see the delegate's passphrase, Radicle home or agent socket. Five patches:
+# see the delegate's passphrase, Radicle home, agent socket or key directory, or reach any
+# network but loopback: flow.sh's sandbox must hide all of them. Five patches:
 #   A  a good change                      C  a different commit with A's exact tree
 #   B  state=bad                          E  a good change to another file
 #   D  state=bad, and its own build.sh rewritten to pass anyway
@@ -23,7 +24,7 @@ set -eu
 [ $# -eq 1 ] || { echo 'usage: sh tests/flow/e2e.sh FLOW' >&2; exit 2; }
 R=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 case $1 in /*) flow=$1 ;; *) flow=$(pwd)/$1 ;; esac
-for c in git rad git-remote-rad; do
+for c in git rad git-remote-rad bwrap; do
   command -v $c > /dev/null 2>&1 || { echo "NOT_RUN flow e2e: no $c"; exit 3; }
 done
 fail() { printf 'FAIL %s\n' "$*"; exit 1; }
@@ -44,8 +45,12 @@ g config user.name flow-e2e
 cat > "$w/build.sh" << 'GATE'
 #!/bin/sh
 [ -z "${RAD_PASSPHRASE:-}${RAD_HOME:-}${SSH_AUTH_SOCK:-}" ] || { echo "FAIL the gate can see the delegate's key"; exit 1; }
+[ ! -e '@KEYS@' ] || { echo "FAIL the gate can see the Radicle key directory"; exit 1; }
+[ "$(grep -c : /proc/net/dev)" -le 1 ] || { echo "FAIL the gate can reach a network"; exit 1; }
 if grep -qx good state; then echo PASS state; else echo "FAIL state is not good"; exit 1; fi
 GATE
+sed -i "s|@KEYS@|$RAD_HOME/keys|" "$w/build.sh"
+[ -d "$RAD_HOME/keys" ] || fail "no key directory at $RAD_HOME/keys to hide"
 echo good > "$w/state"
 g add build.sh state
 g commit -qm init
