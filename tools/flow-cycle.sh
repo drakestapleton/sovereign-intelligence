@@ -19,7 +19,8 @@
 #      refuses if the default branch moved since the facts were collected
 # Run it again to advance the queue: each cycle merges at most one patch.
 # FLOW_DIR=path keeps the cycle's facts and plan there (default: a temporary directory that is
-# removed). Exit status: flow.sh's, or 1 when a part before it fails, or 2 for usage.
+# removed). With flock installed, a cycle holds RECEIPTS.lock, so two never run at once.
+# Exit status: flow.sh's, or 1 when a part before it fails or another cycle runs, or 2 for usage.
 set -eu
 [ $# -eq 4 ] || { echo 'usage: sh tools/flow-cycle.sh FLOW REPO DEFAULT RECEIPTS' >&2; exit 2; }
 flow=$1 repo=$2 def=$3 rec=$4
@@ -27,6 +28,11 @@ die() { printf 'flow-cycle: %s\n' "$*" >&2; exit 1; }
 g() { git -C "$repo" "$@"; }
 [ -x "$flow" ] || die "no planner $flow"
 if [ -n "${FLOW_DIR:-}" ]; then d=$FLOW_DIR; mkdir -p -- "$d"; else d=$(mktemp -d); trap 'rm -rf "$d"' EXIT; fi
+# One cycle at a time per ledger: a second one, from the timer or by hand, does not wait; it exits 1.
+if command -v flock > /dev/null 2>&1; then
+  exec 9>> "$rec.lock"
+  flock -n 9 || die "another cycle holds $rec.lock"
+fi
 
 g fetch -q --prune rad || die "cannot fetch rad in $repo"
 branch=$(g rev-parse --verify -q "refs/remotes/rad/$def^{commit}") || die "$repo has no rad/$def"
@@ -43,5 +49,5 @@ while read -r p h; do
   printf '%s\t%s\t%s\t%s\n' "$p" "$h" "$t" "$r" >> "$d/state.tsv"
 done < "$d/heads"
 
-"$flow" "$branch" "$gate" "$d/state.tsv" "$rec" "$d/flow.sh" || die "the planner refused the facts in $d"
-sh "$d/flow.sh" "$repo" "$def" "$rec"
+"$flow" "$branch" "$gate" "$d/state.tsv" "$rec" "$d/flow.sh" 9>&- || die "the planner refused the facts in $d"
+sh "$d/flow.sh" "$repo" "$def" "$rec" 9>&-
