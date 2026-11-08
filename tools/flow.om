@@ -1,0 +1,774 @@
+om2
+note tools/flow.om: the decision core of the Omega merge queue for one Radicle repository, in pure
+note seeded Omega.
+note
+note A repository's open patches wait for the default branch. For one default-branch head this
+note program decides what each patch needs next and writes the plan as the POSIX sh script that
+note carries it out, so every decision is made from data, never by hand. Build with the seed-born
+note compiler:
+note   omc < tools/flow.om > flow && chmod +x flow
+note   { printf 'target x86linux\n'; cat tools/flow.om; } | omc-x86 > flow   (native x86-64)
+note Run:
+note   flow BRANCH GATE STATE RECEIPTS OUT
+note   BRANCH    exactly 40 lowercase hex digits: the default-branch head the plan is for
+note   GATE      exactly 40 lowercase hex digits: the git blob id of build.sh at BRANCH
+note   STATE     read: the open patches. The header line is exactly
+note               patch TAB head TAB tree TAB rel
+note             then one patch per line, exactly 4 TAB-separated fields:
+note               patch    40 lowercase hex digits, the patch id
+note               head     40 lowercase hex digits, the patch head commit
+note               tree     40 lowercase hex digits, the tree of that commit
+note               rel      ff (BRANCH is an ancestor of head), div (the two diverged) or in
+note                        (head is already in BRANCH)
+note             A patch id appears once. The header alone is valid. At most 4096 rows and 4 MiB.
+note   RECEIPTS  read: the receipt ledger. The header line is exactly
+note               tree TAB gate TAB verdict TAB log
+note             then one receipt per line, exactly 4 TAB-separated fields:
+note               tree     40 lowercase hex digits, the tree that was gated
+note               gate     40 lowercase hex digits, the blob of the build.sh that gated it
+note               verdict  pass or fail
+note               log      64 lowercase hex digits, the sha256 of the gate's log
+note             A (tree, gate) pair appears once, even with the same verdict. At most 16384 rows
+note             and 4 MiB. Only rows whose gate is GATE are consulted.
+note             In both files every line ends in a newline: an empty file, a blank line, a CR
+note             anywhere or a last line without its newline is refused.
+note   OUT       written: the script.
+note Decision for each STATE row, in input order, with r the receipt for (the row's tree, GATE):
+note   1. rel in                                        merged  (whatever r says)
+note   2. r pass, rel ff, no earlier row got merge      merge
+note      r pass, rel ff, an earlier row got merge      queued  (one merge per plan; the next
+note                                                             plan, made after it, decides)
+note      r pass, rel div                               rebase
+note   3. r fail                                        fail
+note   4. no r, no earlier row has the same tree        gate
+note      no r, an earlier row has the same tree        same    (a tree is gated once)
+note   In rule 4 every earlier row with that tree counts, whatever its own decision; with no
+note   receipt for the tree they all lack one.
+note Lookups go through open-addressing hash tables (FNV-1a 64 over the hex bytes, linear probing,
+note never more than half full): receipts by (tree, gate), patches by id, trees seen so far by
+note tree. The same tables find the duplicates, so a run is linear in the input size.
+note The script: a fixed comment header; "# plan-branch BRANCH", "# plan-gate GATE" and
+note "# plan-counts patches N merged A merge B queued C rebase D fail E gate F same G" (N rows,
+note then the rows given each decision); a blank line; branch='BRANCH' and gate='GATE'; the fixed
+note shell body, which checks the repository against BRANCH and GATE and defines fl_die, fl_git,
+note fl_tree, fl_gate and fl_merge; then for every row, in input order,
+note "# plan ACTION PATCH HEAD TREE", followed for merge by "fl_merge 'PATCH' 'HEAD' 'TREE'" and
+note for gate by "fl_gate 'PATCH' 'HEAD' 'TREE'"; last "echo 'flow: step done'". Every value in
+note the script is validated hex, so none needs quoting beyond its single quotes.
+note Exit 0 when OUT is written; 2 for the wrong number of arguments, with the usage line on
+note stderr; 1 for any refusal, with one stderr line "flow: ..." that names the argument, or the
+note file and its line, and OUT not opened (the script is built in memory and written once, at
+note the end). The output depends only on the arguments and the input bytes: no clock, no
+note environment.
+
+note the input regions of inp: STATE at 0, RECEIPTS at RB (each 4 MiB and one byte to see the
+note end), BRANCH at BO and GATE at GO (40 bytes each). Every byte compared or copied lives here.
+const RB ulong 4194312
+const BO ulong 8388624
+const GO ulong 8388664
+global inp uchar 8388704
+note the script bytes
+global ob uchar 4194304
+global obn ulong 1
+note the path named by the current argument
+global pb uchar 4096
+global pbn ulong 1
+note STATE rows: line offset, rel (1 ff, 2 div, 3 in), decision; and the row count
+global so ulong 4096
+global sr ulong 4096
+global sa ulong 4096
+global ns ulong 1
+note RECEIPTS rows: line offset, verdict (1 pass, 2 fail)
+global ro ulong 16384
+global rv ulong 16384
+note hash tables, each slot row index + 1 or 0 for empty: receipts by tree and gate, patches by
+note id, trees seen by tree
+global hr ulong 32768
+global hp ulong 8192
+global ht ulong 8192
+note the current line's 4 fields: offset and length of each
+global fld ulong 8
+note rows per decision: merged merge queued rebase fail gate same
+global cnt ulong 7
+
+text tpre "flow: "
+text tnl "\n"
+text tusage "usage: flow BRANCH GATE STATE RECEIPTS OUT\n"
+text targ "cannot read a command-line argument"
+text tbr "BRANCH is not 40 lowercase hex digits"
+text tgt "GATE is not 40 lowercase hex digits"
+text topen "cannot open "
+text tread "cannot read "
+text tbig "file over 4 MiB: "
+text twrite "cannot write "
+text toverf "script over the 4 MiB buffer"
+text tline ": line "
+text tcol ": "
+text tempty "empty file"
+text tnonl "no newline at the end of the line"
+text tblank "blank line"
+text tcr "carriage return in the line"
+text tcols "row needs exactly 4 TAB-separated fields"
+text tshdr "patch\thead\ttree\trel"
+text trhdr "tree\tgate\tverdict\tlog"
+text tbsh "header line is not patch TAB head TAB tree TAB rel"
+text tbrh "header line is not tree TAB gate TAB verdict TAB log"
+text tmanys "more than 4096 rows"
+text tmanyr "more than 16384 rows"
+text tbpa "patch is not 40 lowercase hex digits"
+text tbhd "head is not 40 lowercase hex digits"
+text tbtr "tree is not 40 lowercase hex digits"
+text tbrel "rel is not ff, div or in"
+text tbgt "gate is not 40 lowercase hex digits"
+text tbvd "verdict is not pass or fail"
+text tblog "log is not 64 lowercase hex digits"
+text tdupp "patch already on line "
+text tdupr "tree and gate already on line "
+text rff "ff"
+text rdiv "div"
+text rin "in"
+text vpass "pass"
+text vfail "fail"
+note the decision names, by code 0..6 (fail is vfail)
+text n0 "merged"
+text n1 "merge"
+text n2 "queued"
+text n3 "rebase"
+text n5 "gate"
+text n6 "same"
+text pbr "# plan-branch "
+text pgt "\n# plan-gate "
+text pc0 "\n# plan-counts patches "
+text pc1 " merged "
+text pc2 " merge "
+text pc3 " queued "
+text pc4 " rebase "
+text pc5 " fail "
+text pc6 " gate "
+text pc7 " same "
+text pv1 "\n\nbranch='"
+text pv2 "'\ngate='"
+text q2 "' '"
+text q3 "'\n"
+text sp " "
+text pln "# plan "
+text fm "fl_merge '"
+text fg "fl_gate '"
+text tend "echo 'flow: step done'\n"
+
+note the fixed parts of the script, paragraph by paragraph: the comment header (h0, h1), then the
+note body (b0 checks, b1 fl_tree, b2 fl_gate, b3 fl_merge)
+text h0 "#!/bin/sh\n# flow.sh: one step of the Omega merge queue for one Radicle repository.\n# Generated by tools/flow.om from the repository's open patches and its receipt ledger; do not\n# edit by hand.\n#\n# A patch merges only as a fast-forward of the default branch, and only when a receipt says the\n# default branch's gate passed on the patch head's exact tree, so the default branch only ever\n# moves to a tree that passed the gate guarding it. A patch whose tree has no receipt is gated:\n# the default branch's build.sh, never the patch's own, runs in a worktree of the patch head,\n# and the verdict goes into the ledger and onto the patch as a comment. A tree is gated once,\n# however many patches carry it, and never again while the gate is unchanged.\n#\n"
+text h1 "#   sh flow.sh REPO DEFAULT RECEIPTS\n# REPO      a Radicle working copy, fetched, with its delegate's key authenticated (rad auth)\n# DEFAULT   the name of its default branch\n# RECEIPTS  the receipt ledger this plan was made from; new verdicts are appended to it\n# Exit status: 0 the step ran; 1 the repository is not as planned, or a gate, comment or push\n# could not run; 2 usage.\n# Each patch's decision is one \"# plan ACTION PATCH HEAD TREE\" line, in the order of the input.\n"
+text b0 "set -eu\numask 022\n[ $# -eq 3 ] || { echo 'usage: sh flow.sh REPO DEFAULT RECEIPTS' >&2; exit 2; }\nrepo=$1 def=$2 rec=$3\nfl_die() { printf 'flow: %s\\n' \"$*\" >&2; exit 1; }\nfl_git() { git -C \"$repo\" \"$@\"; }\ncommand -v git >/dev/null 2>&1 || fl_die \"git is required\"\ncommand -v rad >/dev/null 2>&1 || fl_die \"rad is required: https://radicle.xyz\"\n[ -f \"$rec\" ] || fl_die \"no receipt ledger $rec\"\ncur=$(fl_git rev-parse --verify -q \"refs/remotes/rad/$def^{commit}\") || fl_die \"$repo has no rad/$def\"\n[ \"$cur\" = \"$branch\" ] || fl_die \"rad/$def is $cur, not $branch: make a new plan\"\n[ \"$(fl_git rev-parse --verify -q \"$branch:build.sh\")\" = \"$gate\" ] || fl_die \"build.sh at $branch is not blob $gate\"\nfl_work=$(mktemp -d)\ntrap 'rm -rf \"$fl_work\"; fl_git worktree prune' EXIT\n"
+text b1 "trap 'exit 1' HUP INT TERM\nfl_tree() { # fl_tree PATCH HEAD TREE: HEAD must be a commit whose tree is TREE\n  [ \"$(fl_git rev-parse --verify -q \"$2^{tree}\")\" = \"$3\" ] || fl_die \"patch $1: $2 is not a commit with tree $3\"\n}\n"
+text b2 "fl_gate() { # fl_gate PATCH HEAD TREE: run the default branch's build.sh on HEAD; record and post the verdict\n  fl_tree \"$@\"\n  w=$fl_work/$3\n  fl_git worktree add -q --detach \"$w\" \"$2\" || fl_die \"patch $1: cannot check out $2\"\n  fl_git cat-file blob \"$gate\" > \"$w/build.sh\"\n  mkdir \"$w.home\"\n  # the gate never sees the delegate's key: no RAD_PASSPHRASE, RAD_SECRET, RAD_HOME, SSH_AUTH_SOCK or HOME\n  if (cd \"$w\" && env -u RAD_PASSPHRASE -u RAD_SECRET -u RAD_HOME -u SSH_AUTH_SOCK HOME=\"$w.home\" sh ./build.sh) > \"$w.log\" 2>&1; then v=pass; else v=fail; fi\n  l=$(sha256sum < \"$w.log\" | cut -c1-64)\n  printf '%s\\t%s\\t%s\\t%s\\n' \"$3\" \"$gate\" \"$v\" \"$l\" >> \"$rec\"\n  m=\"flow gate $v tree $3 gate $gate log $l\"\n  f=$(sed -n '/^FAIL/{p;q;}' \"$w.log\")\n  [ -z \"$f\" ] || m=\"$m\n$f\"\n  (cd \"$repo\" && rad patch comment \"$1\" -m \"$m\" > /dev/null) || fl_die \"patch $1: cannot post the verdict\"\n  fl_git worktree remove --force \"$w\"\n  printf 'flow: gate %s patch %s tree %s\\n' \"$v\" \"$1\" \"$3\"\n}\n"
+text b3 "fl_merge() { # fl_merge PATCH HEAD TREE: fast-forward DEFAULT to HEAD, whose tree passed the gate\n  fl_tree \"$@\"\n  fl_git merge-base --is-ancestor \"$branch\" \"$2\" || fl_die \"patch $1: $2 does not fast-forward $branch\"\n  fl_git push -q rad \"$2:refs/heads/$def\" || fl_die \"patch $1: the push of $2 to $def was refused\"\n  printf 'flow: merged patch %s head %s\\n' \"$1\" \"$2\"\n}\n\n"
+
+note wdec: write v in decimal to stderr
+fn wdec v ulong to void
+d = new uchar 20 0
+x = v
+k = ulong 20
+note a ulong has at most 20 digits
+while true bound 20
+k = sub k 1
+put d k uchar add rem x 10 48
+x = div x 10
+if eq x 0
+break
+end
+end
+w = write 2 d k sub 20 k
+end
+
+note diem: refuse with m alone, then exit 1
+fn diem m view uchar * to void
+w = write 2 tpre 0 len tpre
+w = write 2 m 0 len m
+w = write 2 tnl 0 len tnl
+exit 1
+end
+
+note dief: refuse with m and the current path, then exit 1
+fn dief m view uchar * to void
+w = write 2 tpre 0 len tpre
+w = write 2 m 0 len m
+w = write 2 pb 0 get pbn 0
+w = write 2 tnl 0 len tnl
+exit 1
+end
+
+note diel: refuse line ln of the current file with m, then the line number j when j is not 0;
+note exit 1
+fn diel m view uchar * ln ulong j ulong to void
+w = write 2 tpre 0 len tpre
+w = write 2 pb 0 get pbn 0
+w = write 2 tline 0 len tline
+wdec ln
+w = write 2 tcol 0 len tcol
+w = write 2 m 0 len m
+if ne j 0
+wdec j
+end
+w = write 2 tnl 0 len tnl
+exit 1
+end
+
+note chk: refuse line ln with m when ok is false
+fn chk ok bool m view uchar * ln ulong to void
+if not ok
+diel m ln 0
+end
+end
+
+note setpath: copy command-line argument ai into pb
+fn setpath ai ulong to void
+n = argread ai pb 0 4096
+if le n 0
+diem targ
+end
+put pbn 0 ulong n
+end
+
+note load: read the file named by argument ai into inp from b; return the offset of its end
+fn load ai ulong b ulong to ulong
+setpath ai
+fd = fopen pb 0 get pbn 0 0 0
+if lt fd 0
+dief topen
+end
+p = ulong 0
+note every pass but the last reads at least one byte of the 4194305-byte region
+while lt p 4194305 bound 4194306
+k = read int fd inp add b p sub 4194305 p
+if lt k 0
+dief tread
+end
+if eq k 0
+break
+end
+p = add p ulong k
+end
+c = fclose int fd
+if gt p 4194304
+dief tbig
+end
+ret add b p
+end
+
+note wout: write ob to the file named by argument ai (created or truncated, mode 0644)
+fn wout ai ulong to void
+setpath ai
+fd = fopen pb 0 get pbn 0 577 420
+if lt fd 0
+dief topen
+end
+n = get obn 0
+p = ulong 0
+while lt p n bound 4194305
+k = write int fd ob p sub n p
+if le k 0
+dief twrite
+end
+p = add p ulong k
+end
+c = fclose int fd
+if ne c 0
+dief twrite
+end
+end
+
+note em: append a text to ob
+fn em t view uchar * to void
+p = get obn 0
+n = len t
+if gt n sub 4194304 p
+diem toverf
+end
+for i ulong n bound 4194304
+put ob add p i get t i
+end
+put obn 0 add p n
+end
+
+note emi: append n bytes of inp from o to ob
+fn emi o ulong n ulong to void
+p = get obn 0
+if gt n sub 4194304 p
+diem toverf
+end
+for i ulong n bound 4194304
+put ob add p i get inp add o i
+end
+put obn 0 add p n
+end
+
+note emb: append one byte to ob
+fn emb c uchar to void
+p = get obn 0
+if ge p 4194304
+diem toverf
+end
+put ob p c
+put obn 0 add p 1
+end
+
+note emu: append v in decimal to ob
+fn emu v ulong to void
+d = new uchar 20 0
+x = v
+put d 0 uchar add rem x 10 48
+k = ulong 1
+x = div x 10
+while gt x 0 bound 20
+put d k uchar add rem x 10 48
+k = add k 1
+x = div x 10
+end
+while gt k 0 bound 20
+k = sub k 1
+emb get d k
+end
+end
+
+note eqx: do the n bytes of inp at o equal the text t
+fn eqx o ulong n ulong t view uchar * to bool
+if ne n len t
+ret false
+end
+for i ulong n bound 4194304
+if ne get inp add o i get t i
+ret false
+end
+end
+ret true
+end
+
+note eqs: do the n bytes of inp at a equal the n bytes at b (n at most 64)
+fn eqs a ulong b ulong n ulong to bool
+for i ulong n bound 64
+if ne get inp add a i get inp add b i
+ret false
+end
+end
+ret true
+end
+
+fn ishex c uchar to bool
+ret or and ge c 48 le c 57 and ge c 97 le c 102
+end
+
+note vhex: is inp[o, o+n) exactly w lowercase hex digits (w at most 64)
+fn vhex o ulong n ulong w ulong to bool
+if ne n w
+ret false
+end
+for i ulong w bound 64
+if not ishex get inp add o i
+ret false
+end
+end
+ret true
+end
+
+note hx: FNV-1a 64 of the n bytes of inp at o (n at most 64), continuing from h
+fn hx o ulong n ulong h ulong to ulong
+x = h
+for i ulong n bound 64
+x = mul xor x ulong get inp add o i 1099511628211
+end
+ret x
+end
+
+note hash40: the hash of the 40 bytes of inp at k, high half folded into the low
+fn hash40 k ulong to ulong
+x = hx k 40 14695981039346656037
+ret xor x shr x 32
+end
+
+note pslot: the slot of hp that holds the patch id at k, or the empty slot where it goes.
+note At most 4096 of the 8192 slots are full, so an empty one comes within 4097 probes.
+fn pslot k ulong to ulong
+s = and hash40 k 8191
+while true bound 8192
+j = get hp s
+if eq j 0
+ret s
+end
+if eqs get so sub j 1 k 40
+ret s
+end
+s = and add s 1 8191
+end
+ret s
+end
+
+note tslot: the slot of ht that holds the tree at k, or the empty slot where it goes
+fn tslot k ulong to ulong
+s = and hash40 k 8191
+while true bound 8192
+j = get ht s
+if eq j 0
+ret s
+end
+if eqs add get so sub j 1 82 k 40
+ret s
+end
+s = and add s 1 8191
+end
+ret s
+end
+
+note rslot: the slot of hr that holds the receipt for the tree at t and the gate at g, or the
+note empty slot where it goes. At most 16384 of the 32768 slots are full.
+fn rslot t ulong g ulong to ulong
+x = hx g 40 hx t 40 14695981039346656037
+s = and xor x shr x 32 32767
+while true bound 32768
+j = get hr s
+if eq j 0
+ret s
+end
+o = get ro sub j 1
+if eqs o t 40
+if eqs add o 41 g 40
+ret s
+end
+end
+s = and add s 1 32767
+end
+ret s
+end
+
+note lend: the newline that ends line ln, which starts at p (e is the end of the file); refuse a
+note blank line, a CR and a last line without its newline
+fn lend p ulong e ulong ln ulong to ulong
+q = p
+note every pass looks at one byte of the file
+while lt q e bound 4194305
+c = get inp q
+if eq c 10
+if eq q p
+diel tblank ln 0
+end
+ret q
+end
+if eq c 13
+diel tcr ln 0
+end
+q = add q 1
+end
+diel tnonl ln 0
+ret e
+end
+
+note split4: store the 4 TAB-separated fields of line ln, [p, q), in fld; refuse another count
+fn split4 p ulong q ulong ln ulong to void
+k = ulong 0
+s = p
+t = p
+while lt t q bound 4194305
+if eq get inp t 9
+if ge k 3
+diel tcols ln 0
+end
+put fld mul k 2 s
+put fld add mul k 2 1 sub t s
+k = add k 1
+s = add t 1
+end
+t = add t 1
+end
+if ne k 3
+diel tcols ln 0
+end
+put fld 6 s
+put fld 7 sub q s
+end
+
+note fo / fl: offset and length of field k of the current line
+fn fo k ulong to ulong
+ret get fld mul k 2
+end
+
+fn fl k ulong to ulong
+ret get fld add mul k 2 1
+end
+
+note srow: check STATE row r, the line [p, q); record its offset and rel; refuse a repeated
+note patch. With every field checked, patch is at p, head at p+41, tree at p+82.
+fn srow r ulong p ulong q ulong to void
+ln = add r 2
+split4 p q ln
+chk vhex fo 0 fl 0 40 tbpa ln
+chk vhex fo 1 fl 1 40 tbhd ln
+chk vhex fo 2 fl 2 40 tbtr ln
+o = fo 3
+n = fl 3
+x = ulong 0
+if eqx o n rff
+x = ulong 1
+end
+if eqx o n rdiv
+x = ulong 2
+end
+if eqx o n rin
+x = ulong 3
+end
+chk ne x 0 tbrel ln
+put so r p
+put sr r x
+s = pslot p
+j = get hp s
+if ne j 0
+diel tdupp ln add j 1
+end
+put hp s add r 1
+end
+
+note rrow: check RECEIPTS row i, the line [p, q); record its offset and verdict; refuse a
+note repeated (tree, gate). With every field checked, tree is at p, gate at p+41.
+fn rrow i ulong p ulong q ulong to void
+ln = add i 2
+split4 p q ln
+chk vhex fo 0 fl 0 40 tbtr ln
+chk vhex fo 1 fl 1 40 tbgt ln
+o = fo 2
+n = fl 2
+x = ulong 0
+if eqx o n vpass
+x = ulong 1
+end
+if eqx o n vfail
+x = ulong 2
+end
+chk ne x 0 tbvd ln
+chk vhex fo 3 fl 3 64 tblog ln
+put ro i p
+put rv i x
+s = rslot p add p 41
+j = get hr s
+if ne j 0
+diel tdupr ln add j 1
+end
+put hr s add i 1
+end
+
+note pstate: check the STATE bytes [0, e): the header, then every row
+fn pstate e ulong to void
+if eq e 0
+diel tempty 1 0
+end
+q = lend 0 e 1
+if not eqx 0 q tshdr
+diel tbsh 1 0
+end
+p = add q 1
+r = ulong 0
+note every pass consumes at least one byte of the file
+while lt p e bound 4194305
+if ge r 4096
+diel tmanys add r 2 0
+end
+q = lend p e add r 2
+srow r p q
+r = add r 1
+p = add q 1
+end
+put ns 0 r
+end
+
+note prec: check the RECEIPTS bytes [RB, e): the header, then every row
+fn prec e ulong to void
+if eq e RB
+diel tempty 1 0
+end
+q = lend RB e 1
+if not eqx RB sub q RB trhdr
+diel tbrh 1 0
+end
+p = add q 1
+i = ulong 0
+note every pass consumes at least one byte of the file
+while lt p e bound 4194305
+if ge i 16384
+diel tmanyr add i 2 0
+end
+q = lend p e add i 2
+rrow i p q
+i = add i 1
+p = add q 1
+end
+end
+
+note argx: copy argument ai, which must be exactly 40 lowercase hex digits, into inp at o;
+note refuse with m
+fn argx ai ulong o ulong m view uchar * to void
+n = argread ai pb 0 4096
+if ne n 40
+diem m
+end
+for i ulong 40
+c = get pb i
+if not ishex c
+diem m
+end
+put inp add o i c
+end
+end
+
+note act: the decision for STATE row r, 0 merged, 1 merge, 2 queued, 3 rebase, 4 fail, 5 gate,
+note 6 same; mg: an earlier row got merge; sn: an earlier row has the same tree
+fn act r ulong mg bool sn bool to ulong
+x = get sr r
+if eq x 3
+ret 0
+end
+j = get hr rslot add get so r 82 GO
+if eq j 0
+if sn
+ret 6
+end
+ret 5
+end
+if eq get rv sub j 1 2
+ret 4
+end
+if eq x 2
+ret 3
+end
+if mg
+ret 2
+end
+ret 1
+end
+
+note decide: decide every STATE row in input order, recording each tree as it is seen
+fn decide to void
+n = get ns 0
+mg = false
+for r ulong n bound 4096
+s = tslot add get so r 82
+sn = ne get ht s 0
+if not sn
+put ht s add r 1
+end
+a = act r mg sn
+put sa r a
+put cnt a add get cnt a 1
+if eq a 1
+mg = true
+end
+end
+end
+
+note emname: append the name of decision a
+fn emname a ulong to void
+if eq a 0
+em n0
+end
+if eq a 1
+em n1
+end
+if eq a 2
+em n2
+end
+if eq a 3
+em n3
+end
+if eq a 4
+em vfail
+end
+if eq a 5
+em n5
+end
+if eq a 6
+em n6
+end
+end
+
+note emq: append 'PATCH' 'HEAD' 'TREE' and a newline for the row whose line starts at p
+fn emq p ulong to void
+emi p 40
+em q2
+emi add p 41 40
+em q2
+emi add p 82 40
+em q3
+end
+
+note emrow: append row r's plan line, and its call for merge and gate
+fn emrow r ulong to void
+p = get so r
+a = get sa r
+em pln
+emname a
+em sp
+emi p 40
+em sp
+emi add p 41 40
+em sp
+emi add p 82 40
+em tnl
+if eq a 1
+em fm
+emq p
+end
+if eq a 5
+em fg
+emq p
+end
+end
+
+fn main to int
+if ne argcnt 6
+w = write 2 tusage 0 len tusage
+ret 2
+end
+argx 1 BO tbr
+argx 2 GO tgt
+e = load 3 0
+pstate e
+e = load 4 RB
+prec e
+decide
+em h0
+em h1
+em pbr
+emi BO 40
+em pgt
+emi GO 40
+em pc0
+emu get ns 0
+em pc1
+emu get cnt 0
+em pc2
+emu get cnt 1
+em pc3
+emu get cnt 2
+em pc4
+emu get cnt 3
+em pc5
+emu get cnt 4
+em pc6
+emu get cnt 5
+em pc7
+emu get cnt 6
+em pv1
+emi BO 40
+em pv2
+emi GO 40
+em q3
+em b0
+em b1
+em b2
+em b3
+n = get ns 0
+for r ulong n bound 4096
+emrow r
+end
+em tend
+wout 5
+ret 0
+end
