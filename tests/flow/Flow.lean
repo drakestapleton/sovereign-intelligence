@@ -130,7 +130,6 @@ theorem merge_count_le (r : Receipts) :
       simp [ha, h0]
     · have := ih (y.tree :: seen)
       simp [ha, List.count_cons, this]
-      exact this
 
 /-- A plan holds at most one merge, so each step moves the default branch at most once. -/
 theorem merge_at_most_one (r : Receipts) (xs : List Row) : (flow r xs).count .merge ≤ 1 :=
