@@ -190,4 +190,20 @@ theorem fixture_plan : flow fixtureReceipts fixtureState =
     [.merge, .queued, .rebase, .fail, .gate, .same, .gate, .queued, .merged] := by
   decide
 
+-- What each theorem rests on: tests/flow and build.sh step 12c require propext,
+-- Classical.choice and Quot.sound at most (no sorryAx, no native_decide).
+#print axioms decide1_merge
+#print axioms decide1_gate
+#print axioms plan_length
+#print axioms merge_safe_gen
+#print axioms merge_safe
+#print axioms no_merge_after_merge
+#print axioms merge_count_le
+#print axioms merge_at_most_one
+#print axioms gate_gen
+#print axioms gate_once
+#print axioms gate_needs_none
+#print axioms fail_never_merges
+#print axioms fixture_plan
+
 end Flow

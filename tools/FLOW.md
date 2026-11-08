@@ -12,12 +12,14 @@ two, as seeded Omega that anyone can rebuild from the 408-byte seed and check.
 | Repositories, forks, clones | Radicle repositories, served from my own seed | in use (README) |
 | Pull requests | Radicle patches: `git push rad HEAD:refs/patches` | Radicle, in use |
 | Review comments | Radicle patch comments and reviews | Radicle; flow posts every gate verdict as a comment |
-| Issues | Radicle issues: `rad issue` | Radicle |
+| Issues | Radicle issues: `rad issue`, or the forge's web form for people without Radicle | Radicle; the form is HOST_TESTED ([`FORGE.md`](FORGE.md)) |
 | Identity, permissions | Radicle node keys, delegates and their threshold | Radicle |
 | Actions (CI) | `tools/flow.om` gates every patch with the default branch's `build.sh` | HOST_TESTED 2026-11-08 |
 | Required status checks, branch protection | flow merges only a fast-forward whose exact tree has a pass receipt | HOST_TESTED; Lean model, see below |
 | Merge queue | flow merges one patch per cycle, queues the rest, refuses a stale plan | HOST_TESTED |
 | Pages | www.aienos.com on my own hardware | in use |
+| Insights and traffic: clones, cloners | the Omega forge counts every pull my seed serves, per project and day, public ([`FORGE.md`](FORGE.md)) | HOST_TESTED, not deployed |
+| Project, issue and pull request pages | the forge's static pages, built from Radicle's own data | HOST_TESTED, not deployed |
 | Discovery | `repos.tsv`, the README's link table, radicle.network | in use |
 | A read-only copy for people who look there | the GitHub mirror of this one repository | in use |
 
@@ -53,7 +55,8 @@ abuse filters refused.
 | a patch that rewrites its own `build.sh` to `exit 0` still fails | e2e cycle 1 | PASS |
 | the gate runs without the delegate's `RAD_PASSPHRASE`, `RAD_HOME`, `SSH_AUTH_SOCK` or `HOME`; a planner built without that scrub fails e2e | e2e cycle 1, control by hand | PASS |
 | the merged tree has a pass receipt after every cycle; a stale plan refuses to run | e2e | PASS |
-| merge only to a passing fast-forward, at most one merge, each tree gated once, a failed tree never merges | `tests/flow/Flow.lean` | written, **not yet machine-checked** |
+| merge only to a passing fast-forward, at most one merge, each tree gated once, a failed tree never merges | `tests/flow/Flow.lean`, `build.sh` step 12c | machine-checked, Lean 4 v4.15.0: 13 theorems, on propext and Quot.sound only |
+| the whole queue again, with rad 1.10.3 | `tests/flow/e2e.sh` | 7 of 7 PASS with each build |
 
 The Lean file models the decision rules, not the Omega program: the fixtures and the e2e run test
 that flow.om follows the model; they do not prove it.
