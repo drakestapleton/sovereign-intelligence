@@ -58,7 +58,7 @@ abuse filters refused.
 | the installer refuses a bad ID, a foreign working copy and an identity that is not a delegate; installs; its units pass `systemd-analyze --user verify` with no warning; two cycles never overlap; reinstalling keeps the ledger | `tests/flow/install.sh`, step 12b | 5 of 5 PASS |
 | a rehearsal of the seed: SI as a throwaway Radicle repository, this branch as a patch, installed with the seed build; gated in the sandbox by `main`'s `build.sh`, pass, merged; a second patch gated by the merged `build.sh` (now with step 12), pass, merged | by hand, x86-64 | PASS; a gate of SI takes about 14 s there |
 | the merged tree has a pass receipt after every cycle; a stale plan refuses to run | e2e | PASS |
-| merge only to a passing fast-forward, at most one merge, each tree gated once, a failed tree never merges | `tests/flow/Flow.lean` | written, **not yet machine-checked** |
+| merge only to a passing fast-forward, at most one merge, each tree gated once, a failed tree never merges | `tests/flow/Flow.lean` | Lean 4.15.0 accepts all six theorems; `#print axioms`: `propext`, `Quot.sound` only, no `sorry` (commit `8f9cce0`) |
 
 The Lean file models the decision rules, not the Omega program: the fixtures and the e2e run test
 that flow.om follows the model; they do not prove it.
