@@ -46,7 +46,7 @@ To look at the site, serve `out/plumbline/site-a64/` from the root of any static
 
 ## What is not done
 
-- **Not on Radicle yet.** This directory was built in a sandbox that cannot reach Radicle's peer port. [`READY.md`](READY.md) is the hand-off: base, head, how it was gated and the one command that opens the patch.
+- **Not on Radicle yet.** A change reaches Radicle as a patch that the publishing lane opens and the desk merges after an independent review. [`READY.md`](READY.md) is the hand-off for that: base, head, how it was gated and the command that opens the patch.
 - **Not deployed.** No page of it has served a visitor.
 - **The forge's repository count is not stated**, because the registry it is counted from is not in this repository. Given the registry file, the generator prints the count.
 - **`ipo1` is text only**, refuses numbers with a fraction or exponent, and carries no signature. A valid frame is never an authorization.

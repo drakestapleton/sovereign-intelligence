@@ -1,6 +1,6 @@
 # READY: Plumbline, for the Radicle desk
 
-A hand-off, not an approval. It asks the publishing lane to open one patch and the desk to gate it. Nothing here was pushed to Radicle, nothing is deployed, and no domain was touched.
+A hand-off, not an approval. It asks the publishing lane to open one patch, and the desk to merge it only after an independent review of that exact head. Nothing here was pushed to Radicle, nothing is deployed, and no domain was touched.
 
 ## What to open
 
@@ -12,20 +12,22 @@ A hand-off, not an approval. It asks the publishing lane to open one patch and t
 | Head | one commit on that base; its id is in the hand-off message that carries this file, with a git bundle |
 | Also on GitHub | draft, do-not-merge: `drakestapleton/sovereign-intelligence` pull request 10, based on GitHub `main` |
 
-To open the patch from the bundle, on a machine with a Radicle node:
+For the publishing lane, to open the patch from the bundle on a machine with a Radicle node:
 
 ```sh
 rad clone rad:z2JJz4RDfZZxKGBLn6UhmW5p9VJQj && cd sovereign-intelligence
 git fetch /path/to/plumbline.bundle plumbline:plumbline
-git log --oneline -1 plumbline          # compare with the id in the hand-off message
+git log --oneline -1 refs/heads/plumbline   # compare with the id in the hand-off message
 git push rad plumbline:refs/patches
 ```
 
-## Why it was not pushed from where it was built
+## Why this is a hand-off and not a patch
 
-The build sandbox cannot speak Radicle's peer protocol. Measured on 2026-11-09: direct TCP to the public seeds' peer port (58776, and 8776) is blocked; the sandbox's web proxy does open a tunnel to them, but carrying the peer protocol through it was refused by the sandbox's own safety rule, and that refusal was not worked around. Radicle has no write path over HTTPS. Radicle 1.10.3 was installed and verified against its published sha256 (`3d78e3ff…6751`), so the only missing piece is a route.
+Changes reach Radicle as patches, and the publishing lane is the only writer that opens one. A lane hands over a READY file, a bundle and its gate evidence, and does not push. This is that hand-off.
 
-## One thing to reconcile first
+The build sandbox also has no route to Radicle's peer protocol. Measured on 2026-11-09: direct TCP to the public seeds' peer port (58776, and 8776) is blocked. Early in the work, one attempt to carry the peer protocol through the sandbox's web proxy was refused by the sandbox's own safety rule; it was not worked around and not repeated, and under the rule above it should not have been tried. So nothing here was read with `rad`: Radicle `main` was read over HTTPS from a public seed (`git ls-remote https://rosa.radicle.network/z2JJz4RDfZZxKGBLn6UhmW5p9VJQj.git`), and `rad patch show` is NOT_RUN.
+
+## A divergence the desk should know about, not part of this change
 
 GitHub `main` (`b4a96b1`) and Radicle `main` (`a32ff45`) of this repository have diverged since `486e918`: the merge-queue work (`tools/flow.om` and its tests) is only on GitHub, and `a32ff45` "SI links: refresh vetted heads from RIDS.md" is only on Radicle. `seed/` and `stack/` are identical on both, and `sh build.sh` gives the same two compilers on both (omc `45442c7d…080d`, omc-x86 `5e1f6e1f…3f19`). Plumbline reads `repos.tsv` and `README.md`, which differ between the two, so the generated site differs by base; the gate passes on each.
 
