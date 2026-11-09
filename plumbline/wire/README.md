@@ -17,6 +17,10 @@ Bytes only: no tokenizer was run.
 **A valid frame is never an authorization.** ipo1 carries a JSON value; it signs nothing, checks
 no INTERPLANE schema and decides nothing.
 
+JSON `true`, `false` and `null` are the words `yes`, `no` and `nil`. The bare words `true`,
+`false` and `null` are reserved and refused (`JSONWORD`, exit 51), so a writer with JSON habits
+gets a refusal, not a different value; the strings are written `"true"`, `"false"`, `"null"`.
+
 ## Files
 
 | Path | What |
@@ -30,8 +34,8 @@ no INTERPLANE schema and decides nothing.
 | `tests/extracted.jsonl` | the 49 envelopes as extracted, before `ipo canon` |
 | `tests/expected.txt` | exact stdout of `ipo selftest < tests/vectors.jsonl` |
 | `tests/example.json`, `tests/example.ipo` | the 560-byte request and its frame |
-| `tests/edge.jsonl`, `tests/edge-expected.txt` | 56 hand-written values for what the envelopes do not exercise, and their selftest stdout |
-| `tests/bad/` | 67 inputs that must be refused; 2 more are generated (below) |
+| `tests/edge.jsonl`, `tests/edge-expected.txt` | 58 hand-written values for what the envelopes do not exercise, and their selftest stdout |
+| `tests/bad/` | 73 inputs that must be refused; 2 more are generated (below) |
 | `tests/drive.om` | test driver: run a command per line, check refusals, fuzz |
 | `tests/gen.om` | writes the generated refusal fixtures |
 | `tests/subst.om` | replaces exactly one occurrence of a text; makes the mutants |
@@ -75,7 +79,7 @@ The test programs, for the host:
 qemu-aarch64-static "$WORK"/ipo-a64 enc < value.json
 ```
 
-Exit 0 done, 2 usage, 20 to 50 a refusal class with `ipo: NAME at byte N` on stderr and nothing
+Exit 0 done, 2 usage, 20 to 51 a refusal class with `ipo: NAME at byte N` on stderr and nothing
 on stdout (`SPEC.md` section 5); `selftest` exits 0 or 1.
 
 ## Check
@@ -119,9 +123,9 @@ wc -c plumbline/wire/tests/example.json plumbline/wire/tests/example.ipo
 
 Four times `exit 0`, then `561` and `238` (each with its LF).
 
-### 3. Refusals: 69 files, 92 runs, both targets
+### 3. Refusals: 75 files, 98 runs, both targets
 
-67 fixtures are committed in `tests/bad/`. **Two are over 100 KB and are generated**, by
+73 fixtures are committed in `tests/bad/`. **Two are over 100 KB and are generated**, by
 `tests/gen.om`, into `WORK`:
 
 | Generated fixture | Command | Bytes | Must exit |
@@ -137,17 +141,19 @@ Four times `exit 0`, then `561` and `238` (each with its LF).
 cmp "$WORK"/bad-x86.txt "$WORK"/bad-a64.txt; echo "exit $?"
 ```
 
-Three times `exit 0`. Each file has 92 lines `pass NAME MODE exit=C stdout=0 stderr=...` (an
+Three times `exit 0`. Each file has 98 lines `pass NAME MODE exit=C stdout=0 stderr=...` (an
 `.ipo` file is run under `dec`, a `.json` file under `canon` and under `enc`), for example
 
 ```
 pass 45-quoted-could-be-bare.ipo dec exit=45 stdout=0 stderr=ipo: NOTBARE at byte 5
 pass 34-u64-task-id.json canon exit=34 stdout=0 stderr=ipo: NUMRANGE at byte 8
+pass 51-bare-true-as-value.ipo dec exit=51 stdout=0 stderr=ipo: JSONWORD at byte 5
+pass 51-bare-null-as-key.ipo dec exit=51 stdout=0 stderr=ipo: JSONWORD at byte 9
 pass 22-input-over-1mib.json enc exit=22 stdout=0 stderr=ipo: TOOBIG at byte 1048576
 pass 23-decodes-over-1mib.ipo dec exit=23 stdout=0 stderr=ipo: OUTBIG at byte 1048576
 ```
 
-and ends `BADRUN PASS files=69 runs=92`. Classes 22 to 47 each have at least one file. The classes
+and ends `BADRUN PASS files=75 runs=98`. Classes 22 to 47 and 51 each have at least one file. The classes
 that no file can reach:
 
 ```sh
@@ -202,7 +208,7 @@ its count.
 qemu-aarch64-static "$WORK"/ipo-a64 selftest < plumbline/wire/tests/edge.jsonl | cmp - plumbline/wire/tests/edge-expected.txt; echo "exit $?"
 ```
 
-Both `exit 0`; the recorded verdict is `IPO1 PASS vectors=56 json_bytes=1033 ipo_bytes=1654`.
+Both `exit 0`; the recorded verdict is `IPO1 PASS vectors=58 json_bytes=1069 ipo_bytes=1716`.
 
 ### 7. The vectors, again, from the extraction
 
@@ -217,7 +223,7 @@ stderr `ipo: NUMRANGE at byte 1650`, `drive: line 31 exit 34`,
 ### 8. Mutated inputs
 
 `drive fuzz` makes mutants of every seed line by one byte replaced, deleted or inserted, from a
-fixed sequence, and requires of each: refused with exit 20 to 50 and an empty stdout, or accepted
+fixed sequence, and requires of each: refused with exit 20 to 51 and an empty stdout, or accepted
 and then consistent (`dec`: `enc` of the output is the mutant itself; `enc`: `dec` of the output
 is `canon` of the mutant; `canon`: idempotent).
 
@@ -234,16 +240,17 @@ cat plumbline/wire/tests/vectors.jsonl plumbline/wire/tests/edge.jsonl > "$WORK"
 ```
 
 ```
-FUZZ PASS mode=dec seeds=95 runs=47500 accepted=8289 refused=39211
-FUZZ PASS mode=enc seeds=95 runs=47500 accepted=13867 refused=33633
-FUZZ PASS mode=canon seeds=95 runs=47500 accepted=13867 refused=33633
-FUZZ PASS mode=dec seeds=95 runs=9500 accepted=1658 refused=7842
-FUZZ PASS mode=enc seeds=95 runs=9500 accepted=2740 refused=6760
-FUZZ PASS mode=canon seeds=95 runs=9500 accepted=2740 refused=6760
+FUZZ PASS mode=dec seeds=97 runs=48500 accepted=8236 refused=40264
+FUZZ PASS mode=enc seeds=97 runs=48500 accepted=14192 refused=34308
+FUZZ PASS mode=canon seeds=97 runs=48500 accepted=14192 refused=34308
+FUZZ PASS mode=dec seeds=97 runs=9700 accepted=1641 refused=8059
+FUZZ PASS mode=enc seeds=97 runs=9700 accepted=2792 refused=6908
+FUZZ PASS mode=canon seeds=97 runs=9700 accepted=2792 refused=6908
 ```
 
 No run exited with a trap, a signal or `NONCANON`. The AArch64 runs use 100 mutants per seed
-because emulation is slow; they are the first 100 of the same sequence.
+because emulation is slow; they are the first 100 of the same sequence, and with 100 per seed
+the x86-64 build prints the same bytes in all three modes (`cmp` exit 0).
 
 ## Negative controls
 
@@ -280,17 +287,19 @@ A stronger mutant, b2, removes that check as well:
 ```sh
 "$WORK"/subst 'if ne skcmp sub k 1 k 0' 'if false' < "$WORK"/mutb-20-shape.om > "$WORK"/mutb2-20-shape.om; echo "exit $?"
 { printf 'target x86linux\n'; cat plumbline/wire/src/00-core.om plumbline/wire/src/10-json.om "$WORK"/mutb2-20-shape.om plumbline/wire/src/30-frame.om plumbline/wire/src/40-main.om; } | out/omc-x86 > "$WORK"/mutb2-x86 && chmod +x "$WORK"/mutb2-x86
+cat plumbline/wire/src/00-core.om plumbline/wire/src/10-json.om "$WORK"/mutb2-20-shape.om plumbline/wire/src/30-frame.om plumbline/wire/src/40-main.om | qemu-aarch64-static out/omc > "$WORK"/mutb2-a64 && chmod +x "$WORK"/mutb2-a64
 "$WORK"/mutb2-x86 selftest < plumbline/wire/tests/vectors.jsonl; echo "exit $?"
+qemu-aarch64-static "$WORK"/mutb2-a64 selftest < plumbline/wire/tests/vectors.jsonl; echo "exit $?"
 "$WORK"/mutb2-x86 selftest < plumbline/wire/tests/vectors.jsonl | cmp - plumbline/wire/tests/expected.txt; echo "exit $?"
 "$WORK"/mutb2-x86 enc < plumbline/wire/tests/example.json | cmp - plumbline/wire/tests/example.ipo; echo "exit $?"
 "$WORK"/mutb2-x86 shapes | sha256sum
 ```
 
-**This one passes selftest**: `IPO1 PASS vectors=39 json_bytes=24887 ipo_bytes=13640`, `exit 0`,
-because the broken shape never matches and the program stays consistent with itself. It is
-caught by the comparisons: `cmp` with `tests/expected.txt` exit 1 (`differ: char 32, line 1`),
-`cmp` with `tests/example.ipo` exit 1, and the table's sha256 is `7bc513dc...` instead of the pin.
-Run on x86-64 only.
+**This one passes selftest**, on both targets: `IPO1 PASS vectors=39 json_bytes=24887
+ipo_bytes=13640`, `exit 0`, because the broken shape never matches and the program stays
+consistent with itself. It is caught by the comparisons: `cmp` with `tests/expected.txt` exit 1
+(`differ: char 32, line 1`), `cmp` with `tests/example.ipo` exit 1, and the table's sha256 is
+`7bc513dc...` instead of the pin (the three comparisons were run with the x86-64 build).
 
 ### c. The "must be bare" check of `dec` removed
 
@@ -307,7 +316,7 @@ Both targets:
 ```
 FAIL 45-example-quoted-model.ipo dec exit=48 want=45 stdout=0 stderr=ipo: NONCANON at byte 118
 FAIL 45-quoted-could-be-bare.ipo dec exit=48 want=45 stdout=0 stderr=ipo: NONCANON at byte 5
-BADRUN FAIL files=69 runs=92 failed=2
+BADRUN FAIL files=75 runs=98 failed=2
 ```
 
 The mutant is caught by two bad files. It still refuses them, with the wrong class: the
@@ -331,16 +340,16 @@ Both targets:
 ```
 FAIL 45-example-quoted-model.ipo dec exit=0 want=45 stdout=561 stderr=
 FAIL 45-quoted-could-be-bare.ipo dec exit=0 want=45 stdout=6 stderr=
-BADRUN FAIL files=69 runs=92 failed=2
+BADRUN FAIL files=75 runs=98 failed=2
 ```
 
 and the fuzz run (x86-64) ends
-`FUZZ FAIL mode=dec seeds=95 runs=47500 accepted=9077 refused=38423 failed=788`: 788 mutated
+`FUZZ FAIL mode=dec seeds=97 runs=48500 accepted=9255 refused=39245 failed=1019`: 1019 mutated
 frames were accepted that are not the encoding of their value.
 
 ### d. Both targets identical
 
-Checks 1 (selftest stdout), 3 (the 92 refusal lines) and 4 (every frame) are the comparisons.
+Checks 1 (selftest stdout), 3 (the 98 refusal lines) and 4 (every frame) are the comparisons.
 
 ## Numbers
 
@@ -351,7 +360,7 @@ Checks 1 (selftest stdout), 3 (the 92 refusal lines) and 4 (every frame) are the
 | `kind=result`, 8 vectors | 6366 | 3500 |
 | best single vector (3, `tests/example.json`) | 560 | 237 |
 | worst single vector (2, the unknown-fields fixture) | 703 | 625 |
-| 56 edge values, no envelope among them | 1033 | 1654 |
+| 58 edge values, no envelope among them | 1069 | 1716 |
 
 No LF is counted on either side. Best and worst are by ipo/json, from `census`
 (`best vector=3 json=560 ipo=237`, `worst vector=2 json=703 ipo=625`).
@@ -362,8 +371,8 @@ No LF is counted on either side. Best and worst are by ipo/json, from `census`
   whole (`1.0`). One of the 49 extracted envelopes is refused for an integer above 2^53.
 - Object keys must be ASCII; a non-ASCII key is refused, not sorted.
 - Inputs and outputs at most 1 MiB, nesting at most 64.
-- `true`, `false` and `null` written bare are strings, not the JSON literals (`SPEC.md`
-  section 8, note 2). The design allows it; a writer can slip.
+- `drive fuzz` never produced a bare `true`, `false` or `null`: `JSONWORD` (51) is tested by
+  its six fixtures and by the edge values only.
 - Values that match no shape are longer than their JSON (edge row above).
 - `selftest` does not pin the shape table by itself (mutant b2).
 - The sha256 of the table and the byte comparisons use `sha256sum` and `cmp`; no Omega program

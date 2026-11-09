@@ -29,7 +29,9 @@ text sh12 "wfile\tcontent\tpath\n"
 text sh13 "wrote\tbytes_written\tpath\n"
 text sh14 "wrote2\tbytes_written\tpath\treceipt\n"
 
-note the words every frame may use besides shape words; none of them is ever a bare string
+note the words every frame may use besides shape words; none of them is ever a bare string.
+note Reserved with them: true, false and null (ttrue, tfalse, tnull of 10-json.om), which no
+note frame may use as a bare token at all.
 text rmagic "ipo1"
 text rnil "nil"
 text ryes "yes"
@@ -76,10 +78,27 @@ shput sh13
 shput sh14
 end
 
-note isresw: is the pool slice one of the seven fixed words
+note isjsonw: is the pool slice true, false or null. The three JSON literals are reserved
+note and are no word of the form: a writer with JSON habits must get a refusal (JSONWORD),
+note not a string where it meant a boolean or null. The strings are written quoted.
+fn isjsonw o ulong n ulong to bool
+if seqt o n ttrue
+ret true
+end
+if seqt o n tfalse
+ret true
+end
+ret seqt o n tnull
+end
+
+note isresw: is the pool slice one of the ten fixed words: the seven of the form, or one of
+note the three JSON literals
 fn isresw o ulong n ulong to bool
-if or lt n 2 gt n 4
+if or lt n 2 gt n 5
 ret false
+end
+if isjsonw o n
+ret true
 end
 if seqt o n rmagic
 ret true
@@ -341,7 +360,7 @@ ret true
 end
 
 note isbare: is the pool slice a string that is written without quotes: the pattern, and
-note not one of the fixed words, and not a shape word
+note not one of the fixed words (true, false and null among them), and not a shape word
 fn isbare o ulong n ulong to bool
 if not barepat o n
 ret false

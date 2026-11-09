@@ -1,2 +1,2 @@
-kind=- n=56 json=1033 ipo=1654
-IPO1 PASS vectors=56 json_bytes=1033 ipo_bytes=1654
+kind=- n=58 json=1069 ipo=1716
+IPO1 PASS vectors=58 json_bytes=1069 ipo_bytes=1716

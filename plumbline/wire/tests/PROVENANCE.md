@@ -96,9 +96,11 @@ build printed the same bytes.
 
 ## `edge.jsonl`
 
-56 values written by hand for this work (not from INTERPLANE), then made canonical and distinct
+58 values written by hand for this work (not from INTERPLANE), then made canonical and distinct
 with `drive uniq ... canon`. They cover what the vectors do not: the three literals; integers at
-plus and minus 2^53; the empty string; strings equal to each fixed word and to shape words;
+plus and minus 2^53; the empty string; strings equal to each fixed word and to shape words; the
+strings `"true"`, `"false"` and `"null"` as values and as the keys of one object (they must come
+out quoted, never bare);
 strings at 64 and 65 bytes; strings that must be quoted (capital letter, leading digit or minus,
 space, solidus); every JCS escape, `\u0000`, U+007F as a literal byte, 2-, 3- and 4-byte UTF-8,
 a surrogate pair escape; empty and nested arrays and objects; the empty key; keys that must be
@@ -108,7 +110,7 @@ superset of one, and shapes inside shapes; and 64 nested arrays.
 ## `bad/`: inputs that must be refused
 
 A file is named `CODE-what.EXT`: `.ipo` files go to `ipo dec`, `.json` files to `ipo canon` and to
-`ipo enc`, and each run must exit with CODE and write nothing to stdout. 67 files are committed.
+`ipo enc`, and each run must exit with CODE and write nothing to stdout. 73 files are committed.
 Two more are over 100 KB and are made in `WORK` at check time, never committed:
 
 ```sh
@@ -116,7 +118,7 @@ Two more are over 100 KB and are made in `WORK` at check time, never committed:
 "$WORK"/gen bigipo > "$WORK"/23-decodes-over-1mib.ipo     # 176013 bytes
 ```
 
-That is 69 files and 92 runs. `24-nested-65-deep.json` and `24-nested-65-deep.ipo` were written
+That is 75 files and 98 runs. `24-nested-65-deep.json` and `24-nested-65-deep.ipo` were written
 once by `gen deepjson` and `gen deepipo`. All others were typed; their bytes, with `\n` LF, `\t`
 TAB, `\r` CR and `\xNN` one byte:
 
@@ -179,6 +181,12 @@ TAB, `\r` CR and `\xNN` one byte:
 | `46-obj-with-shape-keys.ipo` | `ipo1 obj id mock kind runtime end\n` |
 | `47-key-twice.ipo` | `ipo1 obj a 1 a 2 end\n` |
 | `47-keys-out-of-order.ipo` | `ipo1 obj b 1 a 2 end\n` |
+| `51-bare-true-as-value.ipo` | `ipo1 true\n` |
+| `51-bare-false-as-value.ipo` | `ipo1 false\n` |
+| `51-bare-null-as-value.ipo` | `ipo1 null\n` |
+| `51-bare-true-as-key.ipo` | `ipo1 obj true 1 end\n` |
+| `51-bare-false-as-key.ipo` | `ipo1 obj false 1 end\n` |
+| `51-bare-null-as-key.ipo` | `ipo1 obj null 1 end\n` |
 
 Four files are `example.ipo` with one change each:
 

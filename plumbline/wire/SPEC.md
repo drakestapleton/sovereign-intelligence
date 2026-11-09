@@ -58,8 +58,12 @@ shaped = WORD n( SP value )           ; WORD a shape word, n the number of keys 
 ```
 
 - `nil`, `yes`, `no` are JSON `null`, `true`, `false`.
-- **Reserved words:** `ipo1 nil yes no obj arr end` and the 15 shape words of section 4. A string
-  equal to one of them is written quoted.
+- **Reserved words:** `ipo1 nil yes no obj arr end`, the three JSON literals `true false null`,
+  and the 15 shape words of section 4. A string equal to one of them, as a value or as a key, is
+  written quoted.
+- **`true`, `false` and `null` are no token of the form.** As a bare token, in any position, each
+  is refused (`JSONWORD`): a writer with JSON habits must get a refusal, not a different value.
+  The quoted strings `"true"`, `"false"` and `"null"` are ordinary strings and are accepted.
 - Tokens are separated by exactly one space (0x20). A frame has no leading space, no trailing
   space and no double space. Spaces inside a quoted string are part of the string.
 - No byte 0x00 to 0x1F occurs in a frame except its final LF. JCS already escapes those bytes
@@ -78,7 +82,8 @@ The encoder has no choices, and the decoder refuses every frame the encoder woul
 | a string that matches `bare` and is not reserved is written bare, as a value and as a key | `NOTBARE` |
 | an object whose key sequence is a shape's is written with the shape word | `NOTSHAPE` |
 | `obj` keys ascend strictly in byte order | `KEYORDER` |
-| an `obj` key is a string (not a number, not a reserved word) | `FRKEY` |
+| the bare tokens `true`, `false` and `null` do not occur, as a value or as a key | `JSONWORD` |
+| an `obj` key is a string (not a number, not another reserved word) | `FRKEY` |
 | quoted strings use exactly the JCS spelling (`\/`, `A`, `\u001F` are refused) | `FRSTR` |
 | numbers are canonical integers | `BADNUM` `NUMFLOAT` `NUMRANGE` `NEGZERO` |
 | every shape has all of its values and every `arr` and `obj` is closed | `FRARITY` |
@@ -118,7 +123,7 @@ The table is data embedded in the program (`src/20-shape.om`, one `text` per lin
 
 - Bytes: 806. **sha256:** `cf9e5f47b6659cdc75ca3799e0df2ed72d335bc8bae99db1ad476cf57af5cb43`
 - A shape word is 1 to 8 bytes, `a-z` then `a-z0-9`, unique, and not one of
-  `ipo1 nil yes no obj arr end`. A shape has at least 2 keys, printable ASCII, in strictly
+  `ipo1 nil yes no obj arr end true false null`. A shape has at least 2 keys, printable ASCII, in strictly
   ascending byte order (JCS order). No two shapes have the same key sequence. `ipo` checks all of
   this at every start and refuses to run any mode with a table that breaks it (`BADTABLE`).
 - The table is part of the form. A different table needs a different frame word, never `ipo1`.
@@ -167,7 +172,7 @@ reads no clock, file, environment or network. When it refuses it writes nothing 
 | 0 | done (selftest: PASS) |
 | 1 | selftest: FAIL |
 | 2 | usage: not exactly one argument, or an unknown mode |
-| 20 to 50 | a refusal class, below. stderr has one line `ipo: NAME at byte N` |
+| 20 to 51 | a refusal class, below. stderr has one line `ipo: NAME at byte N` |
 | 100 and above | an Omega trap. No input is known to cause one; it would be a defect of `ipo` |
 
 N is the byte offset in the input (in `selftest`, in the line or in its frame) where the reader
@@ -206,6 +211,7 @@ stopped; for `TOOBIG` and `OUTBIG` it is the limit.
 | 48 | `NONCANON` | the frame is not the encoding of its value (backstop, section 3) |
 | 49 | `BADTABLE` | the embedded shape table breaks its rules |
 | 50 | `CAPACITY` | an internal pool is full: 1048576 values or 1179648 pool bytes per input (not reachable within the 1 MiB input limit), or more than 64 kinds in `selftest` |
+| 51 | `JSONWORD` | the bare token `true`, `false` or `null` in a frame, as a value or as an `obj` key. N is where the token starts |
 
 Reasons that appear only in a `selftest` verdict (exit 1): `NOTCANON` a line is not its own
 canonical JSON, `ROUNDTRIP` dec(enc(line)) is not the line, `REENC` enc(dec(frame)) is not the
@@ -275,13 +281,14 @@ The design was given; these are the places where implementing it showed a conseq
 1. **0x7F.** "ASCII control bytes are refused" cannot include 0x7F inside a quoted string: JCS
    writes U+007F literally, so refusing it would make some JSON strings impossible to carry.
    ipo1 refuses 0x00 to 0x1F everywhere and admits 0x7F only inside a quoted string.
-2. **`true`, `false` and `null` are legal bare strings.** `ipo1 true` is the JSON string
-   `"true"`; the boolean is `ipo1 yes`. A writer that falls back into JSON habits produces a
-   valid frame with another meaning, and nothing can refuse it. Reserving the three words (so
-   those strings must be quoted and the bare words are `FRWORD`) would close this; it changes
-   the form, so it is not done in ipo1.
+2. **`true`, `false` and `null` are reserved.** In the first draft they matched the bare
+   pattern, so `ipo1 true` was the JSON string `"true"` while the boolean is `ipo1 yes`: a
+   writer falling back into JSON habits produced a valid frame with another meaning. The form
+   was changed before release: the three words are reserved, the strings are written quoted, and
+   a bare `true`, `false` or `null` is refused with its own class, `JSONWORD` (51). A word that
+   only starts like one (`truex`, `nulls`) is still an ordinary bare string.
 3. **Unshaped values cost more than JSON.** `[]` is `arr end`, `{"a":1}` is `obj a 1 end`. The
-   56 hand-written values of `tests/edge.jsonl` are 1033 bytes as JSON and 1654 as frames. The
+   58 hand-written values of `tests/edge.jsonl` are 1069 bytes as JSON and 1716 as frames. The
    form only pays where shapes match.
 4. **A shape is all or nothing.** One unknown key puts the whole object back to `obj` with every
    key name (vector 2 above).

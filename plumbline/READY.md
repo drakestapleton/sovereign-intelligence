@@ -44,7 +44,7 @@ The gate's own output on each base is the evidence; the hand-off message quotes 
 | H1 | the site generator, built for both targets, writes byte-identical sites | n/a (H2 and H3 are its controls) |
 | H2 | bad inputs are refused and nothing is written | wrong ledger total; README without a needed section; registry without a table; `http://` address; a hostile project description must come out escaped |
 | H3 | the independent verifier passes the generated site and its own fixtures | a copy of the site with one planted violation; two mutants of the verifier with a rule removed |
-| W1 | the wire codec's selftest reproduces its recorded output on both targets | every refusal fixture exits with its code; two mutants of the codec |
+| W1 | the wire codec's selftest reproduces its recorded output on both targets; the example frame decodes back to the example envelope; the shape table matches its pinned hash | every refusal fixture exits with its own code, the JSON words `true`, `false` and `null` among them; four mutants of the codec; 29,100 mutated inputs are each refused cleanly or stay consistent (x86-64 only) |
 | N1 | the Neuralese experiment reproduces its recorded table and verdicts | a tampered peer table; a build with the gradient path cut; a wrong derivative |
 | L1 | every Lean file checks with no `sorry` and only standard axioms | `proofs/control/Unproved.lean` must be flagged |
 
@@ -53,7 +53,7 @@ The gate's own output on each base is the evidence; the hand-off message quotes 
 - **The Neuralese experiment's own verdict is FAIL.** One of six pre-registered criteria (P2) failed and is reported as failed, in its notes and on the site. The gate step N1 passing means "the recorded result reproduces", not "the experiment passed".
 - **The forge's repository count is not stated** in this build, because the registry it is counted from is not in the repository. An earlier draft printed the number of projects in `repos.tsv` (83) as that count; the live forge says 30. That was wrong and is fixed: the count is read from the registry's first table when the build is given one.
 - **Facts the Rust generator read from the Radicle HTTP API are dropped** (open patch and issue counts, last merged patch, delegate tag, latest change title). The pages link to the patches and issues pages instead.
-- **`ipo1` is PROPOSED**, a text encoding of the existing envelope. It is not part of the protocol's specification.
+- **`ipo1` is PROPOSED**, a text encoding of the existing envelope. It is not part of the protocol's specification. Its Lean proof covers the token grammar; the lexical layer (bare or quoted, reserved words) is covered by tests only.
 - **The site's invitation to outside builders is labelled PLANNED.** No intake runs.
 
 ## NOT_RUN

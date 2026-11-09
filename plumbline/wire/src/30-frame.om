@@ -3,6 +3,7 @@ note
 note A frame is one line: ipo1, one space, one VALUE, LF. VALUE is nil, yes, no, a canonical
 note integer, a string (bare when isbare allows it, else its JCS literal), arr VALUE* end,
 note obj (KEY VALUE)* end, or a shape word followed by exactly the values of its keys.
+note The bare tokens true, false and null are no value and no key: JSONWORD.
 note The writer makes one frame per value. The reader accepts only that frame: each rule has
 note its own refusal, and fdec ends by writing the value again and comparing bytes (NONCANON),
 note so that "dec accepted F" always means "enc of the result is F".
@@ -226,8 +227,9 @@ ret a
 end
 
 note fkey: the key of an obj member at pos, written as fwstr writes a string: bare when
-note allowed (so a number, a fixed word or a shape word is no key: FRKEY), else quoted (so a
-note quoted key that could be bare is NOTBARE). ASCII only, as in JSON. Returns its pool offset.
+note allowed (so a number, a fixed word or a shape word is no key: FRKEY; true, false and
+note null: JSONWORD), else quoted (so a quoted key that could be bare is NOTBARE). ASCII only,
+note as in JSON. Returns its pool offset.
 fn fkey to ulong
 kp = get pos 0
 o = get spn 0
@@ -246,6 +248,9 @@ if gt m 64
 fail EFRKEY kp
 end
 r = fcopy kp e
+if isjsonw o m
+fail EJSONW kp
+end
 if not isbare o m
 fail EFRKEY kp
 end
@@ -339,7 +344,8 @@ put nb a c
 ret a
 end
 
-note fresv: the fixed word in the pool slice, which started at p in inp
+note fresv: the fixed word in the pool slice, which started at p in inp: a value word, end
+note where a value is required (FRARITY), a JSON literal (JSONWORD), or ipo1 (FRWORD)
 fn fresv o ulong n ulong p ulong d ulong to ulong
 k = ulong 0
 if seqt o n rnil
@@ -359,6 +365,9 @@ k = 7
 end
 if seqt o n rend
 fail EFRARI p
+end
+if isjsonw o n
+fail EJSONW p
 end
 put spn 0 o
 if eq k 0

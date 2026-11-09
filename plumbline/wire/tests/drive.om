@@ -22,7 +22,7 @@ note     xorshift64 sequence (so every run of the driver makes the same mutants)
 note     four one byte replaced by a different byte, else one byte deleted, or one byte
 note     inserted. Each mutant is the stdin of CMD ARG... MODE, and must be handled as SPEC.md
 note     says any input is:
-note       refused: exit 20 to 50 and nothing on stdout (never a trap, a signal or 1);
+note       refused: exit 20 to 51 and nothing on stdout (never a trap, a signal or 1);
 note       or accepted (exit 0), and then, for dec, CMD ARG... enc of the output is the mutant
 note       byte for byte (dec accepts only the canonical frame); for enc, CMD ARG... dec of
 note       the output is CMD ARG... canon of the mutant; for canon, canon of the output is
@@ -854,7 +854,7 @@ if eq r 0
 put facc 0 add get facc 0 1
 good = fzacc md
 else
-good = and and ge r 20 le r 50 eq get cbn 0 0
+good = and and ge r 20 le r 51 eq get cbn 0 0
 end
 if not good
 put gbad 0 add get gbad 0 1

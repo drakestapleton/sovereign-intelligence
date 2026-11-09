@@ -5,7 +5,7 @@ note   enc       any JSON value in, one ipo1 frame out
 note   dec       one ipo1 frame in, canonical JSON and one LF out
 note   selftest  canonical JSON values, one per line, in; per-kind lines and a verdict out
 note   shapes    the embedded shape table out
-note Exit 0 done, 2 usage, 20..50 the refusal class; selftest exits 0 (PASS) or 1 (FAIL).
+note Exit 0 done, 2 usage, 20..51 the refusal class; selftest exits 0 (PASS) or 1 (FAIL).
 
 text tmcanon "canon"
 text tmenc "enc"
