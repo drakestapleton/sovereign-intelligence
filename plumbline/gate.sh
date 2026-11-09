@@ -162,6 +162,75 @@ if [ "$TARGETS" = "a64 x86" ]; then
 fi
 pass "hubcheck ($TARGETS): $(cat "$O/hubcheck-a64.out"); $(tail -1 "$O/hcrun-a64.out"); a planted outside script fails R01; the verifier with rule R09 removed fails 2 of its cases and with R03 removed fails 6"
 
+# --- W1. The wire codec: ipo1, the INTERPLANE Omegese form.
+V=$P/wire
+build ipo $V/src/*.om
+build wdrive $V/tests/drive.om
+build wgen $V/tests/gen.om
+build wsubst $V/tests/subst.om
+wmut() { # wmut NAME TARGET UNIT...: compile a mutant of ipo from the given units for one target
+  n=$1; t=$2; shift 2
+  if [ "$t" = a64 ]; then cat "$@" | a64 "$OMC_A64" > "$O/$n-a64" || fail "$n (a64) does not compile"
+  else { printf 'target x86linux\n'; cat "$@"; } | x86 "$OMC_X86" > "$O/$n-x86" || fail "$n (x86) does not compile"; fi
+  chmod +x "$O/$n-$t"
+}
+for t in $TARGETS; do
+  if [ $t = a64 ]; then q=$A64; else q=$X86; fi
+  runner=""
+  if [ -n "$q" ]; then runner=$(command -v "$q"); fi
+  $t "$O/ipo-$t" selftest < $V/tests/vectors.jsonl > "$O/ipo-$t.self" || fail "ipo ($t) selftest failed: $(tail -1 "$O/ipo-$t.self")"
+  cmp -s "$O/ipo-$t.self" $V/tests/expected.txt || fail "ipo ($t) selftest differs from tests/expected.txt"
+  $t "$O/ipo-$t" selftest < $V/tests/edge.jsonl > "$O/ipo-$t.edge" || fail "ipo ($t) selftest failed on the edge values"
+  cmp -s "$O/ipo-$t.edge" $V/tests/edge-expected.txt || fail "ipo ($t) edge selftest differs from tests/edge-expected.txt"
+  $t "$O/ipo-$t" enc < $V/tests/example.json | cmp -s - $V/tests/example.ipo || fail "ipo ($t) enc of the example is not tests/example.ipo"
+  $t "$O/ipo-$t" dec < $V/tests/example.ipo | cmp -s - $V/tests/example.json || fail "ipo ($t) dec of the example frame is not tests/example.json"
+  $t "$O/ipo-$t" shapes > "$O/ipo-$t.shapes" || fail "ipo ($t) shapes failed"
+  grep -q "$(sha "$O/ipo-$t.shapes")" $V/SPEC.md || fail "ipo ($t): the shape table's sha256 is not the one pinned in SPEC.md"
+  $t "$O/wgen-$t" bigjson > "$O/22-input-over-1mib.json" || fail "gen ($t) bigjson failed"
+  $t "$O/wgen-$t" bigipo > "$O/23-decodes-over-1mib.ipo" || fail "gen ($t) bigipo failed"
+  $t "$O/wdrive-$t" bad $runner "$O/ipo-$t" -- $V/tests/bad/* "$O/22-input-over-1mib.json" "$O/23-decodes-over-1mib.ipo" > "$O/ipo-$t.bad" \
+    || fail "ipo ($t): a refusal fixture was not refused as named: $(grep -v '^pass ' "$O/ipo-$t.bad" | head -3)"
+  # mutant b: two keys of one shape swapped; the table's own check must refuse it
+  $t "$O/wsubst-$t" '"peer\tid\tkind\n"' '"peer\tkind\tid\n"' < $V/src/20-shape.om > "$O/mutb-20-$t.om" || fail "subst ($t) could not make mutant b"
+  wmut ipo-mutb $t $V/src/00-core.om $V/src/10-json.om "$O/mutb-20-$t.om" $V/src/30-frame.om $V/src/40-main.om
+  if $t "$O/ipo-mutb-$t" selftest < $V/tests/vectors.jsonl > "$O/ipo-mutb-$t.self" 2> /dev/null; then fail "ipo mutant b ($t) passed selftest"; fi
+  # mutant b2: that check removed too; it stays self-consistent, so only the recorded output catches it
+  $t "$O/wsubst-$t" 'if ne skcmp sub k 1 k 0' 'if false' < "$O/mutb-20-$t.om" > "$O/mutb2-20-$t.om" || fail "subst ($t) could not make mutant b2"
+  wmut ipo-mutb2 $t $V/src/00-core.om $V/src/10-json.om "$O/mutb2-20-$t.om" $V/src/30-frame.om $V/src/40-main.om
+  $t "$O/ipo-mutb2-$t" selftest < $V/tests/vectors.jsonl > "$O/ipo-mutb2-$t.self" 2> /dev/null || true
+  if cmp -s "$O/ipo-mutb2-$t.self" $V/tests/expected.txt; then fail "ipo mutant b2 ($t) reproduced tests/expected.txt"; fi
+  # mutants c and c2: the canonical-form checks of dec removed; the refusal fixtures must catch both
+  $t "$O/wsubst-$t" 'fail ENOTBARE p' 'p = add p 0' < $V/src/30-frame.om > "$O/mutc-30-$t.om" || fail "subst ($t) could not make mutant c"
+  $t "$O/wsubst-$t" 'fail ENONCAN i' 'i = add i 0' < "$O/mutc-30-$t.om" > "$O/mutc2-30-$t.om" || fail "subst ($t) could not make mutant c2"
+  for m in mutc mutc2; do
+    wmut ipo-$m $t $V/src/00-core.om $V/src/10-json.om $V/src/20-shape.om "$O/$m-30-$t.om" $V/src/40-main.om
+    if $t "$O/wdrive-$t" bad $runner "$O/ipo-$m-$t" -- $V/tests/bad/* "$O/22-input-over-1mib.json" "$O/23-decodes-over-1mib.ipo" > "$O/ipo-$m-$t.bad"; then fail "ipo mutant $m ($t) passed every refusal fixture"; fi
+    grep -q '^BADRUN FAIL files=[0-9]* runs=[0-9]* failed=2$' "$O/ipo-$m-$t.bad" || fail "ipo mutant $m ($t) did not fail exactly 2 refusal fixtures: $(tail -1 "$O/ipo-$m-$t.bad")"
+  done
+done
+if [ "$TARGETS" = "a64 x86" ]; then
+  cmp -s "$O/ipo-a64.bad" "$O/ipo-x86.bad" || fail "ipo: the two targets refused the fixtures differently"
+  cmp -s "$O/ipo-a64.shapes" "$O/ipo-x86.shapes" || fail "ipo: the two targets hold different shape tables"
+fi
+# mutated inputs, on the natively running target only (one process per input)
+if [ -z "$A64" ]; then ft=a64; else ft=x86; fi
+if [ "$ft" = x86 ] && [ "$TARGETS" = a64 ]; then
+  skip "ipo fuzz: no natively running target"
+else
+  $ft "$O/wdrive-$ft" each "$O/ipo-$ft" enc < $V/tests/vectors.jsonl > "$O/seeds-v.ipo" 2> /dev/null || fail "ipo: drive each failed on the vectors"
+  $ft "$O/wdrive-$ft" each "$O/ipo-$ft" enc < $V/tests/edge.jsonl > "$O/seeds-e.ipo" 2> /dev/null || fail "ipo: drive each failed on the edge values"
+  cat "$O/seeds-v.ipo" "$O/seeds-e.ipo" > "$O/seeds.ipo"
+  cat $V/tests/vectors.jsonl $V/tests/edge.jsonl > "$O/seeds.jsonl"
+  fz=""
+  for m in dec enc canon; do
+    if [ $m = dec ]; then in="$O/seeds.ipo"; else in="$O/seeds.jsonl"; fi
+    $ft "$O/wdrive-$ft" fuzz $m 100 "$O/ipo-$ft" < "$in" > "$O/fuzz-$m.out" 2> /dev/null || fail "ipo fuzz ($m): $(tail -1 "$O/fuzz-$m.out")"
+    fz="$fz $(tail -1 "$O/fuzz-$m.out");"
+  done
+  pass "ipo fuzz ($ft): every mutated input was refused cleanly or stayed consistent:$fz"
+fi
+pass "ipo ($TARGETS): $(tail -1 $V/tests/expected.txt); the example is $(($(wc -c < $V/tests/example.json) - 1)) bytes of JSON and $(($(wc -c < $V/tests/example.ipo) - 1)) bytes as a frame, and decodes back to it; $(tail -1 "$O/ipo-a64.bad"); edge values pass; shape table matches its pin; mutants b, b2, c and c2 are each caught"
+
 # --- N1. The Neuralese experiment: its recorded table and verdicts, on both targets.
 build nl8 $N/nl8.om $N/main.om
 for t in $TARGETS; do
@@ -214,3 +283,5 @@ if command -v "${LEAN:-lean}" >/dev/null 2>&1; then
 else
   skip "proofs: lean is not installed here, so no proof was checked"
 fi
+
+printf 'RC=0 not_run=%s\n' "$notrun"
