@@ -1,0 +1,56 @@
+null
+true
+false
+0
+-1
+9007199254740992
+-9007199254740992
+""
+"a"
+"nil"
+"yes"
+"no"
+"obj"
+"arr"
+"end"
+"ipo1"
+"env"
+"peer"
+"wrote2"
+"true"
+"null"
+"_x"
+"a.b-c_d9"
+"9a"
+"-a"
+"A"
+"a b"
+"a  b"
+" a"
+"a/b"
+"abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz01"
+"abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz012"
+"\"\\\b\f\n\r\t"
+"\u0000\u0001\u001f\u001f"
+"Aé€😀"
+"é€😀"
+""
+[]
+{}
+[[]]
+[{}]
+[[[1,[2,[3]]],"x"],{"a":[]}]
+{"":1}
+{"a b":1,"end":4,"nil":2,"tool":3}
+{"-":6,"1":5,"A":1,"B":4,"_":2,"a":3}
+{"id":"a","kind":"b"}
+{"id":1}
+{"id":1,"kind":2,"x":3}
+[{"id":"a","kind":"b"},{"id":1,"kind":[{"name":null,"namespace":{}}]}]
+{"a\nb":1,"a\"b":2,"a\\b":3}
+{"y":{"a":true,"b":null},"z":[1,2]}
+{"floor":{"floor":{"floor":"expo","inputs":[]},"inputs":"inputs"},"inputs":"floor"}
+{"bytes_written":0,"path":"p","receipt":{"bytes_written":1,"path":"q"}}
+[true,"true",false,"false",null,"null","yes","no","nil"]
+[1,"1",-1,"-1","1e5","0.5"]
+[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]

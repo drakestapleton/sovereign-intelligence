@@ -10,8 +10,9 @@ learned models scored 0 of 8?
 
 ## What failed before
 
-The earlier experiments are frozen in `/home/user/aien-train/native/neuralese`. The line numbers
-below were read in that checkout on 2026-11-09.
+The earlier experiments are frozen in the aien-train repository, under `native/neuralese`. The line
+numbers below were read on 2026-11-09 in the GitHub copy `drakestapleton/aien-train` at commit
+`0518c91`; the canonical copy is the Radicle project and may have moved on.
 
 - **NL1.** `README.md` line 8 records the learned model as FAIL: it "does not reach all-16 training
   reconstruction and does not beat the fixed or discrete controls". The table at lines 48 to 54 gives
@@ -120,53 +121,49 @@ not make.
 
 ## Build and run
 
-Compilers and their use are described in `/home/user/omc-bin/README.txt`. Do not run
-`sovereign-intelligence/build.sh`. Never run the output of a compile that did not exit 0.
+From the root of the repository, after `sh build.sh` has left the seed-grown compilers in `out/`.
+Never run the output of a compile that did not exit 0. On an AArch64 host drop `qemu-aarch64-static`.
 
 ```sh
-cd /home/user/sovereign-intelligence/plumbline/neuralese/nl8
-mkdir -p /tmp/nl8-scratch/final
+D=plumbline/neuralese/nl8
+mkdir -p out/nl8
+cat $D/nl8.om $D/main.om | qemu-aarch64-static out/omc > out/nl8/nl8-a64 && chmod +x out/nl8/nl8-a64
+{ printf 'target x86linux\n'; cat $D/nl8.om $D/main.om; } | out/omc-x86 > out/nl8/nl8-x86 && chmod +x out/nl8/nl8-x86
 
-cat nl8.om main.om | qemu-aarch64-static /home/user/omc-bin/omc > /tmp/nl8-scratch/final/nl8-a64; echo "compile $?"
-{ printf 'target x86linux\n'; cat nl8.om main.om; } | /home/user/omc-bin/omc-x86 > /tmp/nl8-scratch/final/nl8-x86; echo "compile $?"
-chmod +x /tmp/nl8-scratch/final/nl8-a64 /tmp/nl8-scratch/final/nl8-x86
-
-qemu-aarch64-static /tmp/nl8-scratch/final/nl8-a64 all > /tmp/nl8-scratch/final/all-a64.txt; echo "exit $?"
-/tmp/nl8-scratch/final/nl8-x86 all > /tmp/nl8-scratch/final/all-x86.txt; echo "exit $?"
-cmp /tmp/nl8-scratch/final/all-a64.txt expected.tsv; echo "cmp $?"
-cmp /tmp/nl8-scratch/final/all-x86.txt expected.tsv; echo "cmp $?"
+qemu-aarch64-static out/nl8/nl8-a64 all > out/nl8/all-a64.txt; echo "exit $?"
+out/nl8/nl8-x86 all > out/nl8/all-x86.txt; echo "exit $?"
+cmp out/nl8/all-a64.txt $D/expected.tsv; echo "cmp $?"
+cmp out/nl8/all-x86.txt $D/expected.tsv; echo "cmp $?"
 ```
 
-Expected: both compiles print `compile 0`, both runs print `exit 1` (NL8 FAIL), both `cmp` lines print
-`cmp 0`. Run time is about 1 second natively and 2 seconds under qemu.
+Expected: both runs print `exit 1` (the verdict is NL8 FAIL) and both `cmp` lines print `cmp 0`. Run
+time is about 1 second natively and 2 seconds under qemu.
 
 P5, each build given the other build's table:
 
 ```sh
-qemu-aarch64-static /tmp/nl8-scratch/final/nl8-a64 table > /tmp/nl8-scratch/final/t-a64.tsv; echo "exit $?"
-/tmp/nl8-scratch/final/nl8-x86 table > /tmp/nl8-scratch/final/t-x86.tsv; echo "exit $?"
-qemu-aarch64-static /tmp/nl8-scratch/final/nl8-a64 all /tmp/nl8-scratch/final/t-x86.tsv > /tmp/nl8-scratch/final/allp-a64.txt; echo "exit $?"
-/tmp/nl8-scratch/final/nl8-x86 all /tmp/nl8-scratch/final/t-a64.tsv > /tmp/nl8-scratch/final/allp-x86.txt; echo "exit $?"
-cmp /tmp/nl8-scratch/final/allp-a64.txt expected-peer.tsv; echo "cmp $?"
-cmp /tmp/nl8-scratch/final/allp-x86.txt expected-peer.tsv; echo "cmp $?"
+qemu-aarch64-static out/nl8/nl8-a64 table > out/nl8/t-a64.tsv
+out/nl8/nl8-x86 table > out/nl8/t-x86.tsv
+qemu-aarch64-static out/nl8/nl8-a64 all out/nl8/t-x86.tsv > out/nl8/allp-a64.txt; echo "exit $?"
+out/nl8/nl8-x86 all out/nl8/t-a64.tsv > out/nl8/allp-x86.txt; echo "exit $?"
+cmp out/nl8/allp-a64.txt $D/expected-peer.tsv; echo "cmp $?"
+cmp out/nl8/allp-x86.txt $D/expected-peer.tsv; echo "cmp $?"
 ```
 
-Expected: the two `table` runs exit 0, the two `all` runs exit 1, both `cmp` lines print `cmp 0`, and
-both outputs contain the line `P5 PASS`.
+Expected: the two `all` runs exit 1, both `cmp` lines print `cmp 0`, and both outputs contain the
+line `P5 PASS`.
 
 Gradient check and sweep:
 
 ```sh
-qemu-aarch64-static /tmp/nl8-scratch/final/nl8-a64 grad 17; echo "exit $?"
-/tmp/nl8-scratch/final/nl8-x86 grad 17; echo "exit $?"
-qemu-aarch64-static /tmp/nl8-scratch/final/nl8-a64 sweep > /tmp/nl8-scratch/final/sweep-a64.txt; echo "exit $?"
-/tmp/nl8-scratch/final/nl8-x86 sweep > /tmp/nl8-scratch/final/sweep-x86.txt; echo "exit $?"
-cmp /tmp/nl8-scratch/final/sweep-a64.txt sweep.txt; echo "cmp $?"
-cmp /tmp/nl8-scratch/final/sweep-x86.txt sweep.txt; echo "cmp $?"
+out/nl8/nl8-x86 grad 17; echo "exit $?"
+out/nl8/nl8-x86 sweep > out/nl8/sweep-x86.txt; cmp out/nl8/sweep-x86.txt $D/sweep.txt; echo "cmp $?"
 ```
 
-Expected: both `grad` runs print the same three lines ending `GRAD PASS` and `exit 0`; both sweeps
-exit 0 and both `cmp` lines print `cmp 0`. The sweep takes about 4 seconds natively and 10 under qemu.
+Expected: three lines ending `GRAD PASS` and `exit 0`; `cmp 0`. The sweep takes about 4 seconds
+natively and 10 under qemu.
+
+`plumbline/gate.sh` step N1 runs all of this on both targets and adds a tampered-peer control.
 
 ## Mutants
 
@@ -174,27 +171,29 @@ exit 0 and both `cmp` lines print `cmp 0`. The sweep takes about 4 seconds nativ
 and writes no file when FROM occurs zero times or more than once. Exit 2 is a bad argument, 3 an
 unreadable input, 4 an output that could not be written.
 
+Run these from `plumbline/neuralese/nl8`, after the build above:
+
 ```sh
-{ printf 'target x86linux\n'; cat subst.om; } | /home/user/omc-bin/omc-x86 > /tmp/nl8-scratch/final/subst; echo "compile $?"
-chmod +x /tmp/nl8-scratch/final/subst
+{ printf 'target x86linux\n'; cat subst.om; } | ../../../out/omc-x86 > ../../../out/nl8/subst; echo "compile $?"
+chmod +x ../../../out/nl8/subst
 
-/tmp/nl8-scratch/final/subst nl8.om /tmp/nl8-scratch/final/m1.om "ret gste" "ret mul 0.0f64 gste"; echo "exit $?"
-{ printf 'target x86linux\n'; cat /tmp/nl8-scratch/final/m1.om main.om; } | /home/user/omc-bin/omc-x86 > /tmp/nl8-scratch/final/m1-x86; echo "compile $?"
-chmod +x /tmp/nl8-scratch/final/m1-x86
-/tmp/nl8-scratch/final/m1-x86 all; echo "exit $?"
-/tmp/nl8-scratch/final/m1-x86 grad 17; echo "exit $?"
+../../../out/nl8/subst nl8.om ../../../out/nl8/m1.om "ret gste" "ret mul 0.0f64 gste"; echo "exit $?"
+{ printf 'target x86linux\n'; cat ../../../out/nl8/m1.om main.om; } | ../../../out/omc-x86 > ../../../out/nl8/m1-x86; echo "compile $?"
+chmod +x ../../../out/nl8/m1-x86
+../../../out/nl8/m1-x86 all; echo "exit $?"
+../../../out/nl8/m1-x86 grad 17; echo "exit $?"
 
-/tmp/nl8-scratch/final/subst nl8.om /tmp/nl8-scratch/final/m2.om "ret div 1.0f64 mul d d" "ret div 1.0f64 d"; echo "exit $?"
-{ printf 'target x86linux\n'; cat /tmp/nl8-scratch/final/m2.om main.om; } | /home/user/omc-bin/omc-x86 > /tmp/nl8-scratch/final/m2-x86; echo "compile $?"
-chmod +x /tmp/nl8-scratch/final/m2-x86
-/tmp/nl8-scratch/final/m2-x86 grad 17; echo "exit $?"
+../../../out/nl8/subst nl8.om ../../../out/nl8/m2.om "ret div 1.0f64 mul d d" "ret div 1.0f64 d"; echo "exit $?"
+{ printf 'target x86linux\n'; cat ../../../out/nl8/m2.om main.om; } | ../../../out/omc-x86 > ../../../out/nl8/m2-x86; echo "compile $?"
+chmod +x ../../../out/nl8/m2-x86
+../../../out/nl8/m2-x86 grad 17; echo "exit $?"
 
-/tmp/nl8-scratch/final/subst nl8.om /tmp/nl8-scratch/final/none.om "ret gsteXYZ" "x"; echo "exit $?"
-/tmp/nl8-scratch/final/subst nl8.om /tmp/nl8-scratch/final/many.om "ret 0" "ret 1"; echo "exit $?"
+../../../out/nl8/subst nl8.om ../../../out/nl8/none.om "ret gsteXYZ" "x"; echo "exit $?"
+../../../out/nl8/subst nl8.om ../../../out/nl8/many.om "ret 0" "ret 1"; echo "exit $?"
 ```
 
 Expected: M1 `all` prints `P1 FAIL bad_rows=8 first_seed=17 first_mask=65535` and `NL8 FAIL`, exit 1;
 M1 and M2 `grad 17` print `GRAD FAIL`, exit 1; the last two `subst` lines print
 `SUBST REFUSED matches=0` and `SUBST REFUSED matches=18`, exit 1, and leave no file. The same steps
-work for the AArch64 build with `qemu-aarch64-static /home/user/omc-bin/omc < file` in place of the
+work for the AArch64 build with `qemu-aarch64-static ../../../out/omc < file` in place of the
 x86-64 compile line. Write a mutant to a scratch path, never over `nl8.om`.

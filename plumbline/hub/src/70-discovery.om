@@ -1,5 +1,6 @@
 note hub/src/70-discovery.om: the files a machine reads: style.css, robots.txt, sitemap.xml,
-note llms.txt and facts.json.
+note llms.txt and facts.json. facts.json is the facts file as a JSON array of [key, value] pairs, in
+note the file's order: a key such as stage_version occurs once per stage, so an object would repeat keys.
 
 text d01 "User-agent: *\nAllow: /\nSitemap: "
 text d02 "/sitemap.xml\n"
@@ -84,7 +85,7 @@ em d13
 embase
 em d14
 wfile wllm
-emb 123
+emb 91
 p = get fac 0
 e = get fac 1
 first = true
@@ -97,18 +98,20 @@ emb 44
 end
 first = false
 emb 10
+emb 91
 emb 34
 jsstr p sub t p
 emb 34
-emb 58
+emb 44
 emb 34
 jsstr add t 1 sub q add t 1
 emb 34
+emb 93
 end
 p = add q 1
 end
 emb 10
-emb 125
+emb 93
 emb 10
 wfile wfac
 end

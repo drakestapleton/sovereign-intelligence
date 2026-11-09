@@ -6,8 +6,8 @@ This file stands alone (a single file cannot import another without a build), so
 `WF` are repeated here word for word from Ipo1.lean.
 
 C1  A shape word that is NOT tied to a fixed number of values. The encoder `encBad` is the encoder
-    of Ipo1.lean unchanged; what is dropped is the well-formedness requirement. Shape 0 written
-    once with one value and once with two and with none:
+    of Ipo1.lean unchanged; what is dropped is the well-formedness requirement. In the first value
+    shape 0 takes one value both times; in the second it takes two values, then none:
       shp 0 [shp 0 [nil]]   and   shp 0 [shp 0 [], nil]   are both   tShape 0, tShape 0, tNil.
     The second value is well formed under no shape table at all, so this does not contradict T2;
     it shows T2 needs the fixed arity.

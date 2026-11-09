@@ -146,7 +146,7 @@ if [ "$TARGETS" = "a64 x86" ]; then
   done
   { cat "$O/nl8-a64.table"; printf 'x'; } > "$O/nl8-peer.bad"
   x86 "$O/nl8-x86" all "$O/nl8-peer.bad" | grep -q '^P5 FAIL' || fail "nl8: a tampered peer table was not caught"
-  pass "nl8 ($TARGETS): prints its recorded table, verdicts and sweep, byte-identical on both; gradient check passes; a tampered peer table is caught. THE EXPERIMENT'S OWN VERDICT, as recorded: $(tail -1 $N/expected-peer.tsv), with $(grep -c ' FAIL' $N/expected-peer.tsv | tr -d ' ') failing line(s): $(grep '^P[0-9] FAIL' $N/expected-peer.tsv | tr '\n' ';')"
+  pass "nl8 ($TARGETS): prints its recorded table, verdicts and sweep, byte-identical on both; gradient check passes; a tampered peer table is caught. THE EXPERIMENT'S OWN VERDICT, as recorded: $(tail -1 $N/expected-peer.tsv), failed criteria $(grep -c '^P[0-9] FAIL' $N/expected-peer.tsv | tr -d ' '): $(grep '^P[0-9] FAIL' $N/expected-peer.tsv | tr '\n' ';')"
 else
   pass "nl8 (a64): prints its recorded table, verdicts and sweep; gradient check passes"
   skip "nl8 criterion P5 (both targets print the same table) and expected-peer.tsv: one target only"

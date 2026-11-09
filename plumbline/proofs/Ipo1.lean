@@ -48,7 +48,7 @@ The proofs never look inside a number or a string, so the payload types (Int, St
 DEPARTURES FROM THE BRIEF (form only, same content).
   - `decUntil` tests the first token with the explicit function `isEnd`, and `decPairs` lists every
     first token, so that no definition has overlapping cases.
-  - `decode` and the budget-free corollary of T1 are additions.
+  - `decode`, the budget-free corollary of T1, and `examples_compute` are additions.
 
 Checked with Lean 4.35.0, core library only (no Mathlib). The `#print` lines at the end list what
 each theorem rests on beyond the rules of the logic.
