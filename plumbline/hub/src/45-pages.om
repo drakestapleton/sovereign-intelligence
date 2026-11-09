@@ -1,0 +1,239 @@
+note hub/src/45-pages.om: the stack page, the evidence page, the protocol overview and the six
+note protocol pages whose bodies come from 60-protocol.om.
+
+text s01 "<section class='sec' id='planes'><div class='wrap'><p class='eyebrow'>By plane</p><h2>Four planes and the line through them</h2><p class='sub'>Each project belongs to one subsystem, and each subsystem to a plane. The bar is the share of that subsystem&#39;s code lines already written in Omega.</p>\n"
+text s02 "</div></section>\n<section class='sec' id='ledger'><div class='wrap'><p class='eyebrow'>The measured stack</p><h2>What each project is made of</h2><p class='sub'>"
+text s03 " projects, "
+text s04 " files, counted line by line by an Omega program, <code>tools/ledger.om</code>: "
+text s05 " lines of Omega and "
+text s06 " lines of other languages. The other lines are migration still to do, not a different destination.</p><div class='scroll'><table class='tbl'><thead><tr><th>Project</th><th>Subsystem</th><th class='r'>Omega lines</th><th class='r'>Other lines</th><th class='r'>Omega share</th></tr></thead><tbody>\n"
+text s07 "</tbody></table></div></div></section>\n<section class='sec' id='projects'><div class='wrap'><p class='eyebrow'>On Radicle</p><h2>Every public project, and the commit to fetch</h2><p class='sub'>"
+text s08 " public projects, each in its own Radicle repository. Clone one peer to peer with <code>rad clone</code>, or read-only with <code>git clone</code> from the mirror on my own seed. The head is the commit the front door lists.</p><div class='scroll'><table class='tbl'><thead><tr><th>Project</th><th>About</th><th>Get it</th><th class='r'>Head</th></tr></thead><tbody>\n"
+text s09 "</tbody></table></div></div></section>\n<section class='sec' id='get'><div class='wrap'><p class='eyebrow'>One command</p><h2>Get everything</h2><div class='prose'>"
+text s10 "</div></div></section>\n"
+text sr1 "<tr id='p-"
+text sr2 "'><td class='n'>"
+text sr3 "<span class='rid'>"
+text sr4 "</span></td><td>"
+text sr5 "</td><td class='r'>"
+text sr6 "%</td></tr>\n"
+text sr7 "</td></tr>\n"
+text snl "not measured"
+text sp1 "<tr id='r-"
+text sp2 "'><td class='n'><a href='https://radicle.network/nodes/rosa.radicle.network/"
+text sp3 "'>"
+text sp4 "</a>"
+text sp5 "<span class='core'>CORE</span>"
+text sp6 "</span></td><td>"
+text sp7 "</td><td><code>rad clone "
+text sp8 "</code><br><a href='https://www.aienos.com/rad/"
+text sp9 ".git'>git mirror</a></td><td class='r'><code>"
+text spa "</code></td></tr>\n"
+text score "core"
+text sq1 "Get everything"
+text e01 "<section class='sec' id='proved'><div class='wrap'><p class='eyebrow'>On the chip, on the host, in service</p><h2>What I proved, and at which level</h2><div class='prose'>"
+text e02 "</div></div></section>\n<section class='sec' id='seed'><div class='wrap'><p class='eyebrow'>Verified to the seed</p><h2>Built from the seed</h2><div class='prose'>"
+text e03 "</div></div></section>\n<section class='sec' id='limits'><div class='wrap'><div class='two'><div><p class='eyebrow'>Still outside</p><h2>What is still NVIDIA&#39;s</h2><div class='prose'>"
+text e04 "</div></div><div><p class='eyebrow'>Open work</p><h2>What I have not done yet</h2><div class='prose'>"
+text e05 "</div></div></div></div></section>\n<section class='sec' id='papers'><div class='wrap'><p class='eyebrow'>Written down</p><h2>All my papers</h2><div class='prose'>"
+text e06 "</div></div></section>\n"
+text eq3 "What is still NVIDIA's"
+text eq4 "What I have not done yet"
+text eq5 "All my papers"
+text wf0 "index.html"
+text wf1 "stack/index.html"
+text wf2 "evidence/index.html"
+text wf3 "omegese/index.html"
+text wf4 "protocol/index.html"
+text wp1 "quick-start/index.html"
+text wp2 "concepts/index.html"
+text wp3 "adapter/index.html"
+text wp4 "conformance/index.html"
+text wp5 "status/index.html"
+text wp6 "forge/index.html"
+
+note ledrow: row of LEDGER.tsv whose project is src[o, o+n), or the row count when there is none
+fn ledrow o ulong n ulong to ulong
+c = get tbn 2
+for i ulong c bound 4096
+if eqs o n f_o 2 i 0 f_n 2 i 0
+ret i
+end
+end
+ret c
+end
+
+note stkline: one project of STACK.tsv with its ledger numbers
+fn stkline i ulong to void
+o = f_o 1 i 0
+n = f_n 1 i 0
+em sr1
+emh o n
+em sr2
+emh o n
+em sr3
+emh f_o 1 i 1 f_n 1 i 1
+em sr4
+emh f_o 1 i 3 f_n 1 i 3
+em sr5
+j = ledrow o n
+if ge j get tbn 2
+em snl
+em sr5
+em sr5
+em sr7
+ret
+end
+a = f_u 2 j 3
+b = f_u 2 j 9
+emc a
+em sr5
+emc b
+em sr5
+emp permil a b
+em sr6
+end
+
+note repoline: one public project of repos.tsv
+fn repoline i ulong to void
+o = f_o 0 i 0
+n = f_n 0 i 0
+r = f_o 0 i 1
+rn = f_n 0 i 1
+em sp1
+emh o n
+em sp2
+emh r rn
+em sp3
+emh o n
+em sp4
+if eqt f_o 0 i 3 f_n 0 i 3 score
+em sp5
+end
+em sr3
+emh r rn
+em sp6
+emh f_o 0 i 4 f_n 0 i 4
+em sp7
+emh r rn
+em sp8
+if gt rn 4
+emh add r 4 sub rn 4
+end
+em sp9
+h = f_n 0 i 2
+if gt h 12
+h = 12
+end
+emh f_o 0 i 2 h
+em spa
+end
+
+note pgstack: /stack/
+fn pgstack to void
+pgopen 1
+pghead 1
+em s01
+planes
+em s02
+emu get tbn 1
+em s03
+emc get tot 0
+em s04
+emc get tot 2
+em s05
+emc get tot 3
+em s06
+c = get tbn 1
+for i ulong c bound 4096
+stkline i
+end
+em s07
+emu hub_nrepo
+em s08
+c = get tbn 0
+for j ulong c bound 4096
+repoline j
+end
+em s09
+b = md_sec sq1
+md_body b md_end b
+em s10
+pgclose
+wfile wf1
+end
+
+note pgevid: /evidence/
+fn pgevid to void
+pgopen 2
+pghead 2
+em e01
+evsec oq1
+em e02
+evsec oq2
+em e03
+b = md_sec eq3
+md_body b md_end b
+em e04
+b = md_sec eq4
+md_body b md_end b
+em e05
+b = md_sec eq5
+md_body b md_end b
+em e06
+pgclose
+wfile wf2
+end
+
+note pgproto: /protocol/, the sections of the protocol's own overview
+fn pgproto to void
+pgopen 4
+pghead 4
+pp_why
+pp_modules
+pp_longit
+pp_jspace
+pp_receipt
+pp_statsec
+pp_forget
+pp_start
+pp_source
+pgclose
+wfile wf4
+end
+
+note pgsub: one of the six protocol pages
+fn pgsub q ulong to void
+pgopen add q 10
+pghead add q 10
+if eq q 1
+pp_quick
+pgclose
+wfile wp1
+end
+if eq q 2
+pp_concept
+pgclose
+wfile wp2
+end
+if eq q 3
+pp_adapter
+pgclose
+wfile wp3
+end
+if eq q 4
+pp_conform
+pgclose
+wfile wp4
+end
+if eq q 5
+pp_status
+pgclose
+wfile wp5
+end
+if eq q 6
+pp_forge
+pgclose
+wfile wp6
+end
+end

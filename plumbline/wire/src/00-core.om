@@ -1,0 +1,333 @@
+om2
+note wire/src/00-core.om: limits, refusal classes, buffers and the value tree of ipo, the
+note INTERPLANE Omegese codec (ipo1). SPEC.md beside src/ is the contract.
+note
+note ipo is one Omega program. Its units are the files of wire/src in name order, concatenated
+note (Omega has no imports) and compiled by the seed-grown omc:
+note   cat src/00-core.om src/10-json.om src/20-shape.om src/30-frame.om src/40-main.om | omc > ipo
+note Nothing here reads a clock, the environment, a file or the network: every output is a
+note function of the bytes on stdin and of the mode word.
+
+note LIM: no input over LIM bytes is accepted and no output over LIM bytes is written.
+note SFLIM: the selftest file bound. BND: a loop bound above every count in this program.
+const LIM ulong 1048576
+const SFLIM ulong 8388608
+const BND ulong 16777216
+const NCAP ulong 1048576
+const SPCAP ulong 1179648
+const MAXD ulong 64
+
+note refusal classes: the number is the exit status, the name is in tnames (same order from 20)
+const EIOREAD ulong 20
+const EIOWR ulong 21
+const ETOOBIG ulong 22
+const EOUTBIG ulong 23
+const EDEPTH ulong 24
+const EJSYN ulong 25
+const EJTRAIL ulong 26
+const EJSTR ulong 27
+const EUTF8 ulong 28
+const ESURR ulong 29
+const EDUPKEY ulong 30
+const EKEYNA ulong 31
+const EBADNUM ulong 32
+const ENUMFL ulong 33
+const ENUMRG ulong 34
+const ENEGZ ulong 35
+const EFRNOLF ulong 36
+const EFRCTL ulong 37
+const EFRMAG ulong 38
+const EFRSP ulong 39
+const EFRWORD ulong 40
+const EFRARI ulong 41
+const EFRTRL ulong 42
+const EFRKEY ulong 43
+const EFRSTR ulong 44
+const ENOTBARE ulong 45
+const ENOTSHP ulong 46
+const EKEYORD ulong 47
+const ENONCAN ulong 48
+const EBADTAB ulong 49
+const ECAP ulong 50
+note selftest verdicts only (exit 1): never an exit status
+const ESCANON ulong 51
+const ESRT ulong 52
+const ESREENC ulong 53
+const ESNOLF ulong 54
+const ESEMPTY ulong 55
+
+text tnames "IOREAD IOWRITE TOOBIG OUTBIG DEPTH JSYNTAX JTRAIL JSTR BADUTF8 SURROG DUPKEY KEYNASC BADNUM NUMFLOAT NUMRANGE NEGZERO FRNOLF FRCTL FRMAGIC FRSPACE FRWORD FRARITY FRTRAIL FRKEY FRSTR NOTBARE NOTSHAPE KEYORDER NONCANON BADTABLE CAPACITY NOTCANON ROUNDTRIP REENC NOLF NOVECTORS "
+text tpre "ipo: "
+text tat " at byte "
+text tnl "\n"
+text tfail1 "IPO1 FAIL line="
+text treason " reason="
+
+note sf: all of stdin. inp: the value being read (a JSON text or a frame), 16 zero bytes after it.
+global sf uchar 8388624
+global sfn ulong 1
+global inp uchar 1048592
+global inn ulong 1
+note pos: the read position in inp
+global pos ulong 1
+note ob: the output, written to stdout once, at the end, only when nothing was refused
+global ob uchar 1048576
+global obn ulong 1
+note sp: the string pool. It starts with the shape table (sp0 bytes); the bytes of every
+note number and decoded string of the current value follow.
+global sp uchar 1179648
+global spn ulong 1
+global sp0 ulong 1
+note the value tree. Node 0 is "none"; the root is node 1.
+note nk: 1 null, 2 true, 3 false, 4 number, 5 string, 6 array, 7 object
+note na, nb: pool offset and length (number, string); first child and child count (array, object)
+note nx: next sibling. nko, nkn: pool offset and length of the key (members of an object)
+note np: where the member's key started in inp
+global nk ulong 1048576
+global na ulong 1048576
+global nb ulong 1048576
+global nx ulong 1048576
+global nko ulong 1048576
+global nkn ulong 1048576
+global np ulong 1048576
+global nn ulong 1
+note mode: 1 in selftest, where a refusal is a verdict on line sline
+global mode ulong 1
+global sline ulong 1
+
+note wdec: v in decimal on fd
+fn wdec fd int v ulong to void
+d = new uchar 20 0
+x = v
+k = ulong 20
+note a ulong has at most 20 digits
+while true bound 20
+k = sub k 1
+put d k uchar add rem x 10 48
+x = div x 10
+if eq x 0
+break
+end
+end
+w = write fd d k sub 20 k
+end
+
+note ename: the name of refusal class code on fd
+fn ename fd int code ulong to void
+k = sub code 20
+i = ulong 0
+while gt k 0 bound 64
+while ne get tnames i 32 bound 64
+i = add i 1
+end
+i = add i 1
+k = sub k 1
+end
+j = i
+while ne get tnames j 32 bound 64
+j = add j 1
+end
+w = write fd tnames i sub j i
+end
+
+note fail: refuse. stderr gets "ipo: NAME at byte P" and the exit status is the class number.
+note In selftest stdout gets the verdict line first and the exit status is 1.
+fn fail code ulong p ulong to void
+if eq get mode 0 1
+w = write 1 tfail1 0 len tfail1
+wdec 1 get sline 0
+w = write 1 treason 0 len treason
+ename 1 code
+w = write 1 tnl 0 len tnl
+end
+v = write 2 tpre 0 len tpre
+ename 2 code
+v = write 2 tat 0 len tat
+wdec 2 p
+v = write 2 tnl 0 len tnl
+if eq get mode 0 1
+exit 1
+end
+exit int code
+end
+
+note ob1: append one byte to the output
+fn ob1 c uchar to void
+p = get obn 0
+if ge p LIM
+fail EOUTBIG p
+end
+put ob p c
+put obn 0 add p 1
+end
+
+note obt: append a text to the output
+fn obt t view uchar * to void
+n = len t
+for i ulong n
+ob1 get t i
+end
+end
+
+note obs: append n pool bytes from o to the output
+fn obs o ulong n ulong to void
+p = get obn 0
+if gt n sub LIM p
+fail EOUTBIG LIM
+end
+i = ulong 0
+while lt i n bound BND
+put ob add p i get sp add o i
+i = add i 1
+end
+put obn 0 add p n
+end
+
+note obdec: append v in decimal to the output
+fn obdec v ulong to void
+d = new uchar 20 0
+x = v
+k = ulong 20
+while true bound 20
+k = sub k 1
+put d k uchar add rem x 10 48
+x = div x 10
+if eq x 0
+break
+end
+end
+while lt k 20 bound 20
+ob1 get d k
+k = add k 1
+end
+end
+
+note flush: write the output to stdout, all of it
+fn flush to void
+n = get obn 0
+p = ulong 0
+note every pass writes at least one byte
+while lt p n bound BND
+k = write 1 ob p sub n p
+if le k 0
+fail EIOWR p
+end
+p = add p ulong k
+end
+end
+
+note rdall: read stdin to its end into sf; more than lim bytes is refused
+fn rdall lim ulong to void
+cap = add lim 1
+p = ulong 0
+note every pass reads at least one byte
+while lt p cap bound BND
+k = read 0 sf p sub cap p
+if lt k 0
+fail EIOREAD p
+end
+if eq k 0
+break
+end
+p = add p ulong k
+end
+if gt p lim
+fail ETOOBIG lim
+end
+put sfn 0 p
+end
+
+note setin: the n bytes of sf from o become the input, followed by 16 zero bytes so that a
+note reader which looks a few bytes ahead meets a byte no grammar here accepts
+fn setin o ulong n ulong to void
+i = ulong 0
+while lt i n bound BND
+put inp i get sf add o i
+i = add i 1
+end
+for j ulong 16
+put inp add n j 0
+end
+put inn 0 n
+end
+
+note obtoin: the output becomes the input
+fn obtoin to void
+n = get obn 0
+i = ulong 0
+while lt i n bound BND
+put inp i get ob i
+i = add i 1
+end
+for j ulong 16
+put inp add n j 0
+end
+put inn 0 n
+end
+
+note spb: append one byte to the pool
+fn spb c uchar to void
+p = get spn 0
+if ge p SPCAP
+fail ECAP get pos 0
+end
+put sp p c
+put spn 0 add p 1
+end
+
+note node: a new tree node
+fn node k ulong a ulong b ulong to ulong
+i = get nn 0
+if ge i NCAP
+fail ECAP get pos 0
+end
+put nk i k
+put na i a
+put nb i b
+put nx i 0
+put nko i 0
+put nkn i 0
+put np i 0
+put nn 0 add i 1
+ret i
+end
+
+note scmp: two pool slices compared bytewise, then by length: 0 a < b, 1 equal, 2 a > b
+fn scmp a ulong an ulong b ulong bn ulong to ulong
+m = an
+if lt bn m
+m = bn
+end
+i = ulong 0
+while lt i m bound BND
+x = get sp add a i
+y = get sp add b i
+if lt x y
+ret 0
+end
+if gt x y
+ret 2
+end
+i = add i 1
+end
+if lt an bn
+ret 0
+end
+if gt an bn
+ret 2
+end
+ret 1
+end
+
+note seqt: is the pool slice the text t
+fn seqt o ulong n ulong t view uchar * to bool
+if ne n len t
+ret false
+end
+for i ulong n
+if ne get sp add o i get t i
+ret false
+end
+end
+ret true
+end

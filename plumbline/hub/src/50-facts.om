@@ -1,0 +1,1519 @@
+note hub/src/50-facts.om: the facts of the INTERPLANE protocol repository, read from a local checkout.
+note
+note Two halves. fx_gather is the program mode
+note   hub facts PROTO_DIR SHA TIME OUTFILE
+note (arguments 2..5; the caller dispatches on argument 1). It reads PROTO_DIR/STATUS.md,
+note PROTO_DIR/ROADMAP.md, PROTO_DIR/rust/Cargo.toml and every regular file PROTO_DIR/docs/REPORT-*.md
+note (names in byte order) and writes OUTFILE as lines  key TAB value LF.  fx_parse reads such a file
+note back from src and the accessors below hand out (offset, length) pairs into src.
+note
+note It ports the parsers of interplane.io crates/site-builder/src/facts.rs (status_counts,
+note conformance_row, stages, headline, cargo_license, the report title rule). SHA (40 lowercase hex)
+note and TIME (YYYY-MM-DDTHH:MM:SSZ, UTC) are given by the caller from git, validated and copied.
+note
+note NOT gathered. The Rust version took these from the Radicle HTTP API of a seed; a checkout does
+note not hold them, so no key exists for them and no page may show them:
+note   open patch count and open issue count (meta.patches, meta.issues)
+note   the last merged patch (id, title, merge time, url)
+note   the release tag and its source (canonical refs.tags, or the delegate's own tag)
+note   the commit title (commit.summary), the repository name and description (project payload)
+note   the generation time (the Rust version ran date; this program reads no clock)
+note The Spark receipt is the constant the Rust version wrote (Radicle records no commit statuses).
+note
+note Key order of OUTFILE, fixed:
+note   sha time license version
+note   rows qualified conformant tested implemented specified other
+note   conf_passed conf_total conf_note        (all three empty when STATUS.md has no usable row)
+note   next receipt_state receipt_text
+note   stages N, then for each stage in ROADMAP.md table order:
+note     stage_version stage_layer stage_goal stage_state stage_verdict stage_closed stage_report
+note     (state: planned closed next reported; verdict: PASS FAIL or empty; report: a report name or empty)
+note   reports N, then for each report in name order:
+note     report_name report_title report_headline
+note Every value is one line without TAB; a control byte in a value refuses the run.
+note
+note Differences from the Rust parsers, on purpose: white space is the ASCII set (space, TAB, LF, VT,
+note FF, CR), not the Unicode set; case folding for the status words and PASS/FAIL is ASCII only;
+note a docs entry that is not a regular file is skipped, and one of unknown type refuses.
+
+note scalar keys: the k of fx_o / fx_n / fx_u
+const fsha ulong 0
+const ftime ulong 1
+const flic ulong 2
+const fver ulong 3
+const frows ulong 4
+const fqual ulong 5
+const fconf ulong 6
+const ftest ulong 7
+const fimpl ulong 8
+const fspec ulong 9
+const foth ulong 10
+const fcpass ulong 11
+const fctot ulong 12
+const fcnote ulong 13
+const fnext ulong 14
+const frstate ulong 15
+const frtext ulong 16
+note stage fields: the j of fx_so / fx_sn
+const fsver ulong 0
+const fslay ulong 1
+const fsgoal ulong 2
+const fsstate ulong 3
+const fsverd ulong 4
+const fsclos ulong 5
+const fsrep ulong 6
+note report fields: the j of fx_ro / fx_rn
+const frname ulong 0
+const frtitle ulong 1
+const frhead ulong 2
+
+note fvo, fvn: offset and length in src of each scalar value (length 0: absent)
+global fvo ulong 17
+global fvn ulong 17
+note fso, fsn: stage i field j at index i*7+j. fsc: stages. fdc: the counts the file declares.
+global fso ulong 448
+global fsn ulong 448
+global fsc ulong 1
+global fdc ulong 2
+note fro, frn: report i field j at index i*3+j. frc: reports.
+global fro ulong 192
+global frn ulong 192
+global frc ulong 1
+note gather only. fdb: one getdents64 buffer. fno, fnn, fnc: the report names, copied into src.
+global fdb uchar 32768
+global fno ulong 64
+global fnn ulong 64
+global fnc ulong 1
+note frw: the table row being read: start and end of its inside, cell count
+global frw ulong 3
+note fct: rows qualified conformant tested implemented specified other
+global fct ulong 7
+note fcf: conformance row: found, passed, total, note offset, note length
+global fcf ulong 5
+note fgs: stage state (0 planned 1 closed 2 next 3 reported). fgv: verdict (0 none 1 PASS 2 FAIL).
+note fgr: 1 + index of the stage's report, or 0. fnx: the Next line: offset, length.
+global fgs ulong 64
+global fgv ulong 64
+global fgr ulong 64
+global fnx ulong 2
+
+text fksha "sha"
+text fktime "time"
+text fklic "license"
+text fkver "version"
+text fkrows "rows"
+text fkqual "qualified"
+text fkconf "conformant"
+text fktest "tested"
+text fkimpl "implemented"
+text fkspec "specified"
+text fkoth "other"
+text fkcpass "conf_passed"
+text fkctot "conf_total"
+text fkcnote "conf_note"
+text fknext "next"
+text fkrst "receipt_state"
+text fkrtx "receipt_text"
+text fkstg "stages"
+text fksver "stage_version"
+text fkslay "stage_layer"
+text fksgoal "stage_goal"
+text fksst "stage_state"
+text fksvd "stage_verdict"
+text fkscl "stage_closed"
+text fksrep "stage_report"
+text fkrep "reports"
+text fkrnm "report_name"
+text fkrti "report_title"
+text fkrhd "report_headline"
+
+text fcargo "/rust/Cargo.toml"
+text fstatus "/STATUS.md"
+text froad "/ROADMAP.md"
+text fdocs "/docs"
+text fdocsl "/docs/"
+text frpre "REPORT-"
+text fmd ".md"
+text fcomp "Component"
+text fvers "Version"
+text fcrun "Conformance runner"
+text frun "running"
+text fpass "pass"
+text ffail "fail"
+text fclosed "closed"
+text fhash "## "
+text fhashone "# "
+text fnextp "Next: **"
+text fstars "**"
+text fhl "**Headline:"
+text fdotsp ". "
+text fplan "planned"
+text frepd "reported"
+text fvpass "PASS"
+text fvfail "FAIL"
+text fnone "none"
+text fnover "No Spark verdict is recorded on Radicle for this commit."
+text fusage "usage: hub facts PROTO_DIR SHA TIME OUTFILE"
+text fbadsha "SHA is not 40 lowercase hex digits: "
+text fbadtm "TIME is not YYYY-MM-DDTHH:MM:SSZ: "
+text fbadf "facts file: bad line: "
+text fbadn "facts file: stage or report count differs from its lines"
+text fmany "more than 64 stages or reports"
+text fctl "control byte in a fact value: "
+text funk "directory entry of unknown type: "
+
+note fx_ws: is c ASCII white space
+fn fx_ws c uchar to bool
+if eq c 32
+ret true
+end
+ret and ge c 9 le c 13
+end
+
+note fx_lt: first position in [s, e) that is not white space, or e
+fn fx_lt s ulong e ulong to ulong
+i = s
+while lt i e bound 8388609
+if not fx_ws get src i
+ret i
+end
+i = add i 1
+end
+ret e
+end
+
+note fx_rt: the end of [s, e) once trailing white space is dropped
+fn fx_rt s ulong e ulong to ulong
+i = e
+while gt i s bound 8388609
+if not fx_ws get src sub i 1
+ret i
+end
+i = sub i 1
+end
+ret s
+end
+
+note fx_eqi: do the bytes of src at p, ASCII letters folded to lower case, equal the lower-case text t
+fn fx_eqi p ulong t view uchar * to bool
+m = len t
+for i ulong m
+c = get src add p i
+if and ge c 65 le c 90
+c = add c 32
+end
+if ne c get t i
+ret false
+end
+end
+ret true
+end
+
+note fx_has: does src[o, o+n) contain the lower-case text t, ASCII case ignored
+fn fx_has o ulong n ulong t view uchar * to bool
+m = len t
+if gt m n
+ret false
+end
+last = add o sub n m
+p = o
+while le p last bound 8388609
+if fx_eqi p t
+ret true
+end
+p = add p 1
+end
+ret false
+end
+
+note fx_pipe: next | in [i, b), or b
+fn fx_pipe i ulong b ulong to ulong
+p = i
+while lt p b bound 8388609
+if eq get src p 124
+ret p
+end
+p = add p 1
+end
+ret b
+end
+
+note fx_row: read the line [s, e) as a Markdown table row (facts.rs cells): the trimmed line must
+note start with |; every leading and trailing | is dropped and the rest is split at each |.
+note Returns the number of cells, 0 when the line is not a row.
+fn fx_row s ulong e ulong to ulong
+a = fx_lt s e
+b = fx_rt a e
+if ge a b
+ret 0
+end
+if ne get src a 124
+ret 0
+end
+while lt a b bound 8388609
+if ne get src a 124
+break
+end
+a = add a 1
+end
+while gt b a bound 8388609
+if ne get src sub b 1 124
+break
+end
+b = sub b 1
+end
+put frw 0 a
+put frw 1 b
+n = ulong 1
+i = a
+while lt i b bound 8388609
+if eq get src i 124
+n = add n 1
+end
+i = add i 1
+end
+put frw 2 n
+ret n
+end
+
+note fx_cs: where cell k of the current row starts, before trimming
+fn fx_cs k ulong to ulong
+i = get frw 0
+b = get frw 1
+j = ulong 0
+while lt j k bound 8388609
+t = fx_pipe i b
+if ge t b
+ret b
+end
+i = add t 1
+j = add j 1
+end
+ret i
+end
+
+note fx_co, fx_cn: offset and length of cell k of the current row, trimmed
+fn fx_co k ulong to ulong
+s = fx_cs k
+e = fx_pipe s get frw 1
+ret fx_lt s e
+end
+
+fn fx_cn k ulong to ulong
+s = fx_cs k
+e = fx_pipe s get frw 1
+a = fx_lt s e
+b = fx_rt a e
+ret sub b a
+end
+
+note fx_issep: is the current row of n cells a separator (every cell non-empty, only - and :)
+fn fx_issep n ulong to bool
+for k ulong n
+o = fx_co k
+m = fx_cn k
+if eq m 0
+ret false
+end
+for i ulong m
+c = get src add o i
+if and ne c 45 ne c 58
+ret false
+end
+end
+end
+ret true
+end
+
+note fx_class: the fct slot of the current row, by the strongest status word in its Rust column
+fn fx_class to ulong
+o = fx_co 1
+n = fx_cn 1
+if fx_has o n fkqual
+ret 1
+end
+if fx_has o n fkconf
+ret 2
+end
+if fx_has o n fktest
+ret 3
+end
+if fx_has o n fkimpl
+ret 4
+end
+if fx_has o n frun
+ret 4
+end
+if fx_has o n fkspec
+ret 5
+end
+ret 6
+end
+
+note fx_first: does cell 0 of the current row equal the text t
+fn fx_first t view uchar * to bool
+o = fx_co 0
+n = fx_cn 0
+ret eqt o n t
+end
+
+note fx_status: facts.rs status_counts over STATUS.md in src[s, e), into fct
+fn fx_status s ulong e ulong to void
+for i ulong 7
+put fct i 0
+end
+p = s
+t = false
+while lt p e bound 8388609
+q = eol p e
+n = fx_row p q
+if lt n 2
+t = false
+else
+if fx_first fcomp
+t = true
+else
+if t
+if not fx_issep n
+k = fx_class
+put fct 0 add get fct 0 1
+put fct k add get fct k 1
+end
+end
+end
+end
+p = add q 1
+end
+end
+
+note fx_u32: the digits of src[o, o+n), one leading + allowed, as a number up to 4294967295;
+note 4294967296 when it is not such a number
+fn fx_u32 o ulong n ulong to ulong
+i = ulong 0
+if gt n 0
+if eq get src o 43
+i = ulong 1
+end
+end
+if ge i n
+ret 4294967296
+end
+v = ulong 0
+while lt i n bound 8388609
+c = get src add o i
+if or lt c 48 gt c 57
+ret 4294967296
+end
+v = add mul v 10 ulong sub c 48
+if gt v 4294967295
+ret 4294967296
+end
+i = add i 1
+end
+ret v
+end
+
+note fx_conf: read passed/total from cell 3 of the current row into fcf (left unset when unreadable)
+fn fx_conf to void
+o = fx_co 3
+n = fx_cn 3
+e = add o n
+i = o
+while lt i e bound 8388609
+if eq get src i 47
+break
+end
+i = add i 1
+end
+if ge i e
+ret
+end
+a = fx_lt o i
+b = fx_rt a i
+x = fx_u32 a sub b a
+if gt x 4294967295
+ret
+end
+a = fx_lt add i 1 e
+b = a
+while lt b e bound 8388609
+c = get src b
+if or lt c 48 gt c 57
+break
+end
+b = add b 1
+end
+v = fx_u32 a sub b a
+if gt v 4294967295
+ret
+end
+put fcf 0 1
+put fcf 1 x
+put fcf 2 v
+put fcf 3 o
+put fcf 4 n
+end
+
+note fx_confrow: facts.rs conformance_row: the first row of 4 or more cells whose first cell starts
+note with "Conformance runner" decides
+fn fx_confrow s ulong e ulong to void
+put fcf 0 0
+p = s
+while lt p e bound 8388609
+q = eol p e
+n = fx_row p q
+if ge n 4
+o = fx_co 0
+m = fx_cn 0
+if ge m len fcrun
+if eqt o len fcrun fcrun
+fx_conf
+ret
+end
+end
+end
+p = add q 1
+end
+end
+
+note fx_addst: the current row becomes the next stage (version, layer, goal = cells 0, 1, 3)
+fn fx_addst to void
+i = get fsc 0
+if ge i 64
+die fmany 0 0
+end
+b = mul i 7
+put fso b fx_co 0
+put fsn b fx_cn 0
+put fso add b 1 fx_co 1
+put fsn add b 1 fx_cn 1
+put fso add b 2 fx_co 3
+put fsn add b 2 fx_cn 3
+put fsn add b 5 0
+put fgs i 0
+put fgv i 0
+put fgr i 0
+put fsc 0 add i 1
+end
+
+note fx_table: the stages of the ROADMAP.md version table in src[s, e)
+fn fx_table s ulong e ulong to void
+put fsc 0 0
+p = s
+t = false
+while lt p e bound 8388609
+q = eol p e
+n = fx_row p q
+if lt n 4
+t = false
+else
+if fx_first fvers
+t = true
+else
+if t
+if not fx_issep n
+fx_addst
+end
+end
+end
+end
+p = add q 1
+end
+end
+
+note fx_wend: end of the word that starts at i in [i, b)
+fn fx_wend i ulong b ulong to ulong
+p = i
+while lt p b bound 8388609
+if fx_ws get src p
+ret p
+end
+p = add p 1
+end
+ret b
+end
+
+note fx_find: index of the first stage whose version is src[o, o+n), or 64
+fn fx_find o ulong n ulong to ulong
+c = get fsc 0
+for i ulong c
+b = mul i 7
+if eqs get fso b get fsn b o n
+ret i
+end
+end
+ret 64
+end
+
+note fx_paren: stage x closed on the text between the first ( of [a, b) and the next ), or empty
+fn fx_paren x ulong a ulong b ulong to void
+k = add mul x 7 5
+put fsn k 0
+i = a
+while lt i b bound 8388609
+if eq get src i 40
+break
+end
+i = add i 1
+end
+if ge i b
+ret
+end
+j = add i 1
+while lt j b bound 8388609
+if eq get src j 41
+break
+end
+j = add j 1
+end
+if ge j b
+ret
+end
+put fso k add i 1
+put fsn k sub sub j i 1
+end
+
+note fx_head: a "## " heading whose text is [a, b): "VERSION closed ..." closes that stage
+fn fx_head a ulong b ulong to void
+i = fx_lt a b
+j = fx_wend i b
+k = fx_lt j b
+m = fx_wend k b
+if not eqt k sub m k fclosed
+ret
+end
+x = fx_find i sub j i
+if ge x 64
+ret
+end
+put fgs x 1
+fx_paren x a b
+v = ulong 0
+if fx_has a sub b a fpass
+v = ulong 1
+else
+if fx_has a sub b a ffail
+v = ulong 2
+end
+end
+put fgv x v
+end
+
+note fx_next: a "Next: **" line whose rest is [a, b): the text up to the next ** without trailing dots
+fn fx_next a ulong b ulong to void
+j = find a b fstars
+while gt j a bound 8388609
+if ne get src sub j 1 46
+break
+end
+j = sub j 1
+end
+put fnx 0 a
+put fnx 1 sub j a
+end
+
+note fx_heads: the closed headings and the last Next line of ROADMAP.md in src[s, e)
+fn fx_heads s ulong e ulong to void
+put fnx 0 0
+put fnx 1 0
+p = s
+while lt p e bound 8388609
+q = eol p e
+a = fx_lt p q
+b = fx_rt a q
+if ge sub b a 3
+if eqt a 3 fhash
+fx_head add a 3 b
+end
+end
+if ge sub b a 8
+if eqt a 8 fnextp
+fx_next add a 8 b
+end
+end
+p = add q 1
+end
+end
+
+note fx_rep: 1 + index of the report named REPORT-<src[o, o+n)>.md, or 0
+fn fx_rep o ulong n ulong to ulong
+c = get fnc 0
+for i ulong c
+a = get fno i
+m = get fnn i
+if eq m add n 10
+if eqt a 7 frpre
+if eqs add a 7 n o n
+if eqt add add a 7 n 3 fmd
+ret add i 1
+end
+end
+end
+end
+end
+ret 0
+end
+
+note fx_link: give each stage its report; a stage with a report and no closed heading is reported;
+note the stage the Next line starts with is next unless it is closed
+fn fx_link to void
+c = get fsc 0
+for x ulong c
+b = mul x 7
+k = fx_rep get fso b get fsn b
+put fgr x k
+if gt k 0
+if eq get fgs x 0
+put fgs x 3
+end
+end
+m = get fnx 1
+v = get fsn b
+if gt m 0
+if le v m
+if eqs get fnx 0 v get fso b v
+if ne get fgs x 1
+put fgs x 2
+end
+end
+end
+end
+end
+end
+
+note fx_val: append src[o, o+n) to ob as a fact value; a control byte refuses
+fn fx_val o ulong n ulong to void
+i = ulong 0
+while lt i n bound 8388609
+c = get src add o i
+if or lt c 32 eq c 127
+die fctl o n
+end
+i = add i 1
+end
+ems o n
+end
+
+note fx_kv, fx_ku, fx_kt: one line of the facts file: key, TAB, a src slice / a number / a text
+fn fx_kv k view uchar * o ulong n ulong to void
+em k
+emb 9
+fx_val o n
+emb 10
+end
+
+fn fx_ku k view uchar * v ulong to void
+em k
+emb 9
+emu v
+emb 10
+end
+
+fn fx_kt k view uchar * t view uchar * to void
+em k
+emb 9
+em t
+emb 10
+end
+
+note fx_path: pb = PROTO_DIR (argument 2) followed by the text t
+fn fx_path t view uchar * to void
+setpath 2
+n = get pbn 0
+k = len t
+if gt add n k 4000
+dief tlong
+end
+for i ulong k
+put pb add n i get t i
+end
+put pbn 0 add n k
+end
+
+note fx_padd: append src[o, o+n) to the path in pb
+fn fx_padd o ulong n ulong to void
+k = get pbn 0
+if gt add k n 4000
+dief tlong
+end
+for i ulong n
+put pb add k i get src add o i
+end
+put pbn 0 add k n
+end
+
+note fx_slurp: append the file named by pb to src and return where it starts; it ends at srcn
+fn fx_slurp to ulong
+fd = fopen pb 0 get pbn 0 0 0
+if lt fd 0
+dief topen
+end
+s = get srcn 0
+p = s
+while lt p 8388608 bound 8388609
+k = read int fd src p sub 8388608 p
+if lt k 0
+dief tread
+end
+if eq k 0
+break
+end
+p = add p ulong k
+end
+c = fclose int fd
+if ge p 8388608
+dief tbig
+end
+put srcn 0 p
+ret s
+end
+
+note fx_arg: append command-line argument ai to src and return where it starts; it ends at srcn
+fn fx_arg ai ulong to ulong
+s = get srcn 0
+if gt s 8384512
+dief tbig
+end
+n = argread ai src s 4096
+if le n 0
+die targ 0 0
+end
+put srcn 0 add s ulong n
+ret s
+end
+
+note fx_putb: append one byte to src
+fn fx_putb c uchar to void
+s = get srcn 0
+if ge s 8388608
+dief tbig
+end
+put src s c
+put srcn 0 add s 1
+end
+
+note fx_app: append a copy of src[o, o+n) to src
+fn fx_app o ulong n ulong to void
+i = ulong 0
+while lt i n bound 8388609
+fx_putb get src add o i
+i = add i 1
+end
+end
+
+note fx_cksha: SHA must be 40 lowercase hex digits
+fn fx_cksha o ulong n ulong to void
+if ne n 40
+die fbadsha o n
+end
+for i ulong 40
+c = get src add o i
+a = and ge c 48 le c 57
+b = and ge c 97 le c 102
+if not or a b
+die fbadsha o n
+end
+end
+end
+
+note fx_two: the two-digit number of src at o, which must lie in [a, b]
+fn fx_two o ulong a ulong b ulong to void
+v = num o 2
+if or lt v a gt v b
+die fbadtm o 2
+end
+end
+
+note fx_cktime: TIME must be YYYY-MM-DDTHH:MM:SSZ with fields in range
+fn fx_cktime o ulong n ulong to void
+if ne n 20
+die fbadtm o n
+end
+if or ne get src add o 4 45 ne get src add o 7 45
+die fbadtm o n
+end
+if or ne get src add o 10 84 ne get src add o 19 90
+die fbadtm o n
+end
+if or ne get src add o 13 58 ne get src add o 16 58
+die fbadtm o n
+end
+v = num o 4
+fx_two add o 5 1 12
+fx_two add o 8 1 31
+fx_two add o 11 0 23
+fx_two add o 14 0 59
+fx_two add o 17 0 60
+end
+
+note fx_ql, fx_qr: [a, b) without leading / trailing double quotes
+fn fx_ql a ulong b ulong to ulong
+i = a
+while lt i b bound 8388609
+if ne get src i 34
+ret i
+end
+i = add i 1
+end
+ret b
+end
+
+fn fx_qr a ulong b ulong to ulong
+i = b
+while gt i a bound 8388609
+if ne get src sub i 1 34
+ret i
+end
+i = sub i 1
+end
+ret a
+end
+
+note fx_toml: facts.rs cargo_license for any key: the first line  t = "value"  of src[s, e) gives
+note the line  t TAB value  (value trimmed, surrounding double quotes dropped); empty when absent
+fn fx_toml s ulong e ulong t view uchar * to void
+p = s
+while lt p e bound 8388609
+q = eol p e
+i = p
+while lt i q bound 8388609
+if eq get src i 61
+break
+end
+i = add i 1
+end
+if lt i q
+a = fx_lt p i
+b = fx_rt a i
+if eqt a sub b a t
+a = fx_lt add i 1 q
+b = fx_rt a q
+a = fx_ql a b
+b = fx_qr a b
+fx_kv t a sub b a
+ret
+end
+end
+p = add q 1
+end
+fx_kv t 0 0
+end
+
+note fx_isrep: is the name fdb[o, o+n) REPORT-*.md
+fn fx_isrep o ulong n ulong to bool
+if lt n 10
+ret false
+end
+for i ulong 7
+if ne get fdb add o i get frpre i
+ret false
+end
+end
+b = sub add o n 3
+for j ulong 3
+if ne get fdb add b j get fmd j
+ret false
+end
+end
+ret true
+end
+
+note fx_keep: copy the name fdb[o, o+n) into src and list it
+fn fx_keep o ulong n ulong to void
+c = get fnc 0
+if ge c 64
+die fmany 0 0
+end
+s = get srcn 0
+if gt n sub 8388608 s
+dief tbig
+end
+for i ulong n
+put src add s i get fdb add o i
+end
+put srcn 0 add s n
+put fno c s
+put fnn c n
+put fnc 0 add c 1
+end
+
+note fx_dent: take the getdents64 record at p of fdb (length at 16, type at 18, name from 19);
+note returns its length. Type 8 is a regular file; type 0 (unknown) for a report name refuses.
+fn fx_dent p ulong to ulong
+x = add ulong get fdb add p 16 mul ulong get fdb add p 17 256
+if eq x 0
+dief tread
+end
+o = add p 19
+n = ulong 0
+while lt add o n add p x bound 32769
+if eq get fdb add o n 0
+break
+end
+n = add n 1
+end
+if fx_isrep o n
+t = get fdb add p 18
+if eq t 0
+dief funk
+end
+if eq t 8
+fx_keep o n
+end
+end
+ret x
+end
+
+note fx_names: list the report names of the directory named by pb
+fn fx_names to void
+put fnc 0 0
+fd = fopen pb 0 get pbn 0 524288 0
+if lt fd 0
+dief topen
+end
+while true bound 1048577
+k = getdnts int fd fdb 0 32768
+if lt k 0
+dief tread
+end
+if eq k 0
+break
+end
+p = ulong 0
+while lt p ulong k bound 32769
+p = add p fx_dent p
+end
+end
+c = fclose int fd
+end
+
+note fx_less: is name x before name y in byte order
+fn fx_less x ulong y ulong to bool
+a = get fno x
+b = get fno y
+m = get fnn x
+n = get fnn y
+k = m
+if lt n k
+k = n
+end
+for i ulong k
+c = get src add a i
+d = get src add b i
+if lt c d
+ret true
+end
+if gt c d
+ret false
+end
+end
+ret lt m n
+end
+
+note fx_swap: exchange names x and y
+fn fx_swap x ulong y ulong to void
+a = get fno x
+b = get fnn x
+put fno x get fno y
+put fnn x get fnn y
+put fno y a
+put fnn y b
+end
+
+note fx_sort: insertion sort of the at most 64 names
+fn fx_sort to void
+n = get fnc 0
+i = ulong 1
+while lt i n bound 65
+j = i
+while gt j 0 bound 65
+if not fx_less j sub j 1
+break
+end
+fx_swap j sub j 1
+j = sub j 1
+end
+i = add i 1
+end
+end
+
+note fx_title: the report title line: the first line of src[s, e) that starts with "# ", trimmed
+note after those two bytes; the name of report i when no line does
+fn fx_title s ulong e ulong i ulong to void
+p = s
+while lt p e bound 8388609
+q = eol p e
+if ge sub q p 2
+if eqt p 2 fhashone
+a = fx_lt add p 2 q
+b = fx_rt a q
+fx_kv fkrti a sub b a
+ret
+end
+end
+p = add q 1
+end
+fx_kv fkrti get fno i get fnn i
+end
+
+note fx_hline: just after "**Headline:" on the first line of src[s, e) that starts with it once
+note left-trimmed; e when no line does
+fn fx_hline s ulong e ulong to ulong
+m = len fhl
+p = s
+while lt p e bound 8388609
+q = eol p e
+a = fx_lt p q
+if ge sub q a m
+if eqt a m fhl
+ret add a m
+end
+end
+p = add q 1
+end
+ret e
+end
+
+note fx_unbold: remove every ** from src[o, o+n) in place; the new length
+fn fx_unbold o ulong n ulong to ulong
+i = ulong 0
+j = ulong 0
+while lt i n bound 8388609
+c = get src add o i
+d = uchar 0
+if lt add i 1 n
+d = get src add add o i 1
+end
+if and eq c 42 eq d 42
+i = add i 2
+else
+put src add o j c
+j = add j 1
+i = add i 1
+end
+end
+ret j
+end
+
+note fx_para: append to src the trimmed rest of the line at a, then every following line trimmed
+note and led by one space, up to the first blank line of src[a, e)
+fn fx_para a ulong e ulong to void
+q = eol a e
+x = fx_lt a q
+fx_app x sub fx_rt x q x
+p = add q 1
+while lt p e bound 8388609
+q = eol p e
+x = fx_lt p q
+b = fx_rt x q
+if ge x b
+break
+end
+fx_putb 32
+fx_app x sub b x
+p = add q 1
+end
+end
+
+note fx_headl: facts.rs headline of the report in src[s, e): the Headline paragraph on one line,
+note ** removed, trimmed, cut after the first ". " period
+fn fx_headl s ulong e ulong to void
+a = fx_hline s e
+if ge a e
+fx_kv fkrhd 0 0
+ret
+end
+o = get srcn 0
+fx_para a e
+n = fx_unbold o sub get srcn 0 o
+x = fx_lt o add o n
+b = fx_rt x add o n
+k = find x b fdotsp
+if lt k b
+b = add k 1
+end
+fx_kv fkrhd x sub b x
+end
+
+note fx_report: the three lines of report i
+fn fx_report i ulong to void
+fx_path fdocsl
+fx_padd get fno i get fnn i
+s = fx_slurp
+e = get srcn 0
+fx_kv fkrnm get fno i get fnn i
+fx_title s e i
+fx_headl s e
+end
+
+note fx_wstage: the seven lines of stage x
+fn fx_wstage x ulong to void
+b = mul x 7
+fx_kv fksver get fso b get fsn b
+fx_kv fkslay get fso add b 1 get fsn add b 1
+fx_kv fksgoal get fso add b 2 get fsn add b 2
+k = get fgs x
+if eq k 0
+fx_kt fksst fplan
+end
+if eq k 1
+fx_kt fksst fclosed
+end
+if eq k 2
+fx_kt fksst fknext
+end
+if eq k 3
+fx_kt fksst frepd
+end
+v = get fgv x
+if eq v 0
+fx_kv fksvd 0 0
+end
+if eq v 1
+fx_kt fksvd fvpass
+end
+if eq v 2
+fx_kt fksvd fvfail
+end
+fx_kv fkscl get fso add b 5 get fsn add b 5
+m = get fgr x
+if eq m 0
+fx_kv fksrep 0 0
+else
+fx_kv fksrep get fno sub m 1 get fnn sub m 1
+end
+end
+
+note fx_gstat: the status and conformance lines from STATUS.md in src[s, e)
+fn fx_gstat s ulong e ulong to void
+fx_status s e
+fx_ku fkrows get fct 0
+fx_ku fkqual get fct 1
+fx_ku fkconf get fct 2
+fx_ku fktest get fct 3
+fx_ku fkimpl get fct 4
+fx_ku fkspec get fct 5
+fx_ku fkoth get fct 6
+fx_confrow s e
+if eq get fcf 0 0
+fx_kv fkcpass 0 0
+fx_kv fkctot 0 0
+fx_kv fkcnote 0 0
+else
+fx_ku fkcpass get fcf 1
+fx_ku fkctot get fcf 2
+fx_kv fkcnote get fcf 3 get fcf 4
+end
+end
+
+note fx_groad: the next, receipt and stage lines from ROADMAP.md in src[s, e)
+fn fx_groad s ulong e ulong to void
+fx_table s e
+fx_heads s e
+fx_link
+fx_kv fknext get fnx 0 get fnx 1
+fx_kt fkrst fnone
+fx_kt fkrtx fnover
+c = get fsc 0
+fx_ku fkstg c
+for x ulong c
+fx_wstage x
+end
+end
+
+note fx_save: write ob to the file named by argument ai (created or truncated, mode 0644), empty ob
+fn fx_save ai ulong to void
+setpath ai
+fd = fopen pb 0 get pbn 0 577 420
+if lt fd 0
+dief topen
+end
+n = get obn 0
+p = ulong 0
+while lt p n bound 4194305
+k = write int fd ob p sub n p
+if le k 0
+dief twrite
+end
+p = add p ulong k
+end
+c = fclose int fd
+if ne c 0
+dief twrite
+end
+put obn 0 0
+end
+
+note fx_gather: the program mode  hub facts PROTO_DIR SHA TIME OUTFILE
+fn fx_gather to void
+if ne argcnt 6
+die fusage 0 0
+end
+put obn 0 0
+a = fx_arg 3
+n = sub get srcn 0 a
+fx_cksha a n
+fx_kv fksha a n
+a = fx_arg 4
+n = sub get srcn 0 a
+fx_cktime a n
+fx_kv fktime a n
+fx_path fcargo
+s = fx_slurp
+fx_toml s get srcn 0 fklic
+fx_toml s get srcn 0 fkver
+fx_path fstatus
+s = fx_slurp
+fx_gstat s get srcn 0
+fx_path fdocs
+fx_names
+fx_sort
+fx_path froad
+s = fx_slurp
+fx_groad s get srcn 0
+c = get fnc 0
+fx_ku fkrep c
+for i ulong c
+fx_report i
+end
+fx_save 5
+end
+
+note fx_key: the number of the key src[o, o+n): 0..16 scalar, 17 stages, 18..24 stage fields,
+note 25 reports, 26..28 report fields, 99 unknown
+fn fx_key o ulong n ulong to ulong
+if eqt o n fksha
+ret 0
+end
+if eqt o n fktime
+ret 1
+end
+if eqt o n fklic
+ret 2
+end
+if eqt o n fkver
+ret 3
+end
+if eqt o n fkrows
+ret 4
+end
+if eqt o n fkqual
+ret 5
+end
+if eqt o n fkconf
+ret 6
+end
+if eqt o n fktest
+ret 7
+end
+if eqt o n fkimpl
+ret 8
+end
+if eqt o n fkspec
+ret 9
+end
+if eqt o n fkoth
+ret 10
+end
+if eqt o n fkcpass
+ret 11
+end
+if eqt o n fkctot
+ret 12
+end
+if eqt o n fkcnote
+ret 13
+end
+if eqt o n fknext
+ret 14
+end
+if eqt o n fkrst
+ret 15
+end
+if eqt o n fkrtx
+ret 16
+end
+if eqt o n fkstg
+ret 17
+end
+if eqt o n fksver
+ret 18
+end
+if eqt o n fkslay
+ret 19
+end
+if eqt o n fksgoal
+ret 20
+end
+if eqt o n fksst
+ret 21
+end
+if eqt o n fksvd
+ret 22
+end
+if eqt o n fkscl
+ret 23
+end
+if eqt o n fksrep
+ret 24
+end
+if eqt o n fkrep
+ret 25
+end
+if eqt o n fkrnm
+ret 26
+end
+if eqt o n fkrti
+ret 27
+end
+if eqt o n fkrhd
+ret 28
+end
+ret 99
+end
+
+note fx_pstage: field j of a stage line; stage_version (j 0) opens the next stage
+fn fx_pstage j ulong o ulong n ulong to void
+c = get fsc 0
+if eq j 0
+if ge c 64
+die fmany 0 0
+end
+c = add c 1
+put fsc 0 c
+end
+if eq c 0
+die fbadf o n
+end
+k = add mul sub c 1 7 j
+put fso k o
+put fsn k n
+end
+
+note fx_prep: field j of a report line; report_name (j 0) opens the next report
+fn fx_prep j ulong o ulong n ulong to void
+c = get frc 0
+if eq j 0
+if ge c 64
+die fmany 0 0
+end
+c = add c 1
+put frc 0 c
+end
+if eq c 0
+die fbadf o n
+end
+k = add mul sub c 1 3 j
+put fro k o
+put frn k n
+end
+
+note fx_pline: one line [p, q) of a facts file: key TAB value
+fn fx_pline p ulong q ulong to void
+t = tabf p q
+if ge t q
+die fbadf p sub q p
+end
+o = add t 1
+n = sub q o
+i = ulong 0
+while lt i n bound 8388609
+c = get src add o i
+if or lt c 32 eq c 127
+die fbadf p sub q p
+end
+i = add i 1
+end
+k = fx_key p sub t p
+if eq k 99
+die fbadf p sub q p
+end
+if lt k 17
+put fvo k o
+put fvn k n
+ret
+end
+if eq k 17
+put fdc 0 num o n
+ret
+end
+if eq k 25
+put fdc 1 num o n
+ret
+end
+if lt k 25
+fx_pstage sub k 18 o n
+ret
+end
+fx_prep sub k 26 o n
+end
+
+note fx_parse: read the facts file in src[s, e) into the globals. A line without TAB, an unknown
+note key, a control byte in a value, or a count that differs from its lines refuses.
+fn fx_parse s ulong e ulong to void
+for i ulong 17
+put fvn i 0
+end
+for j ulong 448
+put fsn j 0
+end
+for k ulong 192
+put frn k 0
+end
+put fsc 0 0
+put frc 0 0
+put fdc 0 0
+put fdc 1 0
+p = s
+while lt p e bound 8388609
+q = eol p e
+fx_pline p q
+p = add q 1
+end
+if ne get fdc 0 get fsc 0
+die fbadn 0 0
+end
+if ne get fdc 1 get frc 0
+die fbadn 0 0
+end
+end
+
+note fx_o, fx_n: offset and length in src of scalar value k (fsha .. frtext); length 0 when absent
+fn fx_o k ulong to ulong
+ret get fvo k
+end
+
+fn fx_n k ulong to ulong
+ret get fvn k
+end
+
+note fx_u: scalar value k as a number; an absent or non-decimal value refuses
+fn fx_u k ulong to ulong
+ret num get fvo k get fvn k
+end
+
+note fx_ns: stages. fx_so, fx_sn: offset and length of field j (fsver .. fsrep) of stage i.
+fn fx_ns to ulong
+ret get fsc 0
+end
+
+fn fx_so i ulong j ulong to ulong
+ret get fso add mul i 7 j
+end
+
+fn fx_sn i ulong j ulong to ulong
+ret get fsn add mul i 7 j
+end
+
+note fx_nr: reports. fx_ro, fx_rn: offset and length of field j (frname .. frhead) of report i.
+fn fx_nr to ulong
+ret get frc 0
+end
+
+fn fx_ro i ulong j ulong to ulong
+ret get fro add mul i 3 j
+end
+
+fn fx_rn i ulong j ulong to ulong
+ret get frn add mul i 3 j
+end

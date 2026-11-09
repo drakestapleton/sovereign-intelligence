@@ -1,0 +1,785 @@
+note wire/src/10-json.om: the strict JSON reader and the RFC 8785 (JCS) writer of ipo.
+note
+note The reader accepts RFC 8259 JSON with these v1 limits, each its own refusal class:
+note numbers are integers in canonical form of magnitude at most 2^53 (NUMFLOAT, NUMRANGE,
+note NEGZERO, BADNUM); object keys are ASCII (KEYNASC), so that sorting them bytewise is the
+note UTF-16 code unit order JCS asks for; no key twice in one object (DUPKEY); arrays and
+note objects nest at most MAXD deep (DEPTH). Strings are decoded to UTF-8 in the pool: every
+note escape, with surrogate pairs joined; a lone surrogate escape (SURROG) and invalid UTF-8
+note (BADUTF8) are refused.
+
+text tnull "null"
+text ttrue "true"
+text tfalse "false"
+text thexd "0123456789abcdef"
+text tmaxint "9007199254740992"
+
+note hexv: the value of hex digit c, 255 when it is not one; lc admits lowercase only
+fn hexv c uchar lc bool to ulong
+if and ge c 48 le c 57
+ret ulong sub c 48
+end
+if and ge c 97 le c 102
+ret ulong sub c 87
+end
+if lc
+ret 255
+end
+if and ge c 65 le c 70
+ret ulong sub c 55
+end
+ret 255
+end
+
+note hex4: the 4 hex digits of inp at p as a number
+fn hex4 p ulong to ulong
+v = ulong 0
+for i ulong 4
+h = hexv get inp add p i false
+if eq h 255
+fail EJSTR add p i
+end
+v = add mul v 16 h
+end
+ret v
+end
+
+note putcp: append code point cp to the pool as UTF-8
+fn putcp cp ulong to void
+if lt cp 128
+spb uchar cp
+ret
+end
+if lt cp 2048
+spb uchar or 192 shr cp 6
+spb uchar or 128 and cp 63
+ret
+end
+if lt cp 65536
+spb uchar or 224 shr cp 12
+spb uchar or 128 and shr cp 6 63
+spb uchar or 128 and cp 63
+ret
+end
+spb uchar or 240 shr cp 18
+spb uchar or 128 and shr cp 12 63
+spb uchar or 128 and shr cp 6 63
+spb uchar or 128 and cp 63
+end
+
+note jesc: the JSON escape of inp at p (a backslash). Appends what it stands for to the pool
+note and returns the position after it. \uD800..\uDBFF must be followed by \uDC00..\uDFFF.
+fn jesc p ulong to ulong
+e = get inp add p 1
+q = add p 2
+if eq e 34
+spb 34
+ret q
+end
+if eq e 92
+spb 92
+ret q
+end
+if eq e 47
+spb 47
+ret q
+end
+if eq e 98
+spb 8
+ret q
+end
+if eq e 102
+spb 12
+ret q
+end
+if eq e 110
+spb 10
+ret q
+end
+if eq e 114
+spb 13
+ret q
+end
+if eq e 116
+spb 9
+ret q
+end
+if ne e 117
+fail EJSTR p
+end
+cp = hex4 q
+if and ge cp 56320 le cp 57343
+fail ESURR p
+end
+if and ge cp 55296 le cp 56319
+if ne get inp add p 6 92
+fail ESURR p
+end
+if ne get inp add p 7 117
+fail ESURR p
+end
+lo = hex4 add p 8
+if or lt lo 56320 gt lo 57343
+fail ESURR p
+end
+hi = shl sub cp 55296 10
+putcp add 65536 add hi sub lo 56320
+ret add p 12
+end
+putcp cp
+ret add p 6
+end
+
+note cesc: the escape of inp at p when only the JCS spelling is allowed (a frame's quoted
+note string): \" \\ \b \f \n \r \t, and \u00xx in lowercase for the other bytes below 0x20
+fn cesc p ulong to ulong
+e = get inp add p 1
+q = add p 2
+if eq e 34
+spb 34
+ret q
+end
+if eq e 92
+spb 92
+ret q
+end
+if eq e 98
+spb 8
+ret q
+end
+if eq e 102
+spb 12
+ret q
+end
+if eq e 110
+spb 10
+ret q
+end
+if eq e 114
+spb 13
+ret q
+end
+if eq e 116
+spb 9
+ret q
+end
+if ne e 117
+fail EFRSTR p
+end
+if ne get inp q 48
+fail EFRSTR p
+end
+if ne get inp add p 3 48
+fail EFRSTR p
+end
+h = hexv get inp add p 4 true
+l = hexv get inp add p 5 true
+if or eq h 255 eq l 255
+fail EFRSTR p
+end
+v = add mul h 16 l
+if ge v 32
+fail EFRSTR p
+end
+if or eq v 8 or eq v 9 eq v 10
+fail EFRSTR p
+end
+if or eq v 12 eq v 13
+fail EFRSTR p
+end
+spb uchar v
+ret add p 6
+end
+
+note rng: is the byte of inp at p in [lo, hi]
+fn rng p ulong lo uchar hi uchar to bool
+c = get inp p
+ret and ge c lo le c hi
+end
+
+note rutf: one UTF-8 sequence of inp at p (a byte of 0x80 or more), well formed per Unicode
+note table 3-7: no overlong form, no surrogate, nothing above U+10FFFF. Appends it to the
+note pool and returns the position after it.
+fn rutf p ulong to ulong
+c = get inp p
+n = ulong 0
+lo = uchar 128
+hi = uchar 191
+if and ge c 194 le c 223
+n = 1
+end
+if and ge c 224 le c 239
+n = 2
+if eq c 224
+lo = 160
+end
+if eq c 237
+hi = 159
+end
+end
+if and ge c 240 le c 244
+n = 3
+if eq c 240
+lo = 144
+end
+if eq c 244
+hi = 143
+end
+end
+if eq n 0
+fail EUTF8 p
+end
+if not rng add p 1 lo hi
+fail EUTF8 p
+end
+if ge n 2
+if not rng add p 2 128 191
+fail EUTF8 p
+end
+end
+if ge n 3
+if not rng add p 3 128 191
+fail EUTF8 p
+end
+end
+m = add n 1
+i = ulong 0
+while lt i m bound 4
+spb get inp add p i
+i = add i 1
+end
+ret add p m
+end
+
+note rstr: the string literal of inp at pos (its opening quote), decoded to the end of the
+note pool. Returns its pool offset; its length is spn minus that. pos ends after the closing
+note quote. cn: the literal must be the JCS spelling (a frame), else any JSON string literal.
+fn rstr cn bool to ulong
+o = get spn 0
+p = add get pos 0 1
+note every pass consumes at least one byte of inp
+while true bound BND
+c = get inp p
+if eq c 34
+break
+end
+if lt c 32
+if cn
+fail EFRSTR p
+end
+fail EJSTR p
+end
+if eq c 92
+if cn
+p = cesc p
+else
+p = jesc p
+end
+continue
+end
+if ge c 128
+p = rutf p
+continue
+end
+spb c
+p = add p 1
+end
+put pos 0 add p 1
+ret o
+end
+
+note digs: the position after the decimal digits of inp from s, at most e
+fn digs s ulong e ulong to ulong
+p = s
+while lt p e bound BND
+c = get inp p
+if or lt c 48 gt c 57
+break
+end
+p = add p 1
+end
+ret p
+end
+
+note numfl: inp in [o, e) is an integer part up to s followed by more. A well-formed JSON
+note fraction or exponent is NUMFLOAT (not in v1), anything else BADNUM.
+fn numfl o ulong s ulong e ulong to void
+p = s
+if eq get inp p 46
+q = digs add p 1 e
+if eq q add p 1
+fail EBADNUM o
+end
+p = q
+end
+if lt p e
+c = get inp p
+if or eq c 101 eq c 69
+p = add p 1
+if lt p e
+g = get inp p
+if or eq g 43 eq g 45
+p = add p 1
+end
+end
+r = digs p e
+if eq r p
+fail EBADNUM o
+end
+p = r
+end
+end
+if ne p e
+fail EBADNUM o
+end
+fail ENUMFL o
+end
+
+note numchk: the bytes of inp in [o, e) must be a number this version carries: an optional
+note minus, then 0 or a digit string with no leading zero, no fraction, no exponent, not -0,
+note magnitude at most 2^53 = 9007199254740992 (up to there every integer is exact in
+note binary64 and JCS writes it with exactly these digits)
+fn numchk o ulong e ulong to void
+p = o
+if ge p e
+fail EBADNUM o
+end
+if eq get inp p 45
+p = add p 1
+end
+if ge p e
+fail EBADNUM o
+end
+d = p
+c = get inp p
+if or lt c 48 gt c 57
+fail EBADNUM o
+end
+p = add p 1
+if ne c 48
+p = digs p e
+end
+if ne p e
+numfl o p e
+end
+if and eq c 48 gt d o
+fail ENEGZ o
+end
+nd = sub p d
+if gt nd 16
+fail ENUMRG o
+end
+if eq nd 16
+for i ulong 16
+x = get inp add d i
+y = get tmaxint i
+if gt x y
+fail ENUMRG o
+end
+if lt x y
+break
+end
+end
+end
+end
+
+note numc: can c be part of a JSON number token
+fn numc c uchar to bool
+if and ge c 48 le c 57
+ret true
+end
+if or eq c 45 eq c 43
+ret true
+end
+if or eq c 46 or eq c 101 eq c 69
+ret true
+end
+ret false
+end
+
+note jnum: the number of inp at pos
+fn jnum to ulong
+p = get pos 0
+e = p
+while numc get inp e bound BND
+e = add e 1
+end
+numchk p e
+o = get spn 0
+i = p
+while lt i e bound BND
+spb get inp i
+i = add i 1
+end
+put pos 0 e
+ret node 4 o sub e p
+end
+
+note jlit: inp at pos must spell the text t
+fn jlit t view uchar * to void
+p = get pos 0
+n = len t
+for i ulong n
+if ne get inp add p i get t i
+fail EJSYN p
+end
+end
+put pos 0 add p n
+end
+
+note jws: move pos past JSON whitespace
+fn jws to void
+p = get pos 0
+while true bound BND
+c = get inp p
+if and and ne c 32 ne c 10 and ne c 13 ne c 9
+break
+end
+p = add p 1
+end
+put pos 0 p
+end
+
+note ascii: the pool slice must be ASCII; p is where the key started in inp
+fn ascii o ulong n ulong p ulong to void
+i = ulong 0
+while lt i n bound BND
+if ge get sp add o i 128
+fail EKEYNA p
+end
+i = add i 1
+end
+end
+
+note kcmp: the keys of members x and y compared (scmp)
+fn kcmp x ulong y ulong to ulong
+xo = get nko x
+xn = get nkn x
+yo = get nko y
+yn = get nkn y
+ret scmp xo xn yo yn
+end
+
+note merge: two key-sorted member lists into one
+fn merge a ulong b ulong to ulong
+x = a
+y = b
+hd = ulong 0
+tl = ulong 0
+t = ulong 0
+note every pass moves one member to the result
+while and ne x 0 ne y 0 bound BND
+if eq kcmp x y 2
+t = y
+y = get nx y
+else
+t = x
+x = get nx x
+end
+if eq tl 0
+hd = t
+else
+put nx tl t
+end
+tl = t
+end
+if eq x 0
+x = y
+end
+if eq tl 0
+ret x
+end
+put nx tl x
+ret hd
+end
+
+note msort: the list of n members from h, sorted by key (merge sort, n log n)
+fn msort h ulong n ulong to ulong
+if le n 1
+ret h
+end
+m = div n 2
+t = h
+i = ulong 1
+while lt i m bound BND
+t = get nx t
+i = add i 1
+end
+s = get nx t
+put nx t 0
+a = msort h m
+b = msort s sub n m
+ret merge a b
+end
+
+note dupchk: no two members of the sorted object a have the same key
+fn dupchk a ulong to void
+x = get na a
+if eq x 0
+ret
+end
+y = get nx x
+while ne y 0 bound BND
+if eq kcmp x y 1
+p = get np x
+if gt get np y p
+p = get np y
+end
+fail EDUPKEY p
+end
+x = y
+y = get nx y
+end
+end
+
+note jmem: one member of an object at pos: key, colon, value. Returns the value's node.
+fn jmem d ulong to ulong
+jws
+kp = get pos 0
+if ne get inp kp 34
+fail EJSYN kp
+end
+ko = rstr false
+kn = sub get spn 0 ko
+ascii ko kn kp
+jws
+p = get pos 0
+if ne get inp p 58
+fail EJSYN p
+end
+put pos 0 add p 1
+v = jval d
+put nko v ko
+put nkn v kn
+put np v kp
+ret v
+end
+
+note jobj: the object of inp at pos, nesting depth d; its members end up sorted by key
+fn jobj d ulong to ulong
+p = get pos 0
+if gt d MAXD
+fail EDEPTH p
+end
+put pos 0 add p 1
+a = node 7 0 0
+jws
+p = get pos 0
+if eq get inp p 125
+put pos 0 add p 1
+ret a
+end
+last = ulong 0
+cnt = ulong 0
+note every pass consumes at least one byte of inp
+while true bound BND
+v = jmem add d 1
+if eq last 0
+put na a v
+else
+put nx last v
+end
+last = v
+cnt = add cnt 1
+jws
+p = get pos 0
+c = get inp p
+if eq c 125
+break
+end
+if ne c 44
+fail EJSYN p
+end
+put pos 0 add p 1
+end
+put pos 0 add p 1
+put nb a cnt
+h = msort get na a cnt
+put na a h
+dupchk a
+ret a
+end
+
+note jarr: the array of inp at pos, nesting depth d
+fn jarr d ulong to ulong
+p = get pos 0
+if gt d MAXD
+fail EDEPTH p
+end
+put pos 0 add p 1
+a = node 6 0 0
+jws
+p = get pos 0
+if eq get inp p 93
+put pos 0 add p 1
+ret a
+end
+last = ulong 0
+cnt = ulong 0
+note every pass consumes at least one byte of inp
+while true bound BND
+v = jval add d 1
+if eq last 0
+put na a v
+else
+put nx last v
+end
+last = v
+cnt = add cnt 1
+jws
+p = get pos 0
+c = get inp p
+if eq c 93
+break
+end
+if ne c 44
+fail EJSYN p
+end
+put pos 0 add p 1
+end
+put pos 0 add p 1
+put nb a cnt
+ret a
+end
+
+note jval: the JSON value of inp at pos (after whitespace), nesting depth d
+fn jval d ulong to ulong
+jws
+p = get pos 0
+c = get inp p
+if eq c 123
+ret jobj d
+end
+if eq c 91
+ret jarr d
+end
+if eq c 34
+o = rstr false
+ret node 5 o sub get spn 0 o
+end
+if or eq c 45 and ge c 48 le c 57
+ret jnum
+end
+if eq c 116
+jlit ttrue
+ret node 2 0 0
+end
+if eq c 102
+jlit tfalse
+ret node 3 0 0
+end
+if eq c 110
+jlit tnull
+ret node 1 0 0
+end
+fail EJSYN p
+ret 0
+end
+
+note jparse: inp must be exactly one JSON value, whitespace around it allowed. Returns the
+note root of its tree (node 1).
+fn jparse to ulong
+put nn 0 1
+put spn 0 get sp0 0
+put pos 0 0
+r = jval 1
+jws
+p = get pos 0
+if ne p get inn 0
+fail EJTRAIL p
+end
+ret r
+end
+
+note jwstr: append the pool slice as a JCS string literal
+fn jwstr o ulong n ulong to void
+ob1 34
+i = ulong 0
+while lt i n bound BND
+c = get sp add o i
+i = add i 1
+if ge c 32
+if or eq c 34 eq c 92
+ob1 92
+end
+ob1 c
+continue
+end
+ob1 92
+if eq c 8
+ob1 98
+continue
+end
+if eq c 9
+ob1 116
+continue
+end
+if eq c 10
+ob1 110
+continue
+end
+if eq c 12
+ob1 102
+continue
+end
+if eq c 13
+ob1 114
+continue
+end
+ob1 117
+ob1 48
+ob1 48
+ob1 get thexd shr c 4
+ob1 get thexd and c 15
+end
+ob1 34
+end
+
+note jw: append the tree from v as canonical JSON
+fn jw v ulong to void
+k = get nk v
+if eq k 1
+obt tnull
+ret
+end
+if eq k 2
+obt ttrue
+ret
+end
+if eq k 3
+obt tfalse
+ret
+end
+if eq k 4
+obs get na v get nb v
+ret
+end
+if eq k 5
+jwstr get na v get nb v
+ret
+end
+c = get na v
+if eq k 6
+ob1 91
+while ne c 0 bound BND
+jw c
+c = get nx c
+if ne c 0
+ob1 44
+end
+end
+ob1 93
+ret
+end
+ob1 123
+while ne c 0 bound BND
+jwstr get nko c get nkn c
+ob1 58
+jw c
+c = get nx c
+if ne c 0
+ob1 44
+end
+end
+ob1 125
+end

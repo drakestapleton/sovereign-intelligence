@@ -1,0 +1,384 @@
+note hub/src/40-home.om: the overview page, and the blocks other pages reuse (planes, proof cards,
+note the seed chain).
+note
+note Numbers on this page are read from repos.tsv, stack/STACK.tsv, stack/LEDGER.tsv and
+note seed/PINS.tsv. Claims with evidence labels are read from the front door's README.md at build
+note time and never retyped here.
+
+text o01 "<section class='hero'><div class='wrap'><div><p class='kicker'><span>Open source on Radicle</span><span>Static, no scripts</span><span>Plumbline build</span></p><h1 class='word'>INTERPLANE</h1><p class='tag'>The home for space junk. <em>No proof. Not done.</em></p><p class='lede'>Every builder has a pile of it: the build that almost worked, the agent run that came out as slop. Somewhere in that pile is a piece that helps somebody else. I want this to be where it goes, and where it gets turned into something functional, verifiable and replicable. <strong>INTERPLANE checks AI completion claims against reproducible evidence.</strong></p><div class='cta'><a class='btn primary' href='#junk'>Bring your space junk</a><a class='btn' href='#rule'>How slop becomes something</a><a class='btn' href='/stack/'>See the whole stack</a><a class='btn' href='/evidence/'>What is proven</a></div></div>\n"
+text o02 "</div><div class='wrap statw'><div class='stats'><div class='stat'><b>"
+text o03 "</b><span>bytes written by hand. The compiler grows from them.</span><small>seed/PINS.tsv</small></div><div class='stat'><b>"
+text o04 "</b><span>lines of Omega across the stack.</span><small>stack/LEDGER.tsv</small></div><div class='stat'><b>"
+text o05 "%</b><span>of the stack&#39;s code is Omega today. The rest is migration still to do.</span><small>stack/LEDGER.tsv</small></div><div class='stat'><b>"
+text o06 "</b><span>public projects, each in its own Radicle repository.</span><small>repos.tsv</small></div></div></div></section>\n"
+text o10 "<section class='sec' id='stack'><div class='wrap'><p class='eyebrow'>First in: my own</p><h2>Four planes. One line through them.</h2><p class='sub'>My own stack went in first, and it is not finished either: "
+text o14 "% of its code is Omega today and the rest is migration still to do. Hardware, software, models and agents sit in one place here, and the same rule runs through every plane: a claim counts only with evidence on the exact revision.</p>\n"
+text o11 "<div class='planes'>\n"
+text o12 "</div>\n"
+text o13 "</div></section>\n"
+text opl1 "<article class='plane"
+text opl2 "'><div><h3>"
+text opl3 "</h3><p class='pt'>"
+text opl4 "</p><p>"
+text opl5 "</p><p class='tot'>"
+text opl6 " project"
+text opl9 ", "
+text opl7 " lines of Omega</p></div><div class='subs'>\n"
+text opl8 "</div></article>\n"
+text othru " thru"
+text on3 "Agents"
+text on2 "Models"
+text on1 "Software"
+text on0 "Hardware"
+text on4 "The line"
+text ot3 "Coordination and protocol"
+text ot2 "Training"
+text ot1 "Language and runtime"
+text ot0 "Machine code and the machine"
+text ot4 "Evidence and record"
+text od3 "Agent coordination, ledgers and agent networks, and the wire protocols they speak. INTERPLANE itself lives on this plane."
+text od2 "Training, written in Omega."
+text od1 "The language, its compiler grown from the seed, the agent harness, and the inference and agent runtime."
+text od0 "GPU machine code without the CUDA toolkit, and the kernel, machine realization, device adapters and supervision under it."
+text od4 "Receipts and benchmarks, the architecture, the sites. This is what passes through every plane above."
+text osr1 "<div class='subrow'><span class='nm'>"
+text osr2 "</span><span class='bar'><i style='width:"
+text osr3 "%'></i></span><span class='pc'>"
+text osr4 "% Omega</span><div class='chips'>"
+text osr5 "</div></div>\n"
+text och1 "<a class='chip' href='/stack/#p-"
+text och2 "'>"
+text och3 "</a>"
+text o20 "<section class='sec' id='rule'><div class='wrap'><p class='eyebrow'>The way through</p><h2>How slop becomes something</h2><p class='quote'>A completion is a claim. Evidence decides what it is worth.</p><ol class='steps'><li class='step'><h3>Bring it as it is</h3><p>It does not have to be clean, finished or even working. When it arrives, every claim about it starts UNVERIFIED. That is not an insult. It is the starting line.</p></li><li class='step'><h3>Pin the exact revision</h3><p>Nothing is judged from a description. Evidence is tied to one exact source revision, so everyone is looking at the same bytes.</p></li><li class='step'><h3>Find the piece that holds</h3><p>A piece counts when its declared checks pass on that revision and a negative control, a known bad input, fails them. A check that could never fail decides nothing.</p></li><li class='step'><h3>Hand it on</h3><p>What holds leaves with its evidence, so the next builder can replicate it without taking anyone&#39;s word, mine included. What does not is returned with the missing facts named. A PASS covers the declared checks on that revision and nothing more.</p></li></ol><p class='note'><span class='pill wait'>PLANNED</span><span class='t'>An open intake for outside builders is where this is going. It does not run today. What runs today, and what does not, is listed under <a href='/protocol/#modules'>the protocol</a>, and how a change merges under the rule is on <a href='/forge/'>the forge</a>.</span></p></div></section>\n"
+text o21 "<section class='sec junk' id='junk'><div class='wrap'><div class='two'><div><p class='eyebrow'>Space junk welcome</p><h2>The home for builds that did not quite work</h2><ul class='wreck'><li>The build that almost worked.</li><li>The agent run that came out as slop.</li><li>The repository nobody finished.</li><li>The idea with one good part in it.</li></ul></div><div><p class='big2'>Those builds that did not quite work right, but have a piece in them that will help somebody else: this is the place I want them to go.</p><p>Builders making slop are welcome here. I want this to be the home of slop, because I want to take it into the INTERPLANE network, make it into beautiful things, and turn it into something functional, verifiable and replicable.</p><p>A wreck is still a record of what was tried.</p></div></div></div></section>\n"
+text o30 "<section class='sec' id='proven'><div class='wrap'><p class='eyebrow'>Evidence</p><h2>What is proven, and at which level</h2><div class='prose'>"
+text o31 "</div><ul class='proofs'>\n"
+text o32 "</ul><div class='prose' style='margin-top:1.4rem'>"
+text o33 "<p><a href='/evidence/'>All evidence, and what is not done yet</a></p></div></div></section>\n"
+text opf1 "<li class='proof'><div><span class='pill "
+text opf2 "'>"
+text opf3 "</span>"
+text opf4 "<span class='when'>"
+text opf5 "</div><div><p>"
+text opf6 "</p><p class='rc'>"
+text opf7 "</p></div></li>\n"
+text opc "chip"
+text opl "live"
+text opno "none"
+text o40 "<section class='sec' id='seed'><div class='wrap'><div class='two'><div><p class='eyebrow'>Verified to the seed</p><h2>Grown from "
+text o41 " hand-written bytes</h2><div class='prose'>"
+text o42 "</div></div><div><ol class='chain'>\n"
+text o43 "</ol><p class='fine' style='margin-top:1rem'>Sizes in bytes, bars on a logarithmic scale, sha256 prefixes, all from <code>seed/PINS.tsv</code>.</p></div></div></div></section>\n"
+text org1 "<li class='rung'><span>"
+text org2 "</span><span class='bar'><i style='width:"
+text org3 "%'></i></span><span class='sz'>"
+text org4 "</span><span class='sh'>"
+text org5 "</span></li>\n"
+text o50 "<section class='sec' id='get'><div class='wrap'><div class='get'><h2>Get everything</h2><p>One command fetches every public project into one directory and checks each one against the commit it is listed at.</p><pre><code>curl -fsSL https://www.aienos.com/si | sh</code></pre><p>The script is generated by an Omega program, never written by hand. <a href='/stack/#get'>What it does, and how to read it first</a>.</p></div></div></section>\n"
+text oq1 "What I proved, and at which level"
+text oq2 "Built from the seed"
+text oseed "seed0.bin"
+text onoseed "seed/PINS.tsv has no seed0.bin row"
+
+note seedbytes: the size of the hand-written seed, from PINS.tsv
+fn seedbytes to ulong
+c = get tbn 3
+for i ulong c bound 64
+if eqt f_o 3 i 0 f_n 3 i 0 oseed
+ret f_u 3 i 1
+end
+end
+die onoseed 0 0
+ret 0
+end
+
+note subrow: one subsystem of a plane: its Omega share as a bar, and its projects as links
+fn subrow s ulong to void
+pm = permil get ago s get agf s
+em osr1
+if eq s 0
+em sb0
+end
+if eq s 1
+em sb1
+end
+if eq s 2
+em sb2
+end
+if eq s 3
+em sb3
+end
+if eq s 4
+em sb4
+end
+if eq s 5
+em sb5
+end
+if eq s 6
+em sb6
+end
+if eq s 7
+em sb7
+end
+if eq s 8
+em sb8
+end
+em osr2
+emp pm
+em osr3
+emp pm
+em osr4
+c = get tbn 1
+for i ulong c bound 4096
+if eq stksub i s
+em och1
+emh f_o 1 i 0 f_n 1 i 0
+em och2
+emh f_o 1 i 0 f_n 1 i 0
+em och3
+end
+end
+em osr5
+end
+
+note plane: the card of plane p (0 hardware, 1 software, 2 models, 3 agents, 4 the line)
+fn plane p ulong to void
+em opl1
+if eq p 4
+em othru
+end
+em opl2
+if eq p 0
+em on0
+em opl3
+em ot0
+em opl4
+em od0
+end
+if eq p 1
+em on1
+em opl3
+em ot1
+em opl4
+em od1
+end
+if eq p 2
+em on2
+em opl3
+em ot2
+em opl4
+em od2
+end
+if eq p 3
+em on3
+em opl3
+em ot3
+em opl4
+em od3
+end
+if eq p 4
+em on4
+em opl3
+em ot4
+em opl4
+em od4
+end
+em opl5
+n = plcount p
+emu n
+em opl6
+if ne n 1
+emb 115
+end
+em opl9
+emc plom p
+em opl7
+subrow plsub p 0
+s = plsub p 1
+if lt s 9
+subrow s
+end
+em opl8
+end
+
+note planes: the five cards, agents on top, the line last
+fn planes to void
+em o11
+plane 3
+plane 2
+plane 1
+plane 0
+plane 4
+em o12
+end
+
+note tblfirst: start of the first pipe-table line in [b, e), or e
+fn tblfirst b ulong e ulong to ulong
+p = b
+while lt p e bound 400000
+q = eol p e
+if eq md_kind p q 3
+ret p
+end
+p = add q 1
+end
+ret e
+end
+
+note tblend: start of the first line at or after t that is not a pipe-table line, or e
+fn tblend t ulong e ulong to ulong
+p = t
+while lt p e bound 400000
+q = eol p e
+if ne md_kind p q 3
+ret p
+end
+p = add q 1
+end
+ret e
+end
+
+note commaat: position of the first comma in [s, e), or e
+fn commaat s ulong e ulong to ulong
+ret md_to s e 44
+end
+
+note proof: one row "| claim | label | receipt |" of a README evidence table, as a card
+fn proof p ulong q ulong to void
+c0 = md_cell p q 0
+z0 = md_celle c0 q
+c1 = md_cell p q 1
+z1 = md_celle c1 q
+c2 = md_cell p q 2
+z2 = md_celle c2 q
+ls = md_trims c1 z1
+le0 = md_trime c1 z1
+cm = commaat ls le0
+em opf1
+k = get src ls
+if eq k 67
+em opc
+else
+if eq k 68
+em opl
+else
+em opno
+end
+end
+em opf2
+emh ls sub cm ls
+em opf3
+if lt cm le0
+em opf4
+w = md_trims add cm 1 le0
+emh w sub le0 w
+em opf3
+end
+em opf5
+md_inline md_trims c0 z0 md_trime c0 z0
+em opf6
+md_inline md_trims c2 z2 md_trime c2 z2
+em opf7
+end
+
+note proofs: every data row of the pipe table that starts at t, as cards. The first table line is
+note the header and the second the separator; both are skipped.
+fn proofs t ulong e ulong to void
+p = t
+n = ulong 0
+while lt p e bound 400000
+q = eol p e
+if ne md_kind p q 3
+ret
+end
+if ge n 2
+proof p q
+end
+n = add n 1
+p = add q 1
+end
+end
+
+note evsec: one README section whose table has the columns claim, label, receipt: the prose before
+note the table, the rows as cards, then the prose after it
+fn evsec t view uchar * to void
+b = md_sec t
+e = md_end b
+tf = tblfirst b e
+te = tblend tf e
+md_body b tf
+em o31
+proofs tf e
+em o32
+md_body te e
+end
+
+note bitlen: the number of bits needed to write v (0 for 0)
+fn bitlen v ulong to ulong
+n = ulong 0
+x = v
+while gt x 0 bound 65
+n = add n 1
+x = shr x 1
+end
+ret n
+end
+
+note chain: the rungs of the seed chain, from PINS.tsv
+fn chain to void
+c = get tbn 3
+for i ulong c bound 64
+v = f_u 3 i 1
+w = div mul bitlen v 100 24
+if gt w 100
+w = 100
+end
+em org1
+emh f_o 3 i 0 f_n 3 i 0
+em org2
+emu w
+em org3
+emc v
+em org4
+emh f_o 3 i 2 12
+em org5
+end
+end
+
+note home: the overview page
+fn home to void
+pgopen 0
+em hm1
+em o01
+art
+em o02
+emc seedbytes
+em o03
+emc get tot 2
+em o04
+emp get tot 4
+em o05
+emu hub_nrepo
+em o06
+em o21
+em o20
+em o10
+emp get tot 4
+em o14
+planes
+em o13
+em o30
+evsec oq1
+em o33
+em o40
+emc seedbytes
+em o41
+b = md_sec oq2
+e = md_end b
+md_body b tblfirst b e
+em o42
+chain
+em o43
+em o50
+pgclose
+end

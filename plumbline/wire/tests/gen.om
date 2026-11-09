@@ -1,0 +1,165 @@
+om2
+note wire/tests/gen.om: writes the four files of tests/bad that are too long or too regular
+note to type, in Omega, so that their bytes come from a stated rule.
+note
+note   gen bigjson > tests/bad/22-input-over-1mib.json
+note     1048577 bytes: a quote, 1048575 times the letter a, a quote. Valid JSON, one byte
+note     over the 1048576-byte input limit (TOOBIG).
+note   gen bigipo > tests/bad/23-decodes-over-1mib.ipo
+note     176013 bytes: "ipo1 arr", 8800 times " env 0 0 0 0 0 0 0 0", " end", LF. A canonical
+note     frame whose JSON is 8800 objects of 119 bytes, 8799 commas and 2 brackets: 1056001
+note     bytes, over the 1048576-byte output limit (OUTBIG).
+note   gen deepjson > tests/bad/24-nested-65-deep.json
+note     131 bytes: 65 times [, 65 times ], LF. One array deeper than the depth bound 64.
+note   gen deepipo > tests/bad/24-nested-65-deep.ipo
+note     525 bytes: "ipo1", 65 times " arr", 65 times " end", LF. The same value as a frame.
+note   gen deepjson64, gen deepipo64
+note     The same with 64 levels (129 and 517 bytes): the deepest value that is accepted.
+note     Not files of tests/bad; README.md uses them as the control of the depth bound.
+note Exit 0 written, 2 usage, 5 stdout not writable.
+
+text tusage "usage: gen bigjson|bigipo|deepjson|deepipo|deepjson64|deepipo64 > file\n"
+text tbigj "bigjson"
+text tbigi "bigipo"
+text tdeepj "deepjson"
+text tdeepi "deepipo"
+text tdj64 "deepjson64"
+text tdi64 "deepipo64"
+text tmagic "ipo1"
+text tarr " arr"
+text tend " end"
+text telem " env 0 0 0 0 0 0 0 0"
+text tnl "\n"
+
+global ob uchar 1048592
+global obn ulong 1
+global arg uchar 16
+global argn ulong 1
+
+fn usage to void
+w = write 2 tusage 0 len tusage
+exit 2
+end
+
+fn argis t view uchar * to bool
+n = len t
+if ne get argn 0 n
+ret false
+end
+for i ulong n
+if ne get arg i get t i
+ret false
+end
+end
+ret true
+end
+
+note put1: append one byte to ob
+fn put1 c uchar to void
+p = get obn 0
+put ob p c
+put obn 0 add p 1
+end
+
+note putt: append a text to ob
+fn putt t view uchar * to void
+n = len t
+for i ulong n
+put1 get t i
+end
+end
+
+note rep1: append c, n times
+fn rep1 c uchar n ulong to void
+i = ulong 0
+while lt i n bound 1048576
+put1 c
+i = add i 1
+end
+end
+
+note rept: append the text t, n times
+fn rept t view uchar * n ulong to void
+i = ulong 0
+while lt i n bound 8800
+putt t
+i = add i 1
+end
+end
+
+note flush: write ob to stdout, all of it
+fn flush to void
+n = get obn 0
+p = ulong 0
+note every pass writes at least one byte
+while lt p n bound 1048593
+k = write 1 ob p sub n p
+if le k 0
+exit 5
+end
+p = add p ulong k
+end
+end
+
+note deepj: n nested arrays as JSON
+fn deepj n ulong to void
+rep1 91 n
+rep1 93 n
+putt tnl
+end
+
+note deepi: n nested arrays as a frame
+fn deepi n ulong to void
+putt tmagic
+rept tarr n
+rept tend n
+putt tnl
+end
+
+fn main to int
+if ne argcnt 2
+usage
+end
+k = argread 1 arg 0 16
+if lt k 1
+usage
+end
+put argn 0 ulong k
+put obn 0 0
+m = ulong 0
+if argis tbigj
+put1 34
+rep1 97 1048575
+put1 34
+m = 1
+end
+if argis tbigi
+putt tmagic
+putt tarr
+rept telem 8800
+putt tend
+putt tnl
+m = 1
+end
+if argis tdeepj
+deepj 65
+m = 1
+end
+if argis tdeepi
+deepi 65
+m = 1
+end
+if argis tdj64
+deepj 64
+m = 1
+end
+if argis tdi64
+deepi 64
+m = 1
+end
+if eq m 0
+usage
+end
+flush
+ret 0
+end
