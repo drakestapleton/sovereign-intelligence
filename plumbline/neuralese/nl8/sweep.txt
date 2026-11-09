@@ -1,0 +1,5 @@
+POST HOC sweep, exploratory, not a pre-registered criterion: seeds 1..64, masks 39321 and 42405, arms 0 and 1
+SWEEP arm=0 mask=39321 seeds=64 heldout8=64 maxdrift=NA
+SWEEP arm=0 mask=42405 seeds=64 heldout8=64 maxdrift=NA
+SWEEP arm=1 mask=39321 seeds=64 heldout8=6 maxdrift=3.41948e-14
+SWEEP arm=1 mask=42405 seeds=64 heldout8=12 maxdrift=2.10942e-14

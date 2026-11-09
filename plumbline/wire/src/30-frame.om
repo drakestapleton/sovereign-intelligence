@@ -1,0 +1,471 @@
+note wire/src/30-frame.om: the ipo1 frame writer (enc) and the strict frame reader (dec).
+note
+note A frame is one line: ipo1, one space, one VALUE, LF. VALUE is nil, yes, no, a canonical
+note integer, a string (bare when isbare allows it, else its JCS literal), arr VALUE* end,
+note obj (KEY VALUE)* end, or a shape word followed by exactly the values of its keys.
+note The bare tokens true, false and null are no value and no key: JSONWORD.
+note The writer makes one frame per value. The reader accepts only that frame: each rule has
+note its own refusal, and fdec ends by writing the value again and comparing bytes (NONCANON),
+note so that "dec accepted F" always means "enc of the result is F".
+
+note fwstr: a string in a frame: bare when allowed, else the JCS literal
+fn fwstr o ulong n ulong to void
+if isbare o n
+obs o n
+ret
+end
+jwstr o n
+end
+
+note fwobj: object a as a frame value: its shape word and its values, or obj KEY VALUE ... end
+fn fwobj a ulong to void
+s = shfind a
+c = get na a
+if ne s 0
+t = sub s 1
+obs get shw t get shwn t
+while ne c 0 bound BND
+ob1 32
+fw c
+c = get nx c
+end
+ret
+end
+obt robj
+while ne c 0 bound BND
+ob1 32
+fwstr get nko c get nkn c
+ob1 32
+fw c
+c = get nx c
+end
+ob1 32
+obt rend
+end
+
+note fw: append the tree from v as a frame value
+fn fw v ulong to void
+k = get nk v
+if eq k 1
+obt rnil
+ret
+end
+if eq k 2
+obt ryes
+ret
+end
+if eq k 3
+obt rno
+ret
+end
+if eq k 4
+obs get na v get nb v
+ret
+end
+if eq k 5
+fwstr get na v get nb v
+ret
+end
+if eq k 7
+fwobj v
+ret
+end
+obt rarr
+c = get na v
+while ne c 0 bound BND
+ob1 32
+fw c
+c = get nx c
+end
+ob1 32
+obt rend
+end
+
+note fwframe: the output becomes the frame of the tree from r
+fn fwframe r ulong to void
+put obn 0 0
+obt rmagic
+ob1 32
+fw r
+ob1 10
+end
+
+note fchk: the frame as a whole: it ends with LF, has no control byte before that LF, does
+note not start with a space, and starts with ipo1 and one space. pos ends at the value.
+fn fchk to void
+n = get inn 0
+if eq n 0
+fail EFRNOLF 0
+end
+m = sub n 1
+if ne get inp m 10
+fail EFRNOLF n
+end
+i = ulong 0
+while lt i m bound BND
+if lt get inp i 32
+fail EFRCTL i
+end
+i = add i 1
+end
+if eq get inp 0 32
+fail EFRSP 0
+end
+for j ulong 4
+if ne get inp j get rmagic j
+fail EFRMAG j
+end
+end
+if ne get inp 4 32
+fail EFRMAG 4
+end
+put pos 0 5
+end
+
+note ftok: the end of the token of inp that starts at p: the position of the next space or
+note LF. fchk made the last byte of the frame an LF, so the scan stays inside the frame.
+fn ftok p ulong to ulong
+q = p
+while true bound BND
+c = get inp q
+if or eq c 32 eq c 10
+break
+end
+q = add q 1
+end
+ret q
+end
+
+note fsep: pos is just after a token and one more token must follow: exactly one space, then
+note a byte that is neither a space nor the LF. pos ends at that byte.
+fn fsep to void
+p = get pos 0
+if eq get inp p 10
+fail EFRARI p
+end
+q = add p 1
+c = get inp q
+if or eq c 32 eq c 10
+fail EFRSP q
+end
+put pos 0 q
+end
+
+note fisend: is the token at pos the word end
+fn fisend to bool
+p = get pos 0
+if ne get inp p 101
+ret false
+end
+if ne get inp add p 1 110
+ret false
+end
+if ne get inp add p 2 100
+ret false
+end
+c = get inp add p 3
+ret or eq c 32 eq c 10
+end
+
+note fqstr: the quoted string of inp at pos. It must be the JCS literal and be followed by a
+note space or the LF. Returns its pool offset; its length is spn minus that.
+fn fqstr to ulong
+o = rstr true
+p = get pos 0
+c = get inp p
+if and ne c 32 ne c 10
+fail EFRSP p
+end
+ret o
+end
+
+note fcopy: append inp in [p, e) to the pool; returns its pool offset
+fn fcopy p ulong e ulong to ulong
+o = get spn 0
+i = p
+while lt i e bound BND
+spb get inp i
+i = add i 1
+end
+ret o
+end
+
+note fnum: the number token of inp in [p, e): a canonical integer, as in JSON
+fn fnum p ulong e ulong to ulong
+numchk p e
+o = fcopy p e
+put pos 0 e
+ret node 4 o sub e p
+end
+
+note farr: the array whose word arr started at p, nesting depth d; pos is after the word
+fn farr p ulong d ulong to ulong
+if gt d MAXD
+fail EDEPTH p
+end
+a = node 6 0 0
+last = ulong 0
+cnt = ulong 0
+note every pass consumes at least two bytes of inp
+while true bound BND
+fsep
+if fisend
+break
+end
+v = fval add d 1
+if eq last 0
+put na a v
+else
+put nx last v
+end
+last = v
+cnt = add cnt 1
+end
+put pos 0 add get pos 0 3
+put nb a cnt
+ret a
+end
+
+note fkey: the key of an obj member at pos, written as fwstr writes a string: bare when
+note allowed (so a number, a fixed word or a shape word is no key: FRKEY; true, false and
+note null: JSONWORD), else quoted (so a quoted key that could be bare is NOTBARE). ASCII only,
+note as in JSON. Returns its pool offset.
+fn fkey to ulong
+kp = get pos 0
+o = get spn 0
+if eq get inp kp 34
+q = fqstr
+n = sub get spn 0 o
+ascii o n kp
+if isbare o n
+fail ENOTBARE kp
+end
+ret o
+end
+e = ftok kp
+m = sub e kp
+if gt m 64
+fail EFRKEY kp
+end
+r = fcopy kp e
+if isjsonw o m
+fail EJSONW kp
+end
+if not isbare o m
+fail EFRKEY kp
+end
+put pos 0 e
+ret o
+end
+
+note fmem: one member of an obj at pos: key, one space, value. Returns the value's node.
+fn fmem d ulong to ulong
+kp = get pos 0
+ko = fkey
+kn = sub get spn 0 ko
+fsep
+v = fval d
+put nko v ko
+put nkn v kn
+put np v kp
+ret v
+end
+
+note fobj: the object whose word obj started at p, nesting depth d; pos is after the word.
+note Keys ascend strictly (KEYORDER: no key twice, JCS order), and an object that has the key
+note sequence of a shape must be written with the shape word (NOTSHAPE).
+fn fobj p ulong d ulong to ulong
+if gt d MAXD
+fail EDEPTH p
+end
+a = node 7 0 0
+last = ulong 0
+cnt = ulong 0
+note every pass consumes at least two bytes of inp
+while true bound BND
+fsep
+if fisend
+break
+end
+v = fmem add d 1
+if eq last 0
+put na a v
+else
+if ne kcmp last v 0
+fail EKEYORD get np v
+end
+put nx last v
+end
+last = v
+cnt = add cnt 1
+end
+put pos 0 add get pos 0 3
+put nb a cnt
+if ne shfind a 0
+fail ENOTSHP p
+end
+ret a
+end
+
+note fshval: the next value of a shape, nesting depth d: one space, then the value, which
+note becomes the member whose key is table key t
+fn fshval t ulong d ulong to ulong
+fsep
+kp = get pos 0
+v = fval d
+put nko v get sko t
+put nkn v get skn t
+put np v kp
+ret v
+end
+
+note fshape: the object of shape s whose word started at p, nesting depth d: exactly the
+note values of the shape's keys, in order
+fn fshape s ulong p ulong d ulong to ulong
+if gt d MAXD
+fail EDEPTH p
+end
+a = node 7 0 0
+k = get shk s
+c = get shc s
+last = ulong 0
+i = ulong 0
+while lt i c bound 4096
+v = fshval add k i add d 1
+if eq last 0
+put na a v
+else
+put nx last v
+end
+last = v
+i = add i 1
+end
+put nb a c
+ret a
+end
+
+note fresv: the fixed word in the pool slice, which started at p in inp: a value word, end
+note where a value is required (FRARITY), a JSON literal (JSONWORD), or ipo1 (FRWORD)
+fn fresv o ulong n ulong p ulong d ulong to ulong
+k = ulong 0
+if seqt o n rnil
+k = 1
+end
+if seqt o n ryes
+k = 2
+end
+if seqt o n rno
+k = 3
+end
+if seqt o n rarr
+k = 6
+end
+if seqt o n robj
+k = 7
+end
+if seqt o n rend
+fail EFRARI p
+end
+if isjsonw o n
+fail EJSONW p
+end
+put spn 0 o
+if eq k 0
+fail EFRWORD p
+end
+if le k 3
+ret node k 0 0
+end
+if eq k 6
+ret farr p d
+end
+ret fobj p d
+end
+
+note fword: the word of inp in [p, e): a fixed word, a shape word or a bare string
+fn fword p ulong e ulong d ulong to ulong
+n = sub e p
+if gt n 64
+fail EFRWORD p
+end
+o = fcopy p e
+put pos 0 e
+if isresw o n
+ret fresv o n p d
+end
+s = shwfind o n
+if ne s 0
+put spn 0 o
+ret fshape sub s 1 p d
+end
+if not barepat o n
+fail EFRWORD p
+end
+ret node 5 o n
+end
+
+note fval: the frame value of inp at pos, nesting depth d
+fn fval d ulong to ulong
+p = get pos 0
+c = get inp p
+if eq c 32
+fail EFRSP p
+end
+if eq c 10
+fail EFRARI p
+end
+if eq c 34
+o = fqstr
+n = sub get spn 0 o
+if isbare o n
+fail ENOTBARE p
+end
+ret node 5 o n
+end
+e = ftok p
+if or eq c 45 and ge c 48 le c 57
+ret fnum p e
+end
+ret fword p e d
+end
+
+note fparse: inp must be exactly one frame. Returns the root of its tree (node 1).
+fn fparse to ulong
+put nn 0 1
+put spn 0 get sp0 0
+fchk
+r = fval 1
+p = get pos 0
+if ne get inp p 10
+q = add p 1
+c = get inp q
+if or eq c 32 eq c 10
+fail EFRSP q
+end
+fail EFRTRL q
+end
+ret r
+end
+
+note fdec: read the frame in inp, then write its value as a frame again: the bytes must be
+note the bytes read. The output is left holding that frame.
+fn fdec to ulong
+r = fparse
+fwframe r
+n = get inn 0
+m = get obn 0
+i = ulong 0
+while lt i n bound BND
+if ge i m
+break
+end
+if ne get ob i get inp i
+break
+end
+i = add i 1
+end
+if or lt i n ne m n
+fail ENONCAN i
+end
+ret r
+end

@@ -1,0 +1,69 @@
+sha	708b4daed1900ed9da7907fd30a583f468eb9c1b
+time	2026-11-09T12:01:00Z
+license	Apache-2.0
+version	0.3.0
+rows	44
+qualified	3
+conformant	12
+tested	15
+implemented	2
+specified	1
+other	11
+conf_passed	106
+conf_total	106
+conf_note	106/106 (verdicts byte-identical to `conformance/expected/verdicts.json`, which the Python runner also produced; CI requires exactly 106)
+next	0.4 Execution
+receipt_state	none
+receipt_text	No Spark verdict is recorded on Radicle for this commit.
+stages	5
+stage_version	0.1
+stage_layer	Reality
+stage_goal	Prove what a model/backend/runtime combination really supports
+stage_state	reported
+stage_verdict	
+stage_closed	
+stage_report	REPORT-0.1.md
+stage_version	0.2
+stage_layer	Capability
+stage_goal	Give small local models the minimum tools required without making them less capable
+stage_state	closed
+stage_verdict	FAIL
+stage_closed	2026-10-04
+stage_report	REPORT-0.2.md
+stage_version	0.3
+stage_layer	Trust
+stage_goal	Preserve the line between content, model intent and runtime authority
+stage_state	closed
+stage_verdict	PASS
+stage_closed	2026-10-05
+stage_report	REPORT-0.3.md
+stage_version	0.4
+stage_layer	Execution
+stage_goal	Multi-round execution without losing the boundary
+stage_state	next
+stage_verdict	
+stage_closed	
+stage_report	
+stage_version	0.5
+stage_layer	Qualification
+stage_goal	Measured, reproducible model and backend claims
+stage_state	planned
+stage_verdict	
+stage_closed	
+stage_report	
+reports	5
+report_name	REPORT-0.1.md
+report_title	INTERPLANE 0.1 readiness report (2026-10-04)
+report_headline	
+report_name	REPORT-0.2.md
+report_title	INTERPLANE 0.2 capability report (2026-10-04)
+report_headline	the pre-registered CrossAxis gate FAILED.
+report_name	REPORT-0.2x.md
+report_title	INTERPLANE 0.2x campaign report (2026-10-05)
+report_headline	all four arms FAILED the pre-registered gate, including arm 3, the primary claim.
+report_name	REPORT-0.3.md
+report_title	INTERPLANE 0.3 trust report (2026-10-05)
+report_headline	every offline gate of the pre-registered 0.3 protocol PASSED (P, X, I, E, A, N; `bench/PROTOCOL-0.3.md` section 5, thresholds fixed before the run and not changed here).
+report_name	REPORT-adapter-repro.md
+report_title	Independent adapter reproduction (plan 19.7 item 8)
+report_headline	

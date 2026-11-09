@@ -1,0 +1,117 @@
+note hub/src/70-discovery.om: the files a machine reads: style.css, robots.txt, sitemap.xml,
+note llms.txt and facts.json. facts.json is the facts file as a JSON array of [key, value] pairs, in
+note the file's order: a key such as stage_version occurs once per stage, so an object would repeat keys.
+
+text d01 "User-agent: *\nAllow: /\nSitemap: "
+text d02 "/sitemap.xml\n"
+text d03 "<?xml version='1.0' encoding='UTF-8'?>\n<urlset xmlns='http://www.sitemaps.org/schemas/sitemap/0.9'>\n"
+text d04 "  <url><loc>"
+text d05 "</loc></url>\n"
+text d06 "</urlset>\n"
+text d07 "# INTERPLANE\n\n> "
+text d08 "\n\nExperimental. A completion claim starts UNVERIFIED; missing, failed or untrusted evidence is a HOLD; a PASS means the declared checks passed on the exact revision, not universal correctness.\n\n## Pages\n\n"
+text d09 "- [INTERPLANE: "
+text d10 "]("
+text d11 "): "
+text d12 "\n"
+text d13 "\n## Machine-readable\n\n- [facts.json]("
+text d14 "/facts.json): the protocol facts behind the pages, read from the protocol repository at one commit\n"
+text wcss "style.css"
+text wrob "robots.txt"
+text wmap "sitemap.xml"
+text wllm "llms.txt"
+text wfac "facts.json"
+
+note fac: the protocol facts file as loaded: start and end in src
+global fac ulong 2
+
+note rtn: route number of the k-th page in publication order
+fn rtn k ulong to ulong
+if lt k 5
+ret k
+end
+ret add k 6
+end
+
+note jsstr: append src[o, o+n) as the inside of a JSON string
+fn jsstr o ulong n ulong to void
+for i ulong n bound 8388609
+c = get src add o i
+if or eq c 34 eq c 92
+emb 92
+emb c
+else
+if lt c 32
+emb 32
+else
+emb c
+end
+end
+end
+end
+
+note discovery: write the five files
+fn discovery to void
+css_all
+wfile wcss
+em d01
+embase
+em d02
+wfile wrob
+em d03
+for k ulong 11
+em d04
+embase
+rtpath rtn k
+em d05
+end
+em d06
+wfile wmap
+em d07
+em hs0
+em d08
+for j ulong 11
+r = rtn j
+em d09
+rttitle r
+em d10
+embase
+rtpath r
+em d11
+rtdesc r
+em d12
+end
+em d13
+embase
+em d14
+wfile wllm
+emb 91
+p = get fac 0
+e = get fac 1
+first = true
+while lt p e bound 100000
+q = eol p e
+t = tabf p q
+if lt t q
+if not first
+emb 44
+end
+first = false
+emb 10
+emb 91
+emb 34
+jsstr p sub t p
+emb 34
+emb 44
+emb 34
+jsstr add t 1 sub q add t 1
+emb 34
+emb 93
+end
+p = add q 1
+end
+emb 10
+emb 93
+emb 10
+wfile wfac
+end

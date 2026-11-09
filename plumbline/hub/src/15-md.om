@@ -1,0 +1,372 @@
+note hub/src/15-md.om: render parts of the front door's README.md as HTML.
+note
+note The hub does not retype what the README claims. It reads the README's own sections and tables
+note at build time, so a page cannot say more than the source says. Supported Markdown: paragraphs,
+note "- " and "1. " lists, pipe tables, fenced code, and inline `code`, **bold**, [text](https://...)
+note and <https://...>. A link whose target is not https is written as its text only. Every byte of
+note README text reaches the page through emx.
+
+text mcode "<code>"
+text mcodez "</code>"
+text mb "<strong>"
+text mbz "</strong>"
+text ma1 "<a href='"
+text ma2 "'>"
+text maz "</a>"
+text mhttps "https://"
+text mh2 "## "
+text mfence "```"
+text mp "<p>"
+text mpz "</p>\n"
+text mulo "<ul>\n"
+text mulc "</ul>\n"
+text mol "<ol>\n"
+text molz "</ol>\n"
+text mli "<li>"
+text mliz "</li>\n"
+text mpre "<pre><code>"
+text mprez "</code></pre>\n"
+text mnosec "README.md has no section: "
+
+note md_to: first position in [p, e) holding byte c, or e
+fn md_to p ulong e ulong c uchar to ulong
+i = p
+while lt i e bound 8388609
+if eq get src i c
+ret i
+end
+i = add i 1
+end
+ret e
+end
+
+note md_link: [text](target) at p (p is at "["); writes it and returns the position after ")",
+note or returns p when this is not a link
+fn md_link p ulong e ulong to ulong
+c = md_to add p 1 e 93
+if ge add c 1 e
+ret p
+end
+if ne get src add c 1 40
+ret p
+end
+u = add c 2
+z = md_to u e 41
+if ge z e
+ret p
+end
+if eqt u 8 mhttps
+em ma1
+emh u sub z u
+em ma2
+md_inline add p 1 c
+em maz
+else
+md_inline add p 1 c
+end
+ret add z 1
+end
+
+note md_auto: <https://...> at p; writes it and returns the position after ">", or p
+fn md_auto p ulong e ulong to ulong
+u = add p 1
+if gt add u 8 e
+ret p
+end
+if eqt u 8 mhttps
+z = md_to u e 62
+if ge z e
+ret p
+end
+em ma1
+emh u sub z u
+em ma2
+emh u sub z u
+em maz
+ret add z 1
+end
+ret p
+end
+
+note md_inline: write src[s, e) with inline Markdown rendered
+fn md_inline s ulong e ulong to void
+p = s
+while lt p e bound 8388609
+c = get src p
+q = p
+if eq c 96
+z = md_to add p 1 e 96
+if lt z e
+em mcode
+emh add p 1 sub z add p 1
+em mcodez
+q = add z 1
+end
+end
+if eq c 91
+q = md_link p e
+end
+if eq c 60
+q = md_auto p e
+end
+if eq c 42
+q = md_bold p e
+end
+if eq q p
+emx c
+q = add p 1
+end
+p = q
+end
+end
+
+note md_bold: **text** at p; writes it and returns the position after the closing **, or p
+fn md_bold p ulong e ulong to ulong
+if ge add p 3 e
+ret p
+end
+if ne get src add p 1 42
+ret p
+end
+z = add p 2
+while lt add z 1 e bound 8388609
+if eq get src z 42
+if eq get src add z 1 42
+em mb
+md_inline add p 2 z
+em mbz
+ret add z 2
+end
+end
+z = add z 1
+end
+ret p
+end
+
+note md_sec: start of the body of the README section whose heading line is "## " + t, and through
+note the global mdr 1 temporarily... no: returns the body start; md_end gives its end
+fn md_sec t view uchar * to ulong
+s = get mdr 0
+e = get mdr 1
+p = s
+while lt p e bound 400000
+q = eol p e
+if gt sub q p 3
+if eqt p 3 mh2
+if eqt add p 3 sub q add p 3 t
+ret add q 1
+end
+end
+end
+p = add q 1
+end
+w = write 2 thub 0 len thub
+w = write 2 mnosec 0 len mnosec
+w = write 2 t 0 len t
+w = write 2 tnl 0 len tnl
+exit 1
+end
+
+note md_end: end of the section body that starts at b: the next line starting with "## ", or the README's end
+fn md_end b ulong to ulong
+e = get mdr 1
+p = b
+while lt p e bound 400000
+q = eol p e
+if ge sub q p 3
+if eqt p 3 mh2
+ret p
+end
+end
+p = add q 1
+end
+ret e
+end
+
+note md_cell: start of pipe-table cell k (0-based) of the row [p, q); q when the row has fewer.
+note A "|" inside `code` does not split a cell.
+fn md_cell p ulong q ulong k ulong to ulong
+i = add p 1
+j = ulong 0
+tick = ulong 0
+while lt j k bound 64
+f = ulong 0
+while lt i q bound 8388609
+c = get src i
+if eq c 96
+tick = sub 1 tick
+end
+if eq c 124
+if eq tick 0
+f = 1
+i = add i 1
+break
+end
+end
+i = add i 1
+end
+if eq f 0
+ret q
+end
+j = add j 1
+end
+ret i
+end
+
+note md_celle: end of the cell that starts at c on the row ending at q (the next unquoted "|")
+fn md_celle c ulong q ulong to ulong
+i = c
+tick = ulong 0
+while lt i q bound 8388609
+b = get src i
+if eq b 96
+tick = sub 1 tick
+end
+if eq b 124
+if eq tick 0
+ret i
+end
+end
+i = add i 1
+end
+ret q
+end
+
+note md_trims, md_trime: a slice without its leading and trailing spaces
+fn md_trims s ulong e ulong to ulong
+i = s
+while lt i e bound 8388609
+if ne get src i 32
+ret i
+end
+i = add i 1
+end
+ret e
+end
+fn md_trime s ulong e ulong to ulong
+i = e
+while gt i s bound 8388609
+if ne get src sub i 1 32
+ret i
+end
+i = sub i 1
+end
+ret s
+end
+
+note md_kind: what the line [p, q) is: 0 blank, 1 "- " item, 2 "N. " item, 3 table row, 4 fence, 5 text, 6 HTML comment
+fn md_kind p ulong q ulong to ulong
+n = sub q p
+if eq n 0
+ret 0
+end
+c = get src p
+if eq c 124
+ret 3
+end
+if ge n 3
+if eqt p 3 mfence
+ret 4
+end
+end
+if ge n 2
+if eq c 45
+if eq get src add p 1 32
+ret 1
+end
+end
+if eq c 60
+if eq get src add p 1 33
+ret 6
+end
+end
+end
+if ge n 3
+if and ge c 48 le c 57
+if eq get src add p 1 46
+if eq get src add p 2 32
+ret 2
+end
+end
+end
+end
+ret 5
+end
+
+note md_close: close the opn block of kind k (1 ul, 2 ol, 5 paragraph)
+fn md_close k ulong to void
+if eq k 1
+em mulc
+end
+if eq k 2
+em molz
+end
+if eq k 5
+em mpz
+end
+end
+
+note md_body: write the prose of src[b, e): paragraphs, lists and fenced code. Table rows and
+note HTML comments are skipped (tables are rendered by the pages that own their layout).
+fn md_body b ulong e ulong to void
+p = b
+opn = ulong 0
+code = ulong 0
+while lt p e bound 400000
+q = eol p e
+k = md_kind p q
+if eq code 1
+if eq k 4
+em mprez
+code = 0
+else
+emh p sub q p
+emb 10
+end
+k = 9
+end
+if eq k 4
+md_close opn
+opn = 0
+em mpre
+code = 1
+end
+if or eq k 0 or eq k 3 eq k 6
+md_close opn
+opn = 0
+end
+if or eq k 1 eq k 2
+if ne opn k
+md_close opn
+if eq k 1
+em mulo
+else
+em mol
+end
+opn = k
+end
+em mli
+if eq k 1
+md_inline add p 2 q
+else
+md_inline add p 3 q
+end
+em mliz
+end
+if eq k 5
+if ne opn 5
+md_close opn
+em mp
+opn = 5
+else
+emb 32
+end
+md_inline p q
+end
+p = add q 1
+end
+md_close opn
+if eq code 1
+em mprez
+end
+end

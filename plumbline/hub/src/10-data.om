@@ -1,0 +1,195 @@
+note hub/src/10-data.om: the input tables. Every number the hub prints is read from these files.
+note
+note table 0  repos.tsv         name rid head tier description            (written by compiler/si.om)
+note table 1  stack/STACK.tsv   name rid head subsystem front_door visibility description moved_to
+note table 2  stack/LEDGER.tsv  project files bytes om rust c sh py other foreign om_permille
+note table 3  seed/PINS.tsv     name bytes sha256 made_by
+note Each table's first line is its header and is skipped.
+
+note rw: start and end of every row; tbb/tbn: first row and row count of each table
+global rw ulong 4096
+global nrw ulong 1
+global tbb ulong 8
+global tbn ulong 8
+note per subsystem: projects, Omega lines, lines of other languages
+global agc ulong 16
+global ago ulong 16
+global agf ulong 16
+note the ledger's own TOTAL row, kept apart: files, bytes, om, foreign, permille
+global tot ulong 8
+note the README: start and end in src
+global mdr ulong 2
+
+text trows "more than 2047 table rows at: "
+text tnosub "unknown subsystem: "
+text tnostk "ledger project is not in STACK.tsv: "
+text tnotot "LEDGER.tsv has no TOTAL row, or its TOTAL disagrees with the sum of its rows"
+text ttotal "TOTAL"
+text sb0 "compiler"
+text sb1 "gpu"
+text sb2 "os"
+text sb3 "runtime"
+text sb4 "train"
+text sb5 "protocol"
+text sb6 "agents"
+text sb7 "evidence"
+text sb8 "docs"
+
+note rows: split src[s,e) into lines as table k, skipping the header line and empty lines
+fn rows k ulong s ulong e ulong to void
+b = get nrw 0
+put tbb k b
+p = add eol s e 1
+n = ulong 0
+while lt p e bound 100000
+q = eol p e
+if gt q p
+if ge add b n 2047
+die trows p sub q p
+end
+i = mul 2 add b n
+put rw i p
+put rw add i 1 q
+n = add n 1
+end
+p = add q 1
+end
+put tbn k n
+put nrw 0 add b n
+end
+
+note rws, rwe: start and end of row i of table k
+fn rws k ulong i ulong to ulong
+ret get rw mul 2 add get tbb k i
+end
+fn rwe k ulong i ulong to ulong
+ret get rw add 1 mul 2 add get tbb k i
+end
+
+note f_o, f_n: offset and length of field f of row i of table k
+fn f_o k ulong i ulong f ulong to ulong
+ret fld rws k i rwe k i f
+end
+fn f_n k ulong i ulong f ulong to ulong
+q = rwe k i
+ret fln fld rws k i q f q
+end
+
+note f_u: field f of row i of table k as a number
+fn f_u k ulong i ulong f ulong to ulong
+ret num f_o k i f f_n k i f
+end
+
+note hub_nrepo: the number of public projects in repos.tsv
+fn hub_nrepo to ulong
+ret get tbn 0
+end
+
+note subsys: index 0..8 of the subsystem named by src[o, o+n)
+fn subsys o ulong n ulong to ulong
+if eqt o n sb0
+ret 0
+end
+if eqt o n sb1
+ret 1
+end
+if eqt o n sb2
+ret 2
+end
+if eqt o n sb3
+ret 3
+end
+if eqt o n sb4
+ret 4
+end
+if eqt o n sb5
+ret 5
+end
+if eqt o n sb6
+ret 6
+end
+if eqt o n sb7
+ret 7
+end
+if eqt o n sb8
+ret 8
+end
+die tnosub o n
+ret 9
+end
+
+note stkrow: row of STACK.tsv whose name is src[o, o+n), or the row count when there is none
+fn stkrow o ulong n ulong to ulong
+c = get tbn 1
+for i ulong c bound 4096
+if eqs o n f_o 1 i 0 f_n 1 i 0
+ret i
+end
+end
+ret c
+end
+
+note stksub: subsystem index of STACK.tsv row i
+fn stksub i ulong to ulong
+ret subsys f_o 1 i 3 f_n 1 i 3
+end
+
+note aggregate: count projects per subsystem from STACK.tsv and add up the ledger per subsystem.
+note The ledger's TOTAL row must equal the sum of its other rows, or the build refuses.
+fn aggregate to void
+c = get tbn 1
+for i ulong c bound 4096
+s = stksub i
+put agc s add get agc s 1
+end
+so = ulong 0
+sf = ulong 0
+seen = ulong 0
+c = get tbn 2
+for j ulong c bound 4096
+o = f_o 2 j 0
+n = f_n 2 j 0
+if eqt o n ttotal
+put tot 0 f_u 2 j 1
+put tot 1 f_u 2 j 2
+put tot 2 f_u 2 j 3
+put tot 3 f_u 2 j 9
+put tot 4 f_u 2 j 10
+seen = 1
+else
+r = stkrow o n
+if ge r get tbn 1
+die tnostk o n
+end
+s = stksub r
+v = f_u 2 j 3
+w = f_u 2 j 9
+put ago s add get ago s v
+put agf s add get agf s w
+so = add so v
+sf = add sf w
+end
+end
+if eq seen 0
+die tnotot 0 0
+end
+if ne so get tot 2
+die tnotot 0 0
+end
+if ne sf get tot 3
+die tnotot 0 0
+end
+end
+
+note permil: a*1000/(a+b) rounded to nearest (half up), as the README's subsystem table rounds;
+note 0 when both are 0. Checked with Wolfram against that table on 2026-11-09:
+note Floor[(1000 om + Quotient[om+ot, 2])/(om+ot)] over the nine subsystems gives
+note {285, 280, 261, 50, 908, 53, 127, 400, 497}. The ledger's own TOTAL row rounds down
+note (om_permille 263) and is printed as the ledger gives it.
+fn permil a ulong b ulong to ulong
+t = add a b
+if eq t 0
+ret 0
+end
+ret div add mul a 1000 div t 2 t
+end

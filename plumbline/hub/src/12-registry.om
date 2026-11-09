@@ -1,0 +1,119 @@
+note hub/src/12-registry.om: the forge's repository count, read from the registry or not stated.
+note
+note The forge pages say how many public repositories the forge runs for. That number is the row
+note count of the first Markdown table of the Radicle registry (RIDS.md, kept by the publishing
+note lane outside this repository), exactly as the earlier generator counted it. It is NOT the
+note number of projects in repos.tsv, which is a different list. When the build is given no
+note registry (the argument "-"), the pages make the same statements without a number.
+
+note regn: the registry count; 0 when no registry was given
+global regn ulong 1
+
+text rdash "-"
+text rnotab "the registry has no Markdown table"
+text rnorow "the registry's first table has no rows"
+text rsep "|---"
+text rthe "the"
+text rcthe "The"
+text rpub "public repositories"
+
+note rgtrim: first position in [p, q) that is not a space or TAB, or q
+fn rgtrim p ulong q ulong to ulong
+i = p
+while lt i q bound 8388609
+c = get src i
+if and ne c 32 ne c 9
+ret i
+end
+i = add i 1
+end
+ret q
+end
+
+note regcount: rows of the first Markdown table in src[s, e): the lines that start with "|" after
+note the first line that starts with "|---"
+fn regcount s ulong e ulong to ulong
+p = s
+found = false
+while lt p e bound 400000
+q = eol p e
+t = rgtrim p q
+if ge sub q t 4
+if eqt t 4 rsep
+found = true
+p = add q 1
+break
+end
+end
+p = add q 1
+end
+if not found
+die rnotab 0 0
+end
+n = ulong 0
+while lt p e bound 400000
+q = eol p e
+t = rgtrim p q
+if ge t q
+break
+end
+if ne get src t 124
+break
+end
+n = add n 1
+p = add q 1
+end
+if eq n 0
+die rnorow 0 0
+end
+ret n
+end
+
+note regload: argument ai is the registry file, or "-" for none
+fn regload ai ulong to void
+setpath ai
+n = get pbn 0
+if eq n 1
+if eq get pb 0 45
+put regn 0 0
+ret
+end
+end
+s = load ai
+put regn 0 regcount s get srcn 0
+end
+
+note rgn1: the count, or "the"
+fn rgn1 to void
+if gt get regn 0 0
+emu get regn 0
+else
+em rthe
+end
+end
+
+note rgn2: the count, or "The"
+fn rgn2 to void
+if gt get regn 0 0
+emu get regn 0
+else
+em rcthe
+end
+end
+
+note rgn3: the count, or "public repositories"
+fn rgn3 to void
+if gt get regn 0 0
+emu get regn 0
+else
+em rpub
+end
+end
+
+note rgn4: the count and a space, or nothing
+fn rgn4 to void
+if gt get regn 0 0
+emu get regn 0
+emb 32
+end
+end

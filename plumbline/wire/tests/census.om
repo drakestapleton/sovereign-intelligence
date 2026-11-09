@@ -1,0 +1,406 @@
+note wire/tests/census.om: the census of the vectors, in Omega: what each vector costs as
+note JSON and as an ipo1 frame, and whether the shape table follows its rule.
+note
+note It is the main of a second program built from the same units as ipo, without 40-main:
+note   cat src/00-core.om src/10-json.om src/20-shape.om src/30-frame.om tests/census.om | omc > census
+note   census < tests/vectors.jsonl
+note
+note stdout, in this order:
+note   vector=K kind=KIND json=N ipo=M   one per line of stdin: bytes of the line and of its
+note                                     frame, neither counting the LF; KIND is payload.kind
+note                                     when that is a string, else -
+note   best ... / worst ...              the vectors with the smallest and largest ipo/json
+note   total vectors=N json=A ipo=B objects=O
+note   seq TAG n=C keys=K shape=WORD : KEY KEY ...   one per distinct key sequence, first seen
+note                                     first: C objects have it. TAG is have (it has a shape
+note                                     and the rule asks for one), need (the rule asks for
+note                                     one and the table has none), over (the table has one
+note                                     and the rule does not ask for it), skip (no shape, none
+note                                     asked for)
+note   extra shape=WORD                  a shape whose key sequence no object has
+note   CENSUS PASS shapes=S sequences=Q objects=O    exit 0: no need, no over, no extra
+note   CENSUS FAIL need=A over=B extra=C             exit 1
+note The rule (SPEC.md): a key sequence gets a shape exactly when at least 2 objects of the
+note vectors have it, it has at least 2 keys, and every key is printable ASCII.
+
+text ctvec "vector="
+text ctkind " kind="
+text ctjson " json="
+text ctipo " ipo="
+text ctbest "best "
+text ctworst "worst "
+text cttotal "total vectors="
+text ctobjs " objects="
+text ctseq "seq "
+text cthave "have"
+text ctneed "need"
+text ctover "over"
+text ctskip "skip"
+text ctn " n="
+text ctkeys " keys="
+text ctshape " shape="
+text ctcolon " :"
+text ctextra "extra shape="
+text ctpass "CENSUS PASS shapes="
+text ctseqs " sequences="
+text ctfail "CENSUS FAIL need="
+text ctfover " over="
+text ctfext " extra="
+text ctpayld "payload"
+text ctkindk "kind"
+text ctdash "-"
+text ctsp " "
+
+note the distinct key sequences: bytes in qp (keys joined by TAB) at qo, ql bytes, qk keys,
+note qc objects, qs the shape (index plus 1, 0 none), qu 1 when a key is not printable ASCII
+global qp uchar 1048576
+global qpn ulong 1
+global qo ulong 4096
+global ql ulong 4096
+global qk ulong 4096
+global qc ulong 4096
+global qs ulong 4096
+global qu ulong 4096
+global qn ulong 1
+note best and worst vector so far: line, JSON bytes, frame bytes
+global cbest ulong 3
+global cworst ulong 3
+global ctot ulong 4
+
+fn cw t view uchar * to void
+w = write 1 t 0 len t
+end
+
+note cqb: append one byte to the candidate sequence that ends at e; the new end
+fn cqb e ulong c uchar to ulong
+if ge e 1048576
+fail ECAP 0
+end
+put qp e c
+ret add e 1
+end
+
+note cqsame: is sequence i the m candidate bytes at b
+fn cqsame i ulong b ulong m ulong to bool
+if ne get ql i m
+ret false
+end
+o = get qo i
+j = ulong 0
+while lt j m bound BND
+if ne get qp add o j get qp add b j
+ret false
+end
+j = add j 1
+end
+ret true
+end
+
+note cqkey: append the key of member c to the candidate that ends at e; the new end. A byte
+note that is not printable ASCII sets qu of slot qn (the slot a new sequence would take).
+fn cqkey c ulong e ulong to ulong
+o = get nko c
+n = get nkn c
+t = e
+i = ulong 0
+while lt i n bound BND
+x = get sp add o i
+if or lt x 32 gt x 126
+put qu get qn 0 1
+end
+t = cqb t x
+i = add i 1
+end
+ret t
+end
+
+note cqadd: count the key sequence of object v
+fn cqadd v ulong to void
+q = get qn 0
+if ge q 4096
+fail ECAP 0
+end
+put qu q 0
+b = get qpn 0
+e = b
+k = ulong 0
+c = get na v
+while ne c 0 bound BND
+if gt k 0
+e = cqb e 9
+end
+e = cqkey c e
+k = add k 1
+c = get nx c
+end
+m = sub e b
+i = ulong 0
+while lt i q bound 4096
+if cqsame i b m
+put qc i add get qc i 1
+ret
+end
+i = add i 1
+end
+put qo q b
+put ql q m
+put qk q k
+put qc q 1
+put qs q shfind v
+put qpn 0 e
+put qn 0 add q 1
+end
+
+note cmfind: the member of object a whose key is the text t, 0 when there is none
+fn cmfind a ulong t view uchar * to ulong
+if ne get nk a 7
+ret 0
+end
+c = get na a
+while ne c 0 bound BND
+if seqt get nko c get nkn c t
+ret c
+end
+c = get nx c
+end
+ret 0
+end
+
+note ckind: payload.kind of the value at r on stdout when it is a string, else -
+fn ckind r ulong to void
+p = cmfind r ctpayld
+if ne p 0
+k = cmfind p ctkindk
+if ne k 0
+if eq get nk k 5
+w = write 1 sp get na k get nb k
+ret
+end
+end
+end
+cw ctdash
+end
+
+note csizes: " json=N ipo=M" then LF
+fn csizes n ulong m ulong to void
+cw ctjson
+wdec 1 n
+cw ctipo
+wdec 1 m
+cw tnl
+end
+
+note crank: keep the best and the worst vector: k with n JSON bytes and m frame bytes.
+note m1/n1 < m2/n2 exactly when m1*n2 < m2*n1 (all below 2^21, the products below 2^42).
+fn crank k ulong n ulong m ulong to void
+bn = get cbest 1
+bm = get cbest 2
+if or eq get cbest 0 0 lt mul m bn mul bm n
+put cbest 0 k
+put cbest 1 n
+put cbest 2 m
+end
+wn = get cworst 1
+wm = get cworst 2
+if or eq get cworst 0 0 gt mul m wn mul wm n
+put cworst 0 k
+put cworst 1 n
+put cworst 2 m
+end
+end
+
+note cline: vector k, the n bytes of sf from o
+fn cline k ulong o ulong n ulong to void
+if gt n LIM
+fail ETOOBIG 0
+end
+setin o n
+r = jparse
+fwframe r
+m = sub get obn 0 1
+cw ctvec
+wdec 1 k
+cw ctkind
+ckind r
+csizes n m
+crank k n m
+put ctot 0 add get ctot 0 1
+put ctot 1 add get ctot 1 n
+put ctot 2 add get ctot 2 m
+c = get nn 0
+v = ulong 1
+while lt v c bound BND
+if eq get nk v 7
+cqadd v
+put ctot 3 add get ctot 3 1
+end
+v = add v 1
+end
+end
+
+note cseqtag: the tag of sequence i: 0 have, 1 need, 2 over, 3 skip
+fn cseqtag i ulong to ulong
+want = and and ge get qc i 2 ge get qk i 2 eq get qu i 0
+has = ne get qs i 0
+if and want has
+ret 0
+end
+if want
+ret 1
+end
+if has
+ret 2
+end
+ret 3
+end
+
+note cseq: the line of sequence i; returns its tag
+fn cseq i ulong to ulong
+t = cseqtag i
+cw ctseq
+if eq t 0
+cw cthave
+end
+if eq t 1
+cw ctneed
+end
+if eq t 2
+cw ctover
+end
+if eq t 3
+cw ctskip
+end
+cw ctn
+wdec 1 get qc i
+cw ctkeys
+wdec 1 get qk i
+cw ctshape
+s = get qs i
+if eq s 0
+cw ctdash
+else
+w = write 1 sp get shw sub s 1 get shwn sub s 1
+end
+cw ctcolon
+o = get qo i
+n = get ql i
+j = ulong 0
+put ob 0 32
+while lt j n bound BND
+c = get qp add o j
+if eq c 9
+c = 32
+end
+if or eq j 0 eq c 32
+w = write 1 ob 0 1
+end
+if ne c 32
+put ob 1 c
+w = write 1 ob 1 1
+end
+j = add j 1
+end
+cw tnl
+ret t
+end
+
+note cextra: the shapes no object has: one line each; returns how many
+fn cextra to ulong
+x = ulong 0
+c = get shn 0
+q = get qn 0
+s = ulong 0
+while lt s c bound 256
+f = false
+i = ulong 0
+while lt i q bound 4096
+if eq get qs i add s 1
+f = true
+end
+i = add i 1
+end
+if not f
+cw ctextra
+w = write 1 sp get shw s get shwn s
+cw tnl
+x = add x 1
+end
+s = add s 1
+end
+ret x
+end
+
+note cvec: "TAG vector=K json=N ipo=M" from the three cells of cbest or cworst
+fn cvec t view uchar * k ulong n ulong m ulong to void
+cw t
+cw ctvec
+wdec 1 k
+csizes n m
+end
+
+fn main to int
+put mode 0 0
+put sline 0 0
+shinit
+rdall SFLIM
+t = get sfn 0
+o = ulong 0
+k = ulong 0
+note every pass consumes at least one byte of sf
+while lt o t bound BND
+k = add k 1
+e = o
+while lt e t bound BND
+if eq get sf e 10
+break
+end
+e = add e 1
+end
+cline k o sub e o
+o = add e 1
+end
+cvec ctbest get cbest 0 get cbest 1 get cbest 2
+cvec ctworst get cworst 0 get cworst 1 get cworst 2
+cw cttotal
+wdec 1 get ctot 0
+cw ctjson
+wdec 1 get ctot 1
+cw ctipo
+wdec 1 get ctot 2
+cw ctobjs
+wdec 1 get ctot 3
+cw tnl
+need = ulong 0
+over = ulong 0
+q = get qn 0
+i = ulong 0
+while lt i q bound 4096
+g = cseq i
+if eq g 1
+need = add need 1
+end
+if eq g 2
+over = add over 1
+end
+i = add i 1
+end
+x = cextra
+if and and eq need 0 eq over 0 eq x 0
+cw ctpass
+wdec 1 get shn 0
+cw ctseqs
+wdec 1 q
+cw ctobjs
+wdec 1 get ctot 3
+cw tnl
+ret 0
+end
+cw ctfail
+wdec 1 need
+cw ctfover
+wdec 1 over
+cw ctfext
+wdec 1 x
+cw tnl
+ret 1
+end

@@ -1,0 +1,1001 @@
+note hub/src/60-protocol.om: the INTERPLANE protocol pages, ported from interplane.io
+note crates/site-builder/src/page.rs and routes.rs (the Rust generator this program replaces).
+note
+note Every function appends to ob the HTML that goes inside <main>: sections only. The page shell
+note (doctype, head, navigation, page header, footer) belongs to the caller. The copy is the owner's,
+note kept word for word; attributes are single-quoted; every value read from facts.tsv goes through
+note emh; links into the protocol repository are Radicle web URLs at the commit sha of the facts.
+note
+note The eight sections of the old home page, one function each:
+note   pp_why pp_modules pp_longit pp_jspace pp_receipt pp_statsec pp_forget pp_start
+note The six sub-pages, the full body of each (its content, then the source record pp_source):
+note   pp_quick pp_concept pp_adapter pp_conform pp_status pp_forge
+note Routes r = 1..6 (quick-start concepts adapter conformance status forge), pp_nroute = 6:
+note   pp_title r  pp_desc r  pp_slug r  and, for the page header, pp_h1 r  pp_kick r
+note
+note Left out against page.rs, on purpose:
+note   Activity cell: the latest change title, the last merged patch, the open patch and issue
+note     counts and the release tag came from the Radicle HTTP API; the cell keeps the plain
+note     Patches and Issues links.
+note   "Generated <time>." in the status section and in the source record: this program reads no clock.
+note   The facts.json links ("The data behind this section is published as facts.json", "Raw facts"):
+note     this program writes facts.tsv; whether it is published is the caller's decision.
+note   The receipt link of the verdict line: no receipt URL exists in the facts.
+note   The footer sentence that the site is built by a Rust program: the footer is the caller's.
+note   The hero and its image: the home page is the caller's.
+
+text pweb "https://radicle.network/nodes/rosa.radicle.network/"
+text prid "rad:zNhNbqYvgSBEHBq9vvE8xpbcBzGa"
+text ptree "/tree/"
+text pcmts "/commits/"
+text ppatch "/patches"
+text pissue "/issues"
+text pdocs "docs/"
+text pah "<a href='"
+text paq "'>"
+text paz "</a>"
+text pcomma ", "
+text pliz ".</li>\n"
+text ppz ".</p>\n"
+text psecz "</section>\n"
+text pmon "JanFebMarAprMayJunJulAugSepOctNovDec"
+text pbadr "protocol pages: route is not 1..6"
+
+text pfsrc "forge/forge.om"
+text pfrule "docs/FORGE.md"
+text pftest "forge/tests/run.sh"
+text pstmd "STATUS.md"
+text padgd "docs/WRITING-AN-ADAPTER.md"
+text prep01 "docs/REPORT-0.1.md"
+text pspcore "spec/CORE.md"
+text psplen "spec/LENSHIFT.md"
+text pspcax "spec/CROSSAXIS.md"
+text pspcv "spec/CROSSVEIL.md"
+text psppr "spec/PROBE.md"
+text pspvv "spec/VECTORVEIL.md"
+text psprl "spec/RELAYLINE.md"
+text pconfrd "conformance/README.md"
+
+note the problem section (#why)
+text pw1 "<section class='prose' id='why'>\n<h2>The problem it fixes</h2>\n"
+text pw2 "<p>Agents write “done” and “all tests pass” easily. The sentence may describe a different commit, a suite that was skipped, or a test that could never fail. Reading the report does not tell you which.</p>\n"
+text pw3 "<p>INTERPLANE starts every completion claim as UNVERIFIED. Evidence has to name the exact revision, the task, the input and the checker that produced it. Missing, failed, mismatched or untrusted evidence is a HOLD, never a quiet pass. Under the rule, an unsupported claim goes back to the agent that made it, with the facts it still has to supply. Today forge decide and forge gate apply this rule in their test suites and in replays of real desk decisions; no runner applies them to live merges yet, and automatic interception of an agent's completion message is still being built, as listed below.</p>\n"
+text pw4 "<p>The scope of a PASS is written down: the declared checks passed on that exact revision, and their negative control failed. A PASS is not proof that the software is correct in general, that a statement is true, or that a model meant what it said. Checks cover what they cover.</p>\n"
+text pw5 "<blockquote>A completion is a claim. Evidence decides what it is worth.</blockquote>\n<h3>Two uses</h3>\n<ol>\n"
+text pw6 "<li><strong>Code completion proof.</strong> A claim that a change is done is checked against receipts for the exact revision: which checks ran, their exit codes, and a negative control that had to fail. This is what forge decide and forge gate check today; the desk protocol still performs the merge.</li>\n"
+text pw7 "<li><strong>Model-service performance over time.</strong> The same frozen task set, run against a model service again and again, to detect measured regressions on those tasks. Planned; <a href='#longitudinal'>what it can and cannot show</a>.</li>\n</ol>\n"
+
+note what runs today (#modules)
+text pm1 "<section id='modules'>\n<h2>What runs today, and what does not</h2>\n<p class='section-lede'>Each piece is labelled with the state its own source records. Planned work is listed as planned.</p>\n<ul class='stage-list'>\n"
+text pm2 "<li><span class='pill ok'>HOST TESTED</span> <strong>forge decide</strong>: decides MERGE or HOLD from three inputs: the patch's exact head, an independent reviewer's verdict for that head, and a gate receipt. Every fail-closed invariant has a test case that breaks only it and a mutant that removes it; the suite requires each mutant to be caught. "
+text plsrc "Source"
+text plrule "rule"
+text pltests "tests"
+text pm4 "<li><span class='pill ok'>HOST TESTED</span> <strong>forge gate</strong>: runs a repository's gate and its negative control in fresh clones of the exact head and writes a receipt with the commands, exit codes and log hashes. A run killed at its timeout is a HOLD, not a result.</li>\n"
+text pm5 "<li><span class='pill wait'>LIMIT</span> <strong>Identities and receipts are not signed yet</strong>: reviewer and author names are unsigned text, and the gate command is the one the repository declares. A receipt is evidence the forge wrote, not a cryptographic proof. Signed verdicts and receipts are planned. No gate receipts are published on this site yet.</li>\n"
+text pm6 "<li><span class='pill wait'>IN PROGRESS</span> <strong>Completion interception</strong>: no agent runtime I use stops an agent's “done” automatically today. A claim gate that returns an unsupported completion to the producing agent, with the missing facts and a bounded number of repair attempts, is being built. It is not merged and not deployed.</li>\n"
+text pm7 "<li><span class='pill none'>PLANNED</span> <strong>Longitudinal model checks</strong>: the same frozen tasks, measured over time. <a href='#longitudinal'>How, and what it cannot show</a>.</li>\n"
+text pm8 "<li><span class='pill none'>PROPOSED</span> <strong>J-Space</strong>: an isolated verification workspace whose English is rendered only from the verifier's payload. <a href='#j-space'>Design and limits</a>.</li>\n</ul>\n"
+text pm9 "<p class='fine'>The forge web app that serves <a href='https://interplane.io/explore'>interplane.io/explore</a> is open source too: <a href='https://radicle.network/nodes/rosa.radicle.network/rad:z3KFmLGeYdvDAgwpCgdBd1ENW7nU5'>interplane-forge on Radicle</a>.</p>\n"
+text pm10 "<h3>Protocol modules underneath</h3>\n<p class='section-lede'>The forge applies INTERPLANE's protocol rule, that a request is not authority, to code merges. The protocol's own modules:</p>\n<ol class='modules'>\n"
+text pmo1 "<li><h3>Core</h3><p class='question'>What crosses the line?</p><p>The shared vocabulary: capabilities, requests, results, traces and the canonical byte form every digest is computed over.</p><a class='spec' href='"
+text pmo2 "<li><h3>Lenshift</h3><p class='question'>What did the model actually say?</p><p>Reads each model's native tool-call dialect into one form. An incomplete or ambiguous call is rejected, never guessed.</p><a class='spec' href='"
+text pmo3 "<li><h3>CrossAxis</h3><p class='question'>Which tools does this task need?</p><p>Selects the few tools a task needs from a runtime's catalog, so a small local model is not buried under schemas it will never use.</p><a class='spec' href='"
+text pmo4 "<li><h3>Crossveil</h3><p class='question'>Who is allowed to act?</p><p>Tracks where every piece of text came from. Content a model read on the web cannot grant authority, and an effect it asks for while untrusted text is in view is held for a person.</p><a class='spec' href='"
+text pmo5 "<li><h3>Probe</h3><p class='question'>What does this model and backend really support?</p><p>Live probes that measure a model, backend and runtime combination instead of trusting its documentation.</p><a class='spec' href='"
+text pmo6 "<li><h3>Vectorveil</h3><p class='question'>How do bytes travel?</p><p>The transport envelope. Specified; the implementation belongs to the 0.4 Execution stage.</p><a class='spec' href='"
+text pmo7 "<li><h3>RelayLine</h3><p class='question'>How does a long call stream?</p><p>Streaming, cancellation and continuation. The contract is written; the implementation belongs to 0.4.</p><a class='spec' href='"
+text pmoz "'>Specification</a></li>\n"
+text pm11 "</ol>\n"
+
+note measuring over time (#longitudinal)
+text pl1 "<section class='prose' id='longitudinal'>\n<h2>Measuring model behavior over time</h2>\n"
+text pl2 "<p><span class='pill none'>PLANNED</span> A product direction. No runner exists yet, and nothing on this page starts a run.</p>\n"
+text pl3 "<p>Checking one completion and measuring a model are different jobs. A completion check asks whether this change, at this revision, passed its declared checks. A longitudinal check asks whether a model, under the name a provider serves it, still does as well on the same tasks as it did before.</p>\n"
+text pl4 "<p>The method: freeze a set of tasks, their inputs and their checker; run them against a model on a schedule; record the date, the model name as served and every score; compare each run with a recorded baseline. A drop on those tasks is measured drift on those tasks. It does not show why the model changed, whether anyone intended it, or whether a renamed model is a different one.</p>\n"
+text pl5 "<p>No historical launch baseline is available here for any model, so this page makes no claim that any model has degraded. Published precedent for the method: Chen, Zaharia and Zou measured the March and June 2023 versions of GPT-3.5 and GPT-4 on the same tasks and recorded large changes in behavior (<a href='https://arxiv.org/abs/2307.09009'>arXiv:2307.09009</a>). That is evidence about those versions, not about any other model.</p>\n"
+
+note J-Space (#j-space)
+text pj1 "<section class='prose' id='j-space'>\n<h2>J-Space: an isolated verification workspace</h2>\n"
+text pj2 "<p><span class='pill none'>PROPOSED</span> A design, not a service. Public deployment has not run, there is no public endpoint, and nothing on this page starts it.</p>\n"
+text pj3 "<p>The proposal keeps two jobs apart. An isolated verifier checks a claim against its declared evidence and produces a verdict payload. A separate renderer turns only that payload into plain English: a fixed system prompt and the payload, with no tools and no conversation history, so the only facts it is given are the ones the verifier produced. A model can still misword them, so the payload stays the record; the English is a reading of it, not new evidence.</p>\n"
+text pj4 "<p>No J-Space source is published yet, so there is nothing to link as its implementation. Related foundation, not J-Space itself: the forge verification "
+text pj5 " and "
+text plsource "source"
+text pj6 ". This is not an inference service and nothing here sells model access.</p>\n"
+
+note the 0.1 receipt (#receipt). The numbers are the hand constants of page.rs, read there from
+note docs/REPORT-0.1.md ("Selection" section): 71 and 9 tools, 15846 and 1674 tokens, 89 percent.
+note The digit groups are separated by U+202F, written &#8239;, as page.rs wrote them.
+text pr1 "<section id='receipt' class='receipt'>\n<h2>Evidence that is allowed to fail</h2>\n"
+text pr2 "<p class='section-lede'>The protocol's own stages follow the same rule: a pre-registered gate, and a report that states the result whether it passed or failed. From the 0.1 readiness report, a real Qwen3.5-9B model on Ollama, one task, the runtime's full tool catalog against the tools CrossAxis selected:</p>\n"
+text pr3 "<div class='receipt-grid'><div class='cell'><span class='big'>71 to 9</span><span class='label'>tools offered for the task</span></div><div class='cell'><span class='big'>15&#8239;846 to 1&#8239;674</span><span class='label'>first-turn prompt tokens, model reported</span></div><div class='cell'><span class='big'>89% fewer</span><span class='label'>prompt tokens before the model says a word</span></div></div>\n"
+text pr4 "<p class='fine'>Fewer tokens is the cost side only. The same stage later asked whether a small model keeps its capability with fewer tools, pre-registered the thresholds, and recorded the answer: the 0.2 gate <strong>failed</strong>. Both results are in the repository, with the raw runs. "
+text plrep01 "Read the 0.1 report"
+
+note current state (#status, with #reports inside)
+text ps1 "<section id='status' class='status'>\n<h2>Current state</h2>\n<p class='section-lede'>Read from the protocol repository at commit <a href='"
+text ps2 "'><code>"
+text ps3 "</code></a> ("
+text ps4 "). Nothing in this section is typed by hand: it is read from that record when the site is built.</p>\n<div class='verdict'><span class='pill "
+text ps5 "</span><span class='verdict-text'>Spark verification of this commit: "
+text ps6 "</span></div>\n<div class='stages'>\n<h3>Roadmap</h3>\n<ol class='stage-list'>\n"
+text ps7 "</ol>\n"
+text psnx1 "<p class='fine'>Next stage: <strong>"
+text psnx2 "</strong>.</p>\n"
+text ps8 "</div>\n<div class='status-grid'>\n<div class='cell'>\n<h3>Components</h3>\n<p>STATUS.md tracks <strong>"
+text ps9 "</strong> rows for the Rust implementation.</p>\n<ul class='counts'>\n"
+text psli "<li><strong>"
+text psc1 "</strong> qualified against a real model or backend</li>\n"
+text psc2 "</strong> conformant to the shared fixtures</li>\n"
+text psc3 "</strong> tested</li>\n"
+text psc4 "</strong> implemented or running</li>\n"
+text psc5 "</strong> specified only</li>\n"
+text ps10 "</ul>\n"
+text pscf1 "<p>Conformance runner: <strong>"
+text pscf2 " of "
+text pscf3 "</strong> cases, verdicts byte-identical to the recorded reference.</p>\n"
+text plfull "Full status table"
+text ps11 "\n</div>\n<div class='cell'>\n<h3>Activity</h3>\n"
+text plpat "Patches"
+text psdot " <span class='dot'></span> "
+text pliss "Issues"
+text ps12 "\n</div>\n</div>\n<div class='reports' id='reports'>\n<h3>PASS and FAIL reports, in their own words</h3>\n<p class='section-lede'>Every stage closes with a pre-registered gate and a report that states the result whether it passed or failed.</p>\n<ul class='report-list'>\n"
+text ps13 "</ul>\n</div>\n"
+text pst1 "<li class='stage "
+text pst2 "'><span class='version'>"
+text pst3 "</span><span class='layer'>"
+text pst4 "</span><span class='goal'>"
+text pst5 "</span><span class='state'>"
+text pst6 "</span></li>\n"
+text pwclosed "closed"
+text pwnext "next"
+text pwrepd "reported"
+text ptclose "closed "
+text ptgate ", gate <strong class='"
+text ptstrz "</strong>"
+text ptrepb "closed, report below"
+text ptplan "planned"
+text plrep "Report"
+text psp " "
+text prp1 "<li>"
+text prp2 "<span class='headline'> "
+text prp3 "</span>"
+text prp4 "</li>\n"
+text pvsucc "success"
+text pvfailu "failure"
+text pvpend "pending"
+text pvblk "BLOCKED"
+text pvnrun "NOT_RUN"
+text pcok "ok"
+text pcbad "bad"
+text pcwait "wait"
+text pcnone "none"
+text pvwpass "PASS"
+text pvwfail "FAIL"
+text pvwrun "RUNNING"
+text pvwnov "NO VERDICT"
+
+note the source record that closes every sub-page
+text po1 "<section class='source-record prose'>\n<h2>Source and verification</h2>\n<p>Status snapshot: <a href='"
+text po2 ". <a href='/facts.json'>Raw facts</a>.</p>\n<p class='fine'>Protocol version "
+text po6 "</code></a>, committed "
+text po7 ", licence "
+text po8 ", both read from <code>rust/Cargo.toml</code> at that commit.</p>\n<p>Spark verification: <span class='pill "
+text po3 "</span> "
+text po4 "</p>\n<p class='fine'>A successful reference example is not the Spark verdict. Planned work is not implemented support. <a href='/status/'>Versioned status</a> and "
+text plcanon "canonical STATUS.md"
+text plstmd "STATUS.md"
+text po5 " retain those distinctions.</p>\n"
+
+note the forge teaser of the old home page (#forge)
+text pft1 "<section class='prose' id='forge'>\n<h2>INTERPLANE Forge</h2>\n<p>GitHub flagged my agents' write volume, so I am building a forge on Radicle with INTERPLANE's own rule: agents express intent, the forge retains authority. Agents open patches; exact-head review verdicts, fresh-clone gates with negative controls, and people decide what merges. It runs today for "
+text pft2 " public repositories, counted from the registry, and its web app is live at <a href='https://interplane.io/explore'>interplane.io/explore</a>, commit history included; review in the web app beyond compose, the issue workflow, CI runners and review federation are still to come. <a href='/forge/'>What runs today</a>.</p>\n"
+
+note the pinned offline recipe (page.rs OFFLINE_PIN, OFFLINE_RID: fixed, independent of the facts)
+text pg1 "<p>Prerequisites: Git, a Rust/Cargo toolchain compatible with the repository lockfile, and network access for the clone and dependency fetch. <a href='https://rust-lang.org/tools/install/'>Install Rust</a>. The scripted example runs offline after these downloads; it uses no model or GPU.</p>\n"
+text pg2 "<pre><code class='language-sh' aria-label='Pinned offline example commands'>git clone https://www.aienos.com/rad/zNhNbqYvgSBEHBq9vvE8xpbcBzGa.git interplane\ncd interplane\ngit checkout --detach b669d06e21c9debb15073289d7c0b78b1b2d362c\ncd rust\ncargo fetch --locked\ncargo run --locked --offline -q -p interplane-crossveil --example offline</code></pre>\n"
+text pg3 "<p>Expected observation: the final line is <code>OK: the injected actions were denied or held; none executed.</code>. The trace denies email and file-write proposals, holds a note append for approval, and executes no effectful request. This is a reference policy demonstration, not a general security or deployment qualification.</p>\n"
+text pg4 "<p class='fine'>Recipe source: <a href='https://radicle.network/nodes/rosa.radicle.network/rad:zNhNbqYvgSBEHBq9vvE8xpbcBzGa/tree/b669d06e21c9debb15073289d7c0b78b1b2d362c/rust/crates/interplane-crossveil/examples/offline.rs'><code>b669d06e21c9debb15073289d7c0b78b1b2d362c</code></a>. This replay pin is fixed independently of the advancing source-status snapshot below.</p>\n"
+text pg5 "<section id='start' class='prose'>\n<h2>Run the offline reference</h2>\n"
+text pg6 "<p><a href='/quick-start/'>Quick Start</a> explains the exercise. To connect your own program, follow "
+text plguide "the canonical adapter guide"
+
+note /quick-start/
+text pq1 "<section class='prose'>\n<h2>Clone, pin, fetch, run</h2>\n"
+text pq2 "<h2>What crosses the boundary</h2>\n<p>A scripted model requests a page containing an injected instruction, then proposes email, file-write and note-append actions. The page cannot grant authority. Inspect the policy decisions in the trace before treating a successful exit as meaningful.</p>\n"
+text pq3 "<p>No installation into a running agent is performed here. Continue with <a href='/concepts/'>Concepts</a> or <a href='/adapter/'>Writing an Adapter</a>.</p>\n"
+
+note /concepts/
+text pc1 "<section class='prose'>\n<h2>Intent is not authority</h2>\n"
+text pc2 "<pre><code class='language-text' aria-label='Model protocol runtime flow'>Model: proposed intent\n  |\n  v\nINTERPLANE: normalized requests, provenance, policy decisions\n  | eligible request or refusal\n  v\nRuntime: capabilities, approval, execution, results</code></pre>\n"
+text pc3 "<p>The protocol describes the boundary; it does not give a model permission to act. Runtime-owned capabilities, policy and human approval decide which effects may execute. Untrusted retrieved text is content, never an instruction with runtime authority.</p>\n"
+text pc4 "<h2>Trace each decision</h2>\n<p>Follow a model-native proposal through normalization, source labels, a policy decision and the runtime result. Rejected or ambiguous inputs must remain visible as refusals; do not silently repair them into authority.</p>\n"
+text pc5 "<p>Canonical sources: "
+text plcore "Core"
+text plcv "Crossveil"
+text pllen "Lenshift"
+text pc6 ". The <a href='/quick-start/'>offline exercise</a> makes this boundary observable.</p>\n"
+
+note /adapter/
+text pa1 "<section class='prose'>\n<h2>Start with the canonical contract</h2>\n<p>Use the pinned "
+text plwag "Writing an adapter guide"
+text pa2 " for the Rust reference, including its to-do list example and exact interfaces. This page is orientation, not a second SDK or a claim that every runtime has a supported adapter.</p>\n"
+text pa3 "<ol>\n<li>Declare only capabilities your runtime actually implements.</li>\n<li>Normalize requests without inventing missing or ambiguous arguments.</li>\n<li>Keep capability decisions, approval and execution in the host runtime; model text cannot approve itself.</li>\n<li>Record results and refusals, then run the canonical conformance checks against the adapter.</li>\n</ol>\n"
+text pa4 "<p>Read <a href='/concepts/'>Concepts</a> before wiring execution, and <a href='/conformance/'>Conformance</a> before describing support. Check "
+text plstpin "STATUS.md at the source pin"
+text pa5 " rather than assuming planned stages are available.</p>\n"
+
+note /conformance/
+text pn1 "<section class='prose'>\n<h2>Evidence before a support claim</h2>\n<p>The "
+text plcdir "canonical conformance directory"
+text pn2 " defines its fixtures and runner instructions. The "
+text pladg "adapter guide"
+text pn3 " explains how the reference is checked. Follow those pinned commands rather than replacing expected verdicts with newly generated success.</p>\n"
+text pn4 "<p>The source STATUS snapshot reports <strong>"
+text pn5 " / "
+text pn6 "</strong> conformance cases. "
+text pn7 "</p>\n"
+text pn8 "<p>No conformance count was parsed from this source snapshot; no pass count is inferred.</p>\n"
+text pn9 "<p>These are source-reported results, not a new execution by the website. A failing or blocked Spark run remains failing or blocked in the source record below. Cross-check <a href='/status/'>Versioned Status</a>, "
+text pn10 " and the stage reports before claiming qualification.</p>\n"
+text pn11 "<p>The <a href='/quick-start/'>small offline exercise</a> is a useful first observation, not a replacement for adapter conformance, failure controls or a live deployment gate.</p>\n"
+
+note /forge/. The desk merges, the replication run and the web app list are the dated record
+note page.rs carries (7 Nov 2026); the repository count is the registry's (12-registry.om), or left out.
+text pz1 "<section class='prose'>\n<blockquote><p>“GitHub flagged my agents. So I'm building the forge where agents express intent and the forge retains authority, on Radicle.”</p><p class='fine'>Drake Stapleton</p></blockquote>\n"
+text pz2 "<h2>Why</h2>\n<p>GitHub put an automated “owner marked spammy” flag on the aien-dev organisation after the write volume of about 20 agents; the appeal is filed and pending. While it is pending, Radicle main is the canonical home of these public repositories, and the GitHub front door is <a href='https://github.com/drakestapleton/sovereign-intelligence'>drakestapleton/sovereign-intelligence</a>.</p>\n"
+text pz3 "<h2>The rule</h2>\n<p>INTERPLANE's protocol rule is that models express intent and runtimes retain authority. Forge applies the same rule to code hosting: agents express intent, the forge retains authority. An agent can open a Radicle patch. Only an exact-head review verdict, a gate with a negative control, and a person can merge it.</p>\n"
+text pz4 "<h2>What runs today</h2>\n<ul>\n<li>"
+text pz5 " public repositories, counted from the registry, on Radicle, all delegated to one key, <code>z6MkfZDue1TbaNFi3ZzcD9uiTeduPLC52ucdFVuLKZwexxhK</code>. They are replicated to the Radicle seed network; <a href='https://radicle.network/nodes/rosa.radicle.network'>rosa.radicle.network</a> is one of the public seeds that serves them.</li>\n<li>Each of the "
+text pz6 " has a web view on radicle.network, for example <a href='https://radicle.network/nodes/rosa.radicle.network/rad:zNhNbqYvgSBEHBq9vvE8xpbcBzGa'>interplane-mv</a>, and the AIEN hub seed serves each as a read-only git+HTTPS mirror at <code>https://www.aienos.com/rad/&lt;RID&gt;.git</code>.</li>\n"
+text pz7 "<li>The desk protocol below merges patches into these repositories; the worked examples are five of its merges and one hold from 7 Nov 2026. There is one delegate key, and merges happen only by the desk protocol.</li>\n"
+text pz8 "<li>A clean-user run of the replicate script passed 26 of 26 required steps on 7 Nov 2026; the optional corpus and chip steps were NOT_RUN. <a href='https://radicle.network/nodes/rosa.radicle.network/rad:z631r2JJiVT8it4tST7RK24hpowi/tree/a67dfa0a98bc09a301218a487af78e7c7738938c/replication/20261107T104021Z/summary.tsv'>Run summary</a>.</li>\n</ul>\n"
+text pz9 "<h2>Browse the forge</h2>\n<p>Browse the forge at <a href='https://interplane.io/explore'>interplane.io/explore</a>, also at <a href='https://www.aienos.com/forge/'>aienos.com/forge</a>. The forge web app reads the same Radicle repositories. What it serves today:</p>\n<ul class='stage-list'>\n<li><span class='pill ok'>LIVE</span> <strong>Explore</strong>: the list of the "
+text pz10 "public repositories.</li>\n"
+text pz11 "<li><span class='pill ok'>LIVE</span> <strong>Repository pages</strong>: description, latest commit, top-level files, README and the <code>rad clone</code> command.</li>\n"
+text pz12 "<li><span class='pill ok'>LIVE</span> <strong>Downloads</strong>: zip and tar.gz archives of a branch.</li>\n"
+text pz13 "<li><span class='pill ok'>LIVE</span> <strong>Releases</strong>, plus the <strong>issues</strong> and <strong>patches</strong> lists.</li>\n"
+text pz14 "<li><span class='pill ok'>LIVE</span> <strong>Code views</strong>: file tree, file view and raw files at a branch.</li>\n"
+text pz15 "<li><span class='pill ok'>LIVE</span> <strong>Sign-in with a Radicle key, and stars</strong>.</li>\n"
+text pz16 "<li><span class='pill ok'>LIVE</span> <strong>History views</strong>: commit history, branches, tags, compare, blame and search inside a repository, for example <a href='https://interplane.io/drakestapleton/cuda-crack/commits/main'>the cuda-crack commit history</a>.</li>\n</ul>\n"
+text pz17 "<h2>How a change merges</h2>\n<ol>\n<li><strong>READY file.</strong> The agent finishes its branch, opens a Radicle patch and writes a READY file: repository, patch, exact head commit, base, and every gate it ran with its evidence label (HOST_TESTED, SIMULATED, NOT_RUN).</li>\n"
+text pz18 "<li><strong>Exact-head verdict.</strong> An independent reviewer reads that head and writes one line, <code>VERDICT MERGE head=&lt;40-hex commit&gt;</code>, or MERGE_AFTER_FIX with findings. A verdict covers one commit; any new commit needs a new verdict.</li>\n"
+text pz19 "<li><strong>Fresh-clone gate with a negative control.</strong> The desk refuses unless the patch head equals the reviewed commit, <code>[ &quot;$H&quot; = &quot;&lt;reviewed commit&gt;&quot; ] || exit 1</code>, then clones fresh from the Radicle mirror and runs the repository's gate. A negative control, a known-bad input, must fail the same gate, or the gate proves nothing.</li>\n"
+text pz20 "<li><strong>Merge.</strong> Only then is the patch merged into main, pushed to Radicle under the delegate key and announced to the seeds. NOT_RUN is never counted as PASS.</li>\n</ol>\n"
+text pz21 "<h2>Worked examples from 7 Nov 2026</h2>\n<ul class='report-list'>\n"
+text pzd1 "<li><strong>aien-sovereign-core-mv (core#925)</strong>: patch <a href='https://radicle.network/nodes/rosa.radicle.network/rad:z44GqrPVAPjZkhoD2MWVjqy18ighN/patches/f75aeaa5e019f2f58de614f17682badddf9aca5d'><code>f75aeaa5</code></a>, verdict MERGE at head <a href='https://radicle.network/nodes/rosa.radicle.network/rad:z44GqrPVAPjZkhoD2MWVjqy18ighN/commits/78f40e033bbcbb01549f1248b1d714cafcd4400d'><code>78f40e03</code></a>, revised once on review, merged as a fast-forward to the reviewed head. Gate: fresh clone of the Radicle mirror: build, 88/88 cases, 31 table checks PASS; negative control (the old cockpit main) fails 44 HTTP checks, as it must.</li>\n"
+text pzd2 "<li><strong>CUDApp#373</strong>: patch <a href='https://radicle.network/nodes/rosa.radicle.network/rad:z4RxD8vXigmWg61nM8miQ8DVPAXEP/patches/958571b55fb200d46e2f0a8cec367656c21c1f0a'><code>958571b5</code></a>, verdict MERGE at head <a href='https://radicle.network/nodes/rosa.radicle.network/rad:z4RxD8vXigmWg61nM8miQ8DVPAXEP/commits/9714eba8f1ff5bca218edb075386f813eb524d9d'><code>9714eba8</code></a>, an earlier head got MERGE_AFTER_FIX; the fixed head was re-reviewed and merged. Gate: fresh clone: encoder unit, golden and mutant suites pass; negative control (the base encoder) fails the new gate.</li>\n"
+text pzd3 "<li><strong>omega-bridge#79</strong>: patch <a href='https://radicle.network/nodes/rosa.radicle.network/rad:z3Hr9ZaiKHwwuNzPK5M8c7uw6pj7y/patches/3a95f707b281d49739d63dbd4581163f44d427a1'><code>3a95f707</code></a>, verdict MERGE at head <a href='https://radicle.network/nodes/rosa.radicle.network/rad:z3Hr9ZaiKHwwuNzPK5M8c7uw6pj7y/commits/882e3c061723205fbaf34c8a949e1be3451ac9e7'><code>882e3c06</code></a>, merged as a fast-forward to the reviewed head. Gate: fresh clone: receipt checker golden and mutant tests and all suites pass; negative control (a wrong compiler) is refused.</li>\n"
+text pzd4 "<li><strong>omega-mv (tape padding check)</strong>: patch <a href='https://radicle.network/nodes/rosa.radicle.network/rad:z6do9WDBhuSnvopDkgFdFr1yWA62/patches/4dd099df31792d5ddb0d9fac5ca6d568513f4539'><code>4dd099df</code></a>, verdict MERGE at head <a href='https://radicle.network/nodes/rosa.radicle.network/rad:z6do9WDBhuSnvopDkgFdFr1yWA62/commits/215ea39afdc0cf1914cfadf43bbb6d23ce68c920'><code>215ea39a</code></a>, merged as a fast-forward to the reviewed head. Gate: fresh clone: tape suite passes 351 checks; four mutants fail it, as they must; the base commit runs only 302 checks.</li>\n"
+text pzd5 "<li><strong>omega-mv (bench baseline)</strong>: patch <a href='https://radicle.network/nodes/rosa.radicle.network/rad:z6do9WDBhuSnvopDkgFdFr1yWA62/patches/88050ef7d710cb43d65214ff50bb1a0882770bb9'><code>88050ef7</code></a>, verdict MERGE at head <a href='https://radicle.network/nodes/rosa.radicle.network/rad:z6do9WDBhuSnvopDkgFdFr1yWA62/commits/3743d642cf034299009936eb8d458ba96a0a8589'><code>3743d642</code></a>, merged with merge commit da8b7e66 onto 215ea39a after a separate approval. Gate: fresh clone at the merge commit: integrity check and bench gate pass; negative controls (a wrong expected value, a swapped manifest) fail, as they must.</li>\n"
+text pzd6 "<li><strong>aien-architecture-mv#382</strong> (ADR 0046): <span class='pill wait'>HELD</span> The reviewer returned MERGE_AFTER_FIX at head <code>6daec174</code>, so it stays unmerged until a fixed head earns a MERGE verdict.</li>\n</ul>\n"
+text pz22 "<h2>Try it</h2>\n<pre><code class='language-sh' aria-label='Clone from Radicle and replicate'># with the Radicle CLI (radicle.xyz)\nrad clone rad:zNhNbqYvgSBEHBq9vvE8xpbcBzGa    # interplane-mv\nrad clone rad:z6do9WDBhuSnvopDkgFdFr1yWA62    # omega-mv\nrad clone rad:z631r2JJiVT8it4tST7RK24hpowi    # cuda-crack\n# or with plain git, from the read-only mirror\ngit clone https://www.aienos.com/rad/zNhNbqYvgSBEHBq9vvE8xpbcBzGa.git\n# replicate the host work from Radicle in a clean userspace\ncurl -fsSL https://www.aienos.com/replicate | sh</code></pre>\n"
+text pz23 "<h2>Roadmap</h2>\n<p>Everything in this section is planned, not running. It will be listed under What runs today only when it runs.</p>\n<ul class='stage-list'>\n"
+text pz24 "<li><span class='pill none'>PLANNED</span> <strong>forge decide as the merge step</strong>: the merge rule above (exact-head verdict, fresh-clone gate, negative control) is written as a seeded Omega core, <code>forge/forge.om</code> in interplane-mv. It is HOST TESTED on the Spark: it replays real desk decisions (two MERGE, one HOLD) and its test suite catches every mutant. No forge runner applies it to patches yet, so merges still go through the desk protocol above. It reads Radicle through the <code>rad</code> and <code>git</code> command line tools; a native Omega reader is planned.</li>\n"
+text pz25 "<li><span class='pill none'>PLANNED</span> <strong>Review in the web app</strong>: READY files, verdicts and gate results beside each patch.</li>\n"
+text pz26 "<li><span class='pill none'>PLANNED</span> <strong>Issue workflow</strong>: issues tied to patches and verdicts, beyond today's read-only lists.</li>\n"
+text pz27 "<li><span class='pill none'>PLANNED</span> <strong>CI runners</strong>: gate runners that report back to the desk.</li>\n"
+text pz28 "<li><span class='pill none'>PLANNED</span> <strong>Review federation</strong>: accepting signed verdicts from reviewers on other nodes.</li>\n</ul>\n"
+text pz29 "<h2>Built on Radicle</h2>\n<p>Forge is a workflow and a set of gates on top of <a href='https://radicle.xyz/'>Radicle</a>, the peer-to-peer code collaboration stack, and its protocol implementation <a href='https://radicle.network/nodes/rosa.radicle.network/rad:z3gqcJUoA1n9HaHKufZs5FCSGazv5'>Heartwood</a>. Radicle is built by the Radicle team, not by this project. Repositories, patches, signatures and seeding are Radicle's; the merge rule is INTERPLANE Forge's.</p>\n"
+
+note routes (routes.rs): slug, label, description; the forge page header differs from its label
+text pu1 "quick-start"
+text pu2 "concepts"
+text pu3 "adapter"
+text pu4 "conformance"
+text pu5 "status"
+text pu6 "forge"
+text pt1 "Quick Start"
+text pt2 "Concepts"
+text pt3 "Writing an Adapter"
+text pt4 "Conformance"
+text pt5 "Versioned Status"
+text pt6 "Forge"
+text pd1 "Run INTERPLANE's pinned scripted offline example and inspect denied actions and held approvals without a model or GPU."
+text pd2 "Understand the model, protocol and runtime boundary: proposed intent is not authority, and the runtime retains execution and approval control."
+text pd3 "Follow INTERPLANE's canonical pinned Rust adapter guide, host-owned decisions and conformance requirements without assuming universal support."
+text pd4 "Trace INTERPLANE conformance, refusals and reported results to source-pinned fixtures and evidence, including failed and planned stages."
+text pd5 "Read INTERPLANE's versioned source status and exact Spark verification verdict from the canonical generated facts."
+text pd6 "INTERPLANE Forge, a GitHub replacement being built on Radicle: agents open patches, while exact-head verdicts, gates and people keep merge authority."
+text ph6 "INTERPLANE Forge"
+text pk1 "INTERPLANE / Developer documentation"
+text pk6 "INTERPLANE / Forge"
+
+note pp_purl: the Radicle web URL of the protocol repository
+fn pp_purl to void
+em pweb
+em prid
+end
+
+note pp_blob: the URL of path t at the commit of the facts
+fn pp_blob t view uchar * to void
+pp_purl
+em ptree
+emh fx_o fsha fx_n fsha
+emb 47
+em t
+end
+
+note pp_cmt: the URL of the commit of the facts
+fn pp_cmt to void
+pp_purl
+em pcmts
+emh fx_o fsha fx_n fsha
+end
+
+note pp_lb: a link to path u at the commit of the facts, with the label t
+fn pp_lb u view uchar * t view uchar * to void
+em pah
+pp_blob u
+em paq
+em t
+em paz
+end
+
+note pp_sha12: the first 12 characters of the commit sha
+fn pp_sha12 to void
+n = fx_n fsha
+if gt n 12
+n = 12
+end
+emh fx_o fsha n
+end
+
+note pp_dash: first - in src[s, e), or e
+fn pp_dash s ulong e ulong to ulong
+i = s
+while lt i e bound 8388609
+if eq get src i 45
+ret i
+end
+i = add i 1
+end
+ret e
+end
+
+note pp_int: the 1 to 9 digits src[o, o+n) as a number; 0 for anything else
+fn pp_int o ulong n ulong to ulong
+if or eq n 0 gt n 9
+ret 0
+end
+v = ulong 0
+for i ulong n
+c = get src add o i
+if or lt c 48 gt c 57
+ret 0
+end
+v = add mul v 10 ulong sub c 48
+end
+ret v
+end
+
+note pp_date: facts.rs short_date: 2026-10-16T09:30:35Z or 2026-10-16 becomes 16 Oct 2026;
+note anything else is appended unchanged (escaped)
+fn pp_date o ulong n ulong to void
+e = add o n
+t = o
+while lt t e bound 8388609
+if eq get src t 84
+break
+end
+t = add t 1
+end
+a = pp_dash o t
+b = t
+if lt a t
+b = pp_dash add a 1 t
+end
+x = t
+if lt b t
+x = pp_dash add b 1 t
+end
+if or ge b t lt x t
+emh o n
+ret
+end
+m = pp_int add a 1 sub sub b a 1
+d = pp_int add b 1 sub sub t b 1
+if or or lt m 1 gt m 12 eq d 0
+emh o n
+ret
+end
+emu d
+emb 32
+k = mul sub m 1 3
+emb get pmon k
+emb get pmon add k 1
+emb get pmon add k 2
+emb 32
+emh o sub a o
+end
+
+note pp_num: scalar fact k, which must be a decimal number
+fn pp_num k ulong to void
+v = fx_u k
+emh fx_o k fx_n k
+end
+
+note pp_vcls: the pill class of the Spark receipt state (page.rs verdict_class)
+fn pp_vcls to void
+o = fx_o frstate
+n = fx_n frstate
+if eqt o n pvsucc
+em pcok
+ret
+end
+if eqt o n pvfailu
+em pcbad
+ret
+end
+if eqt o n pvpend
+em pcwait
+ret
+end
+em pcnone
+end
+
+note pp_blocked: does the receipt text start with BLOCKED and contain NOT_RUN
+fn pp_blocked to bool
+o = fx_o frtext
+n = fx_n frtext
+if lt n 7
+ret false
+end
+if not eqt o 7 pvblk
+ret false
+end
+e = add o n
+ret lt find o e pvnrun e
+end
+
+note pp_vword: the word in the verdict pill (page.rs verdict_word), shown exactly as read
+fn pp_vword to void
+o = fx_o frstate
+n = fx_n frstate
+if eqt o n pvsucc
+em pvwpass
+ret
+end
+if eqt o n pvfailu
+if pp_blocked
+em pvblk
+else
+em pvwfail
+end
+ret
+end
+if eqt o n pvpend
+em pvwrun
+ret
+end
+em pvwnov
+end
+
+note pp_replnk: a link with the label t to the report named src[o, o+n) at the commit of the facts
+fn pp_replnk o ulong n ulong t view uchar * to void
+em pah
+pp_blob pdocs
+emh o n
+em paq
+em t
+em paz
+end
+
+note pp_stword: the state words of stage i
+fn pp_stword i ulong to void
+o = fx_so i fsstate
+n = fx_sn i fsstate
+if eqt o n pwclosed
+em ptclose
+pp_date fx_so i fsclos fx_sn i fsclos
+v = fx_so i fsverd
+m = fx_sn i fsverd
+if gt m 0
+em ptgate
+if eqt v m pvwpass
+em pcok
+else
+em pcbad
+end
+em paq
+emh v m
+em ptstrz
+end
+ret
+end
+if eqt o n pwnext
+em pwnext
+ret
+end
+if eqt o n pwrepd
+em ptrepb
+ret
+end
+em ptplan
+end
+
+note pp_stage: the roadmap line of stage i
+fn pp_stage i ulong to void
+em pst1
+emh fx_so i fsstate fx_sn i fsstate
+em pst2
+emh fx_so i fsver fx_sn i fsver
+em pst3
+emh fx_so i fslay fx_sn i fslay
+em pst4
+emh fx_so i fsgoal fx_sn i fsgoal
+em pst5
+pp_stword i
+n = fx_sn i fsrep
+if gt n 0
+em psp
+pp_replnk fx_so i fsrep n plrep
+end
+em pst6
+end
+
+note pp_report: the list line of report i: title, linked, and its headline when it has one
+fn pp_report i ulong to void
+em prp1
+em pah
+pp_blob pdocs
+emh fx_ro i frname fx_rn i frname
+em paq
+emh fx_ro i frtitle fx_rn i frtitle
+em paz
+n = fx_rn i frhead
+if gt n 0
+em prp2
+emh fx_ro i frhead n
+em prp3
+end
+em prp4
+end
+
+note pp_count: one line of the component counts
+fn pp_count k ulong t view uchar * to void
+em psli
+pp_num k
+em t
+end
+
+note pp_sthead: the head of the status section: commit, date, verdict
+fn pp_sthead to void
+em ps1
+pp_cmt
+em ps2
+pp_sha12
+em ps3
+pp_date fx_o ftime fx_n ftime
+em ps4
+pp_vcls
+em paq
+pp_vword
+em ps5
+emh fx_o frtext fx_n frtext
+em ps6
+end
+
+note pp_stcomp: the components cell and the activity cell
+fn pp_stcomp to void
+em ps8
+pp_num frows
+em ps9
+pp_count fqual psc1
+pp_count fconf psc2
+pp_count ftest psc3
+pp_count fimpl psc4
+pp_count fspec psc5
+em ps10
+if gt fx_n fcpass 0
+em pscf1
+pp_num fcpass
+em pscf2
+pp_num fctot
+em pscf3
+end
+pp_lb pstmd plfull
+em ps11
+em pah
+pp_purl
+em ppatch
+em paq
+em plpat
+em paz
+em psdot
+em pah
+pp_purl
+em pissue
+em paq
+em pliss
+em paz
+end
+
+note pp_statsec: the "Current state" section: roadmap, components, reports
+fn pp_statsec to void
+pp_sthead
+n = fx_ns
+for i ulong n
+pp_stage i
+end
+em ps7
+if gt fx_n fnext 0
+em psnx1
+emh fx_o fnext fx_n fnext
+em psnx2
+end
+pp_stcomp
+em ps12
+m = fx_nr
+for j ulong m
+pp_report j
+end
+em ps13
+em psecz
+end
+
+note pp_source: the source record: commit, Spark verdict, the standing caution
+fn pp_source to void
+em po1
+pp_cmt
+em ps2
+emh fx_o fsha fx_n fsha
+em po6
+emh fx_o ftime fx_n ftime
+em po2
+emh fx_o fver fx_n fver
+em po7
+emh fx_o flic fx_n flic
+em po8
+pp_vcls
+em paq
+pp_vword
+em po3
+emh fx_o frtext fx_n frtext
+em po4
+pp_lb pstmd plcanon
+em po5
+em psecz
+end
+
+note pp_why: the problem section
+fn pp_why to void
+em pw1
+em pw2
+em pw3
+em pw4
+em pw5
+em pw6
+em pw7
+em psecz
+end
+
+note pp_mod: one protocol module: its text t and the link to its specification u
+fn pp_mod t view uchar * u view uchar * to void
+em t
+pp_blob u
+em pmoz
+end
+
+note pp_modules: what runs today and the protocol modules
+fn pp_modules to void
+em pm1
+em pm2
+pp_lb pfsrc plsrc
+em pcomma
+pp_lb pfrule plrule
+em pcomma
+pp_lb pftest pltests
+em pliz
+em pm4
+em pm5
+em pm6
+em pm7
+em pm8
+em pm9
+em pm10
+pp_mod pmo1 pspcore
+pp_mod pmo2 psplen
+pp_mod pmo3 pspcax
+pp_mod pmo4 pspcv
+pp_mod pmo5 psppr
+pp_mod pmo6 pspvv
+pp_mod pmo7 psprl
+em pm11
+em psecz
+end
+
+note pp_longit: measuring model behavior over time
+fn pp_longit to void
+em pl1
+em pl2
+em pl3
+em pl4
+em pl5
+em psecz
+end
+
+note pp_jspace: the J-Space proposal
+fn pp_jspace to void
+em pj1
+em pj2
+em pj3
+em pj4
+pp_lb pfrule plrule
+em pj5
+pp_lb pfsrc plsource
+em pj6
+em psecz
+end
+
+note pp_receipt: the 0.1 receipt
+fn pp_receipt to void
+em pr1
+em pr2
+em pr3
+em pr4
+pp_lb prep01 plrep01
+em ppz
+em psecz
+end
+
+note pp_forget: the forge teaser of the old home page
+fn pp_forget to void
+em pft1
+rgn1
+em pft2
+em psecz
+end
+
+note pp_recipe: the pinned offline recipe
+fn pp_recipe to void
+em pg1
+em pg2
+em pg3
+em pg4
+end
+
+note pp_start: run the offline reference
+fn pp_start to void
+em pg5
+pp_recipe
+em pg6
+pp_lb padgd plguide
+em ppz
+em psecz
+end
+
+note pp_quick: the body of /quick-start/
+fn pp_quick to void
+em pq1
+pp_recipe
+em pq2
+em pq3
+em psecz
+pp_source
+end
+
+note pp_concept: the body of /concepts/
+fn pp_concept to void
+em pc1
+em pc2
+em pc3
+em pc4
+em pc5
+pp_lb pspcore plcore
+em pcomma
+pp_lb pspcv plcv
+em pj5
+pp_lb psplen pllen
+em pc6
+em psecz
+pp_source
+end
+
+note pp_adapter: the body of /adapter/
+fn pp_adapter to void
+em pa1
+pp_lb padgd plwag
+em pa2
+em pa3
+em pa4
+pp_lb pstmd plstpin
+em pa5
+em psecz
+pp_source
+end
+
+note pp_conform: the body of /conformance/
+fn pp_conform to void
+em pn1
+pp_lb pconfrd plcdir
+em pn2
+pp_lb padgd pladg
+em pn3
+if gt fx_n fcpass 0
+em pn4
+pp_num fcpass
+em pn5
+pp_num fctot
+em pn6
+emh fx_o fcnote fx_n fcnote
+em pn7
+else
+em pn8
+end
+em pn9
+pp_lb pstmd plstmd
+em pn10
+em pn11
+em psecz
+pp_source
+end
+
+note pp_status: the body of /status/
+fn pp_status to void
+pp_statsec
+pp_source
+end
+
+note pp_forgetop: the forge page down to the web app list
+fn pp_forgetop to void
+em pz1
+em pz2
+em pz3
+em pz4
+rgn2
+em pz5
+rgn3
+em pz6
+em pz7
+em pz8
+em pz9
+rgn4
+em pz10
+em pz11
+em pz12
+em pz13
+em pz14
+em pz15
+em pz16
+end
+
+note pp_forge: the body of /forge/
+fn pp_forge to void
+pp_forgetop
+em pz17
+em pz18
+em pz19
+em pz20
+em pz21
+em pzd1
+em pzd2
+em pzd3
+em pzd4
+em pzd5
+em pzd6
+em pz22
+em pz23
+em pz24
+em pz25
+em pz26
+em pz27
+em pz28
+em pz29
+em psecz
+pp_source
+end
+
+note pp_nroute: the number of sub-pages
+fn pp_nroute to ulong
+ret 6
+end
+
+note pp_slug: the route slug of sub-page r (1..6)
+fn pp_slug k ulong to void
+if eq k 1
+em pu1
+ret
+end
+if eq k 2
+em pu2
+ret
+end
+if eq k 3
+em pu3
+ret
+end
+if eq k 4
+em pu4
+ret
+end
+if eq k 5
+em pu5
+ret
+end
+if eq k 6
+em pu6
+ret
+end
+die pbadr 0 0
+end
+
+note pp_title: the title of sub-page r without the "INTERPLANE: " prefix (routes.rs label)
+fn pp_title k ulong to void
+if eq k 1
+em pt1
+ret
+end
+if eq k 2
+em pt2
+ret
+end
+if eq k 3
+em pt3
+ret
+end
+if eq k 4
+em pt4
+ret
+end
+if eq k 5
+em pt5
+ret
+end
+if eq k 6
+em pt6
+ret
+end
+die pbadr 0 0
+end
+
+note pp_desc: the description of sub-page r (routes.rs description)
+fn pp_desc k ulong to void
+if eq k 1
+em pd1
+ret
+end
+if eq k 2
+em pd2
+ret
+end
+if eq k 3
+em pd3
+ret
+end
+if eq k 4
+em pd4
+ret
+end
+if eq k 5
+em pd5
+ret
+end
+if eq k 6
+em pd6
+ret
+end
+die pbadr 0 0
+end
+
+note pp_h1: the page heading of sub-page r: its title, except "INTERPLANE Forge" for the forge
+fn pp_h1 k ulong to void
+if eq k 6
+em ph6
+ret
+end
+pp_title k
+end
+
+note pp_kick: the kicker line above the heading of sub-page r
+fn pp_kick k ulong to void
+if eq k 6
+em pk6
+ret
+end
+if or lt k 1 gt k 6
+die pbadr 0 0
+end
+em pk1
+end

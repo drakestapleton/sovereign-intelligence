@@ -1,0 +1,95 @@
+# hubcheck test cases, read by run.om. One case per line, seven fields with a TAB between them:
+# VERB NAME FILE FROM TO STATUS FIRST-LINE
+# Each case is a fresh copy of good/ with the one change the line names (none, edit, add, del,
+# trunc, symlink); STATUS and FIRST-LINE are hubcheck's expected exit status and first output line.
+# FROM and TO take the escapes \n \t \r \\ \xHH; a field that is only "-" is not used. See ../README.md.
+none	good	-	-	-	0	HUBCHECK PASS files=13 html=3 links=23 fragments=10
+add	R00-depth-9	d1/d2/d3/d4/d5/d6/d7/d8/d9/level9.txt	-	One directory too deep.\n	1	HUBCHECK FAIL R00 d1/d2/d3/d4/d5/d6/d7/d8/d9: directory nested deeper than 8 levels
+edit	R01-inline-script	about/index.html	</body>	<script>document.title='x'</script></body>	1	HUBCHECK FAIL R01 about/index.html: line 22: script tag is not the allowed JSON-LD block
+edit	R01-json-ld-with-src	index.html	<script type='application/ld+json'>	<script type='application/ld+json' src='/facts.json'>	1	HUBCHECK FAIL R01 index.html: line 13: script tag is not the allowed JSON-LD block
+edit	R01-lt-in-json-ld	index.html	"name":"INTERPLANE"}	"name":"<b>INTERPLANE</b>"}	1	HUBCHECK FAIL R01 index.html: line 13: '<' inside the JSON-LD block
+edit	R01-script-in-svg-file	img/mark.svg	</svg>	<script>alert(1)</script></svg>	1	HUBCHECK FAIL R01 img/mark.svg: line 5: script tag is not the allowed JSON-LD block
+edit	R01-script-uppercase	index.html	</body>	<SCRIPT>alert(1)</SCRIPT></body>	1	HUBCHECK FAIL R01 index.html: line 27: script tag is not the allowed JSON-LD block
+edit	R01-second-json-ld	index.html	</head>	<script type='application/ld+json'>{"@type":"Thing"}</script></head>	1	HUBCHECK FAIL R01 index.html: line 14: more than one script block
+edit	R02-handler-without-space	index.html	<a class='brand' href='/'	<a class='brand'onmouseover='x()' href='/'	1	HUBCHECK FAIL R02 index.html: line 17: event handler attribute: onmouseover
+edit	R02-javascript-colon-entity	index.html	<a href='/about/'>About</a>	<a href='javascript&colon;alert(1)'>About</a>	1	HUBCHECK FAIL R02 index.html: line 18: character reference before the URL scheme: javascript&colon;alert(1)
+edit	R02-javascript-entity	index.html	<a href='/about/'>About</a>	<a href='java&#115;cript:alert(1)'>About</a>	1	HUBCHECK FAIL R02 index.html: line 18: character reference before the URL scheme: java&#115;cript:alert(1)
+edit	R02-javascript-mixed-case	index.html	<a href='/about/'>About</a>	<a href=' JaVaScRiPt:alert(1)'>About</a>	1	HUBCHECK FAIL R02 index.html: line 18: javascript: URL:  JaVaScRiPt:alert(1)
+edit	R02-javascript-tab	docs/guide.html	<a href='/about/'>About</a>	<a href='java\tscript:alert(1)'>About</a>	1	HUBCHECK FAIL R02 docs/guide.html: line 13: javascript: URL: java?script:alert(1)
+edit	R02-javascript-url	about/index.html	<a href="/">Home</a>	<a href="javascript:void(0)">Home</a>	1	HUBCHECK FAIL R02 about/index.html: line 15: javascript: URL: javascript:void(0)
+edit	R02-onclick-uppercase	index.html	<a class='brand' href='/'	<a class='brand' ONCLICK='go()' href='/'	1	HUBCHECK FAIL R02 index.html: line 17: event handler attribute: ONCLICK
+edit	R02-onerror-unquoted	index.html	<img src='/img/mark.svg' alt='The mark'	<img src='/img/mark.svg' onerror=alert(1) alt='The mark'	1	HUBCHECK FAIL R02 index.html: line 23: event handler attribute: onerror
+edit	R02-svg-slash-onload	index.html	</main>	<svg/onload=alert(1)></svg></main>	1	HUBCHECK FAIL R02 index.html: line 25: event handler attribute: onload
+edit	R03-base	docs/guide.html	<meta charset='utf-8'>	<meta charset='utf-8'>\n<base href='/'>	1	HUBCHECK FAIL R03 docs/guide.html: line 5: forbidden element: <base
+edit	R03-embed	docs/guide.html	</main>	<embed src='/img/mark.svg' type='image/svg+xml'></main>	1	HUBCHECK FAIL R03 docs/guide.html: line 19: forbidden element: <embed
+edit	R03-form	about/index.html	</main>	<form action="/about/"><input name="q"></form></main>	1	HUBCHECK FAIL R03 about/index.html: line 20: forbidden element: <form
+edit	R03-iframe	index.html	</main>	<iframe src='/about/'></iframe></main>	1	HUBCHECK FAIL R03 index.html: line 25: forbidden element: <iframe
+edit	R03-meta-refresh	index.html	<meta charset='utf-8'>	<meta charset='utf-8'>\n<meta http-equiv='Refresh' content='5; url=/about/'>	1	HUBCHECK FAIL R03 index.html: line 5: meta refresh
+edit	R03-object	about/index.html	</main>	<object data="/img/mark.svg" type="image/svg+xml"></object></main>	1	HUBCHECK FAIL R03 about/index.html: line 20: forbidden element: <object
+edit	R04-backslash-host	index.html	<img src='/img/mark.svg'	<img src='/\\evil.example/mark.svg'	1	HUBCHECK FAIL R04 index.html: line 23: src is not a local path or a data: URL: /\evil.example/mark.svg
+edit	R04-css-import	style.css	:root{color-scheme:light dark	@import "/other.css";\n:root{color-scheme:light dark	1	HUBCHECK FAIL R04 style.css: line 1: @import in CSS
+edit	R04-css-url-http	style.css	url(/img/dot.png)	url("http://cdn.example.org/dot.png")	1	HUBCHECK FAIL R04 style.css: line 8: CSS url() target is not a local path or a data: URL: http://cdn.example.org/dot.png
+edit	R04-css-url-https	style.css	url(/img/dot.png)	url(https://cdn.example.org/dot.png)	1	HUBCHECK FAIL R04 style.css: line 8: CSS url() target is not a local path or a data: URL: https://cdn.example.org/dot.png
+edit	R04-duplicate-href	index.html	<link rel='stylesheet' href='/style.css'>	<link rel='stylesheet' href='https://evil.example/x.css' href='/style.css'>	1	HUBCHECK FAIL R04 index.html: line 11: link href is not a local path or a data: URL: https://evil.example/x.css
+edit	R04-entity-slash	index.html	<img src='/img/mark.svg'	<img src='/&#47;evil.example/mark.svg'	1	HUBCHECK FAIL R04 index.html: line 23: src is not a local path or a data: URL: /&#47;evil.example/mark.svg
+edit	R04-hidden-in-comment	index.html	</main>	<!-- <a title=' --><img src=https://evil.example/x>'></main>	1	HUBCHECK FAIL R04 index.html: line 25: src is not a local path or a data: URL: https://evil.example/x
+edit	R04-hidden-in-textarea	index.html	</main>	<p><textarea><a title='</textarea><img src=https://evil.example/x>'></textarea></p></main>	1	HUBCHECK FAIL R04 index.html: line 25: src is not a local path or a data: URL: https://evil.example/x
+edit	R04-icon-rel-uppercase	docs/guide.html	<link rel='stylesheet' href="/style.css">	<link rel='stylesheet' href="/style.css">\n<LINK REL='SHORTCUT ICON' HREF='https://example.org/favicon.ico'>	1	HUBCHECK FAIL R04 docs/guide.html: line 10: link href is not a local path or a data: URL: https://example.org/favicon.ico
+edit	R04-img-https	index.html	<img src='/img/mark.svg'	<img src='https://example.org/mark.svg'	1	HUBCHECK FAIL R04 index.html: line 23: src is not a local path or a data: URL: https://example.org/mark.svg
+edit	R04-link-href-before-rel	index.html	<link rel='stylesheet' href='/style.css'>	<link href = https://evil.example/x.css rel = stylesheet>	1	HUBCHECK FAIL R04 index.html: line 11: link href is not a local path or a data: URL: https://evil.example/x.css
+edit	R04-ping	about/index.html	<a href="/">Home</a>	<a href="/" ping="https://stats.example.org/hit">Home</a>	1	HUBCHECK FAIL R04 about/index.html: line 15: ping is not a local path or a data: URL: https://stats.example.org/hit
+edit	R04-preconnect	about/index.html	<link rel="stylesheet" href="/style.css">	<link rel="stylesheet" href="/style.css">\n<link rel="preconnect" href="https://cdn.example.org">	1	HUBCHECK FAIL R04 about/index.html: line 11: link href is not a local path or a data: URL: https://cdn.example.org
+edit	R04-protocol-relative-css	index.html	<link rel='stylesheet' href='/style.css'>	<link rel='stylesheet' href='//cdn.example.org/x.css'>	1	HUBCHECK FAIL R04 index.html: line 11: link href is not a local path or a data: URL: //cdn.example.org/x.css
+edit	R04-srcset-https	index.html	/img/dot.webp 2x'	https://example.org/dot.webp 2x'	1	HUBCHECK FAIL R04 index.html: line 23: srcset candidate is not a local path or a data: URL: https://example.org/dot.webp
+edit	R04-style-attr-url	index.html	style='margin-top:1.4rem'	style='background:url(https://example.org/bg.png)'	1	HUBCHECK FAIL R04 index.html: line 21: CSS url() target is not a local path or a data: URL: https://example.org/bg.png
+edit	R04-style-block-import	index.html	</head>	<style>@import url(/other.css);</style></head>	1	HUBCHECK FAIL R04 index.html: line 14: @import in CSS
+edit	R04-svg-image-href	docs/guide.html	<use href="#dot"/>	<use href="#dot"/><image href="https://example.org/i.png" width="4" height="4"/>	1	HUBCHECK FAIL R04 docs/guide.html: line 18: svg href is not a local path, a fragment or a data: URL: https://example.org/i.png
+edit	R05-http-in-sitemap	sitemap.xml	<loc>https://example.org/about/</loc>	<loc>http://example.org/about/</loc>	1	HUBCHECK FAIL R05 sitemap.xml: line 4: plain http URL: http://example.org/about/
+edit	R05-http-in-txt	llms.txt	[Home](https://example.org/)	[Home](http://example.org/)	1	HUBCHECK FAIL R05 llms.txt: line 7: plain http URL: http://example.org/
+edit	R05-http-link	about/index.html	href="mailto:hello@example.org"	href="http://example.org/contact"	1	HUBCHECK FAIL R05 about/index.html: line 18: plain http URL: http://example.org/contact
+edit	R05-http-uppercase	index.html	href='https://example.org/source'	href='HTTP://example.org/source'	1	HUBCHECK FAIL R05 index.html: line 24: plain http URL: HTTP://example.org/source
+edit	R05-namespace-near-miss	docs/guide.html	xmlns="http://www.w3.org/2000/svg"	xmlns="http://www.w3.org/2000/svg/x"	1	HUBCHECK FAIL R05 docs/guide.html: line 18: plain http URL: http://www.w3.org/2000/svg/x
+edit	R06-doubleclick-in-png	img/dot.png	IEND	IENDdoubleclick	1	HUBCHECK FAIL R06 img/dot.png: tracker or outside font host: doubleclick
+edit	R06-google-fonts-mixed-case	docs/guide.html	Copy the directory to any static host.	Copy the directory to any static host, with no font from Fonts.GoogleAPIs.com.	1	HUBCHECK FAIL R06 docs/guide.html: line 16: tracker or outside font host: fonts.googleapis
+edit	R06-plausible-in-json	facts.json	"license":"Apache-2.0",	"license":"Apache-2.0",\n"stats":"plausible.io",	1	HUBCHECK FAIL R06 facts.json: line 5: tracker or outside font host: plausible.io
+edit	R07-bare-fragment	about/index.html	<a class="skip" href="#main">	<a class="skip" href="#content">	1	HUBCHECK FAIL R07 about/index.html: line 14: no id for the fragment: #content
+del	R07-deleted-target	docs/guide.html	-	-	1	HUBCHECK FAIL R07 about/index.html: line 15: no such file: /docs/guide.html
+edit	R07-directory-without-slash	index.html	<a href='/docs/guide.html'>Guide</a>	<a href='/about'>Guide</a>	1	HUBCHECK FAIL R07 index.html: line 18: no such file: /about
+edit	R07-dot-dot	docs/guide.html	href='/about/#method'	href='/docs/../about/#method'	1	HUBCHECK FAIL R07 docs/guide.html: line 17: refused local path: /docs/../about/#method
+edit	R07-fragment-on-css	index.html	<a href='/about/'>About</a>	<a href='/style.css#x'>About</a>	1	HUBCHECK FAIL R07 index.html: line 18: fragment on a file that is not a page: /style.css#x
+edit	R07-fragment-on-other-page	index.html	href='/about/#team'	href='/about/#install'	1	HUBCHECK FAIL R07 index.html: line 22: no id for the fragment: /about/#install
+edit	R07-id-only-as-data-id	about/index.html	<section id="team">	<section data-id="team">	1	HUBCHECK FAIL R07 index.html: line 22: no id for the fragment: /about/#team
+edit	R07-leading-space	index.html	<a href='/about/'>About</a>	<a href=' /nope/'>About</a>	1	HUBCHECK FAIL R07 index.html: line 18: no such file: /nope/
+edit	R07-missing-file	index.html	<a href='/about/'>About</a>	<a href='/team/'>About</a>	1	HUBCHECK FAIL R07 index.html: line 18: no such file: /team/
+edit	R07-query-on-missing-file	index.html	<a href='/about/'>About</a>	<a href='/team/?x=1'>About</a>	1	HUBCHECK FAIL R07 index.html: line 18: no such file: /team/?x=1
+edit	R08-charset-latin1	about/index.html	<meta charset="utf-8">	<meta charset="latin1">	1	HUBCHECK FAIL R08 about/index.html: no <meta charset='utf-8'>
+edit	R08-empty-description	index.html	content='A small valid site that the hubcheck tests copy and then break in one place.'	content=''	1	HUBCHECK FAIL R08 index.html: no <meta name='description'> with content
+edit	R08-no-doctype	docs/guide.html	<!doctype html>\n<html lang='en'>	<html lang='en'>	1	HUBCHECK FAIL R08 docs/guide.html: does not start with <!doctype html>
+edit	R08-no-lang	about/index.html	<html lang="en">	<html>	1	HUBCHECK FAIL R08 about/index.html: no <html lang='en'>
+edit	R08-no-viewport	docs/guide.html	<META NAME="viewport" CONTENT="width=device-width,initial-scale=1">\n		1	HUBCHECK FAIL R08 docs/guide.html: no <meta name='viewport'>
+edit	R08-second-title	docs/guide.html	<h1>Guide</h1>	<h1>Guide</h1><title>INTERPLANE again</title>	1	HUBCHECK FAIL R08 docs/guide.html: <title> count is 2, not 1
+edit	R08-title-with-attribute	index.html	<title>INTERPLANE: fixture home</title>	<title lang='en'>INTERPLANE: fixture home</title>	1	HUBCHECK FAIL R08 index.html: <title> count is 0, not 1
+edit	R08-title-wrong-start	index.html	<title>INTERPLANE: fixture home</title>	<title>Home | INTERPLANE</title>	1	HUBCHECK FAIL R08 index.html: <title> text does not start with INTERPLANE
+edit	R08-two-h1	about/index.html	<h2>Team</h2>	<h1>Team</h1>	1	HUBCHECK FAIL R08 about/index.html: <h1 count is 2, not 1
+edit	R09-em-dash-css	style.css	.word{letter-spacing:.08em}	.word{letter-spacing:.08em}/* wide \xe2\x80\x94 on purpose */	1	HUBCHECK FAIL R09 style.css: line 7: em dash U+2014
+edit	R09-en-dash-html	index.html	2 planes, 1 line.	2\xe2\x80\x933 planes, 1 line.	1	HUBCHECK FAIL R09 index.html: line 21: en dash U+2013
+edit	R10-extra-close	style.css	.skip:focus{left:1rem}	.skip:focus{left:1rem}}	1	HUBCHECK FAIL R10 style.css: line 6: '}' without an open '{'
+edit	R10-missing-close	style.css	a{color:var(--accent)}	a{color:var(--accent)	1	HUBCHECK FAIL R10 style.css: '{' is never closed
+trunc	R11-empty-llms	llms.txt	-	-	1	HUBCHECK FAIL R11 llms.txt: empty
+del	R11-no-robots	robots.txt	-	-	1	HUBCHECK FAIL R11 robots.txt: missing
+edit	R12-crlf	robots.txt	Allow: /\n	Allow: /\r\n	1	HUBCHECK FAIL R12 robots.txt: line 2: control byte 13
+edit	R12-invalid-utf8	llms.txt	the overview	the overview \xff	1	HUBCHECK FAIL R12 llms.txt: line 7: invalid UTF-8
+edit	R12-overlong-utf8	facts.json	"pages":"3"	"pages":"\xc0\xaf"	1	HUBCHECK FAIL R12 facts.json: line 3: invalid UTF-8
+edit	R12-surrogate	docs/guide.html	<h1>Guide</h1>	<h1>Guide \xed\xa0\x80</h1>	1	HUBCHECK FAIL R12 docs/guide.html: line 15: invalid UTF-8
+add	R13-js-file	app.js	-	/* nothing runs here */\n	1	HUBCHECK FAIL R13 app.js: file extension is not allowed
+add	R13-no-extension	CNAME	-	example.org\n	1	HUBCHECK FAIL R13 CNAME: file extension is not allowed
+symlink	R13-symlink	latest.html	-	index.html	1	HUBCHECK FAIL R13 latest.html: not a regular file
+add	R13-uppercase-extension	img/LOGO.PNG	-	not an image\n	1	HUBCHECK FAIL R13 img/LOGO.PNG: file extension is not allowed
+edit	ok-data-image	index.html	<img src='/img/mark.svg'	<img src='data:image/gif;base64,R0lGODlhAQABAAAAACw='	0	HUBCHECK PASS files=13 html=3 links=22 fragments=10
+add	ok-extra-image	img/extra.webp	-	RIFF	0	HUBCHECK PASS files=14 html=3 links=23 fragments=10
+edit	ok-fragment-to-svg-id	index.html	<img src='/img/mark.svg'	<img src='/img/mark.svg#beam'	0	HUBCHECK PASS files=13 html=3 links=23 fragments=11
+edit	ok-hyphen-u2010	index.html	2 planes, 1 line.	2\xe2\x80\x903 planes, 1 line.	0	HUBCHECK PASS files=13 html=3 links=23 fragments=10
+edit	ok-javascript-in-prose	docs/guide.html	Copy the directory to any static host.	Copy the directory to any static host. There is no javascript: link and no onclick= here.	0	HUBCHECK PASS files=13 html=3 links=23 fragments=10
+edit	ok-namespace-in-text	llms.txt	the overview	the overview, drawn as http://www.w3.org/2000/svg markup	0	HUBCHECK PASS files=13 html=3 links=23 fragments=10
+edit	ok-query-string	index.html	<a href='/about/'>About</a>	<a href='/about/?x=1&amp;y=2#team'>About</a>	0	HUBCHECK PASS files=13 html=3 links=23 fragments=11
+edit	ok-uppercase-names	index.html	<a href='/about/'>About</a>	<A HREF='/about/'>About</A>	0	HUBCHECK PASS files=13 html=3 links=23 fragments=10

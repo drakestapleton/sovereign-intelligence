@@ -1,0 +1,30 @@
+fn main to int
+n = argcnt
+if eq n 4
+ret single
+end
+if eq n 2
+w = argword 1
+if eq w 1
+ret runall 0
+end
+if eq w 2
+ret runtable
+end
+if eq w 4
+ret runsweep
+end
+ret 2
+end
+if eq n 3
+m = argword 1
+if eq m 1
+ret runall 1
+end
+if eq m 3
+ret gradmode
+end
+ret 2
+end
+ret 2
+end

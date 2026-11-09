@@ -1,0 +1,1009 @@
+note nl8: tied against untied sender and receiver, trained through a 1-bit quantizer
+note with a straight-through estimator. Pre-registration: PREREG.md. Commands: README.md.
+note usage: nl8 ARM SEED MASK | nl8 table | nl8 all [PEER] | nl8 grad SEED | nl8 sweep
+note exit: 0 pass, 1 fail, 2 bad arguments, 80 output, 81 wire byte refused, 82 parameter not finite
+note The program is nl8.om followed by main.om (cat nl8.om main.om), so that a mutant of nl8.om
+note built with subst.om gets the same main. nl8 sweep is post hoc: see the note above sweepone.
+note
+note Parameter layout in PP. Tied arms 0 and 3: PP[0]=a PP[1]=b PP[2]=v PP[3]=c.
+note Untied arm 1: PP[j*4+k]=A[j][k] (input j, position k), PP[16+k]=b_k, PP[20+k]=v_k, PP[24+k]=c_k.
+note PG gradient, PC staged candidates, PI copy of the initialization (for the drift of P6).
+global PP f64 28
+global PG f64 28
+global PC f64 28
+global PI f64 28
+note XS sender input signs 2x-1, XT targets, SU sender pre-activation, SH softsign of SU.
+global XS f64 4
+global XT f64 4
+global SU f64 4
+global SH f64 4
+note RS receiver symbol (decoded from the wire byte), RZ pre-activation, RO score, DU dL/du.
+global RS f64 4
+global RZ f64 4
+global RO f64 4
+global DU f64 4
+note WB is the wire: one real byte. The receiver reads WB and its own parameters, nothing else.
+global WB uchar 1
+note CF: 0 arm, 1 parameter count, 2 soft flag (gradient self-check only), 3 current id.
+global CF ulong 4
+global RNG ulong 1
+note EV: 0 trained_ok 1 trained_n 2 heldout_ok 3 heldout_n 4 wrong_accepted 5 abstained
+note     6 wire bits seen as 1, 7 wire bits seen as 0.
+global EV ulong 8
+note CR: bad-row counter, first seed, first mask for P1 (0..2) P2 (3..5) P3 (6..8) P4 (9..11)
+note     and the lemma part of P6 (12..14); 15 P5 code, 16 first differing byte, 17 own length, 18 peer length.
+global CR ulong 19
+note CD: 0 largest drift on masks 39321 and 42405, 1 largest drift on mask 65535 (arm 1).
+global CD f64 2
+global OB uchar 16384
+global OL ulong 1
+global AR uchar 256
+global PB uchar 16385
+const XHEAD ulong 0
+const XPASS ulong 1
+const XNAN ulong 2
+const XZERO ulong 3
+const XINF ulong 4
+const XNOPEER ulong 5
+const XUNREAD ulong 6
+const XDIFF ulong 7
+const XOWN ulong 8
+const XPEER ulong 9
+const XLEMBAD ulong 10
+const XLEMMAX ulong 11
+const XCTLMAX ulong 12
+const XGARM ulong 13
+const XGDIFF ulong 14
+const XGPASS ulong 15
+const XGFAIL ulong 16
+const XBAD ulong 17
+const XSEED ulong 18
+const XMASK ulong 19
+const XNLP ulong 20
+const XNLF ulong 21
+const XNA ulong 22
+const XFAIL ulong 23
+const XSWH ulong 24
+const XSWA ulong 25
+const XSWM ulong 26
+const XSWS ulong 27
+const XSWK ulong 28
+const XSWD ulong 29
+text TX "arm\tseed\tmask\ttrained_ok\ttrained_n\theldout_ok\theldout_n\twrong_accepted\tabstained\twire_bits\tmax_drift\n| PASS\n|nan|0.00000e+00|inf|no peer table given (run: nl8 all PEERFILE)\n|peer table unreadable\n|tables differ at byte | own_len=| peer_len=|lemma_bad_rows=| lemma_max=| control_max=|grad arm | max_abs_diff |GRAD PASS\n|GRAD FAIL\n|bad_rows=| first_seed=| first_mask=|NL8 PASS\n|NL8 FAIL\n|NA| FAIL |POST HOC sweep, exploratory, not a pre-registered criterion: seeds 1..64, masks 39321 and 42405, arms 0 and 1\n|SWEEP arm=| mask=| seeds=| heldout8=| maxdrift="
+
+note ---- output: everything goes to OB first, so the table bytes can be compared for P5
+fn ob c uchar to void
+n = get OL 0
+if ge n 16384
+exit 80
+end
+put OB n c
+put OL 0 add n 1
+end
+fn onum n ulong to void
+if ge n 10
+onum div n 10
+end
+ob uchar add rem n 10 48
+end
+note otx: segment n of TX; segments are separated by the byte 124
+fn otx n ulong to void
+s = ulong 0
+for i ulong len TX
+c = get TX i
+if eq c 124
+s = add s 1
+else
+if eq s n
+ob c
+end
+end
+end
+end
+note osci: 6 significant digits, truncated, d.ddddde+XX; scaling by repeated mul and div by 10
+note bound: binary64 spans 1e-324 to 1e308, so fewer than 400 passes each way
+fn osci v f64 to void
+if ne v v
+otx XNAN
+ret
+end
+x = fabs v
+if lt v 0.0f64
+ob 45
+end
+if eq x 0.0f64
+otx XZERO
+ret
+end
+if gt x 1.0e300f64
+otx XINF
+ret
+end
+e = long 0
+while ge x 10.0f64 bound 400
+x = div x 10.0f64
+e = add e 1
+end
+while lt x 1.0f64 bound 400
+x = mul x 10.0f64
+e = sub e 1
+end
+for i ulong 6
+d = ulong x
+if gt d 9
+d = 9
+end
+ob uchar add d 48
+if eq i 0
+ob 46
+end
+x = mul sub x f64 d 10.0f64
+end
+ob 101
+if lt e 0
+ob 45
+e = neg e
+else
+ob 43
+end
+u = ulong e
+if lt u 10
+ob 48
+end
+onum u
+end
+note oflush: bound: every pass writes at least one of at most 16384 bytes
+fn oflush to void
+p = ulong 0
+e = get OL 0
+while lt p e bound 16384
+k = write 1 OB p sub e p
+if le k 0
+exit 80
+end
+p = add p ulong k
+end
+put OL 0 0
+end
+
+note ---- numerics
+fn softsign x f64 to f64
+ret div x add 1.0f64 fabs x
+end
+note slope: derivative of softsign
+fn slope x f64 to f64
+d = add 1.0f64 fabs x
+ret div 1.0f64 mul d d
+end
+note ste: the straight-through estimator. The quantizer s_k = sign(h_k) has derivative zero
+note almost everywhere; the backward pass takes d s_k / d h_k as 1 and hands the receiver's
+note dL/ds_k to the sender unchanged. Mutant M1 cuts this path.
+fn ste gste f64 to f64
+ret gste
+end
+fn rnd to ulong
+x = get RNG 0
+x = and xor x shl x 13 4294967295
+x = xor x shr x 17
+x = and xor x shl x 5 4294967295
+put RNG 0 x
+ret x
+end
+note pinit: one draw per parameter in index order, (rng mod 33 - 16) / 64
+fn pinit seed ulong to void
+put RNG 0 seed
+for i ulong get CF 1
+v = sub long rem rnd 33 16
+put PP i div f64 v 64.0f64
+put PI i get PP i
+end
+end
+fn setin id ulong tgt ulong to void
+put CF 3 id
+for j ulong 4
+put XS j sub mul 2.0f64 f64 and shr id j 1 1.0f64
+put XT j f64 and shr tgt j 1
+end
+end
+
+note ---- sender
+fn sendtied to void
+for k ulong 4
+u = add mul get PP 0 get XS k get PP 1
+put SU k u
+put SH k softsign u
+end
+end
+note sendfull: b_k first, then inputs j = 0 1 2 3
+fn sendfull to void
+for k ulong 4
+u = get PP add 16 k
+for j ulong 4
+u = add u mul get PP add mul j 4 k get XS j
+end
+put SU k u
+put SH k softsign u
+end
+end
+fn sender to void
+if eq get CF 0 1
+sendfull
+else
+sendtied
+end
+end
+note wirepack: the 1-bit quantizer. m_k = 1 when h_k >= 0; the byte is all the receiver gets.
+note Arm 2 sends the id itself.
+fn wirepack to void
+if eq get CF 0 2
+put WB 0 uchar get CF 3
+ret
+end
+b = ulong 0
+for k ulong 4
+if ge get SH k 0.0f64
+b = or b shl ulong 1 k
+end
+end
+put WB 0 uchar b
+end
+
+note ---- receiver: reads WB only
+fn wireread to int
+w = ulong get WB 0
+if gt w 15
+ret 1
+end
+for k ulong 4
+if eq and shr w k 1 1
+put RS k 1.0f64
+else
+put RS k -1.0f64
+end
+end
+ret 0
+end
+fn recvv k ulong to f64
+if eq get CF 0 1
+ret get PP add 20 k
+end
+ret get PP 2
+end
+fn recvc k ulong to f64
+if eq get CF 0 1
+ret get PP add 24 k
+end
+ret get PP 3
+end
+fn receiver to void
+if eq get CF 0 2
+for k ulong 4
+put RZ k 0.0f64
+put RO k mul 0.5f64 add 1.0f64 get RS k
+end
+ret
+end
+for k ulong 4
+z = add mul recvv k get RS k recvc k
+put RZ k z
+put RO k mul 0.5f64 add 1.0f64 softsign z
+end
+end
+note forward: sender, wire byte, receiver. Training and evaluation both take this path.
+note Soft mode (gradient self-check only) has no quantizer: the receiver symbol is h_k.
+fn forward to int
+if ne get CF 0 2
+sender
+end
+if eq get CF 2 1
+for k ulong 4
+put RS k get SH k
+end
+else
+wirepack
+st = wireread
+if ne st 0
+ret 1
+end
+end
+receiver
+ret 0
+end
+note loss: sum over k of (o_k - t_k)^2 and nothing else
+fn loss to f64
+v = 0.0f64
+for k ulong 4
+r = sub get RO k get XT k
+v = add v mul r r
+end
+ret v
+end
+
+note ---- backward pass, from the cached forward values
+note gz = dL/dz_k = (o_k - t_k) * slope(z_k); gu = dL/du_k = ste(gz * v_k) * slope(u_k)
+fn gradtied to void
+ga = 0.0f64
+gb = 0.0f64
+gv = 0.0f64
+gc = 0.0f64
+for k ulong 4
+gz = mul sub get RO k get XT k slope get RZ k
+gv = add gv mul gz get RS k
+gc = add gc gz
+gu = mul ste mul gz get PP 2 slope get SU k
+ga = add ga mul gu get XS k
+gb = add gb gu
+end
+put PG 0 ga
+put PG 1 gb
+put PG 2 gv
+put PG 3 gc
+end
+note gradfull: dL/dA[j][k] = gu_k * (2*x_j - 1). When x_p == x_q in every trained case the
+note gradients of A[p][k] and A[q][k] are equal at every step: the lemma that P6 checks.
+fn gradfull to void
+for k ulong 4
+gz = mul sub get RO k get XT k slope get RZ k
+put PG add 20 k mul gz get RS k
+put PG add 24 k gz
+gu = mul ste mul gz get PP add 20 k slope get SU k
+put PG add 16 k gu
+put DU k gu
+end
+for j ulong 4
+for k ulong 4
+put PG add mul j 4 k mul get DU k get XS j
+end
+end
+end
+fn gradient to void
+if eq get CF 0 1
+gradfull
+else
+gradtied
+end
+end
+note sgdstep: all candidates from the old parameters, checked, then committed together
+fn sgdstep lr f64 to int
+for i ulong get CF 1
+v = sub get PP i mul lr get PG i
+if not le fabs v 1000000.0f64
+ret 1
+end
+put PC i v
+end
+for i ulong get CF 1
+put PP i get PC i
+end
+ret 0
+end
+note trainrun: online SGD, 2000 epochs, trained IDs in ascending order, learning rate 0.1.
+note Arm 3 trains on the targets of (id+1) and 15. Arm 2 does not train.
+fn trainrun mask ulong to int
+arm = get CF 0
+if eq arm 2
+ret 0
+end
+for ep ulong 2000
+for id ulong 16
+if ne and shr mask id 1 0
+tgt = id
+if eq arm 3
+tgt = and add id 1 15
+end
+setin id tgt
+st = forward
+if ne st 0
+ret 81
+end
+gradient
+st = sgdstep 0.1f64
+if ne st 0
+ret 82
+end
+end
+end
+end
+ret 0
+end
+
+note ---- evaluation against the true targets
+note judge: 0 accepted-correct, 1 wrong-accepted, 2 abstained (any score within 0.1 of 0.5)
+fn judge to ulong
+ab = ulong 0
+bad = ulong 0
+for k ulong 4
+o = get RO k
+if ne o o
+ab = 1
+end
+if lt fabs sub o 0.5f64 0.1f64
+ab = 1
+end
+bit = 0.0f64
+if ge o 0.5f64
+bit = 1.0f64
+end
+if ne bit get XT k
+bad = 1
+end
+end
+if eq ab 1
+ret 2
+end
+ret bad
+end
+fn evalrun mask ulong to int
+for i ulong 8
+put EV i 0
+end
+for id ulong 16
+setin id id
+st = forward
+if ne st 0
+ret 81
+end
+w = ulong get WB 0
+put EV 6 or get EV 6 w
+put EV 7 or get EV 7 xor w 255
+j = judge
+base = ulong 0
+if eq and shr mask id 1 0
+base = 2
+end
+put EV add base 1 add get EV add base 1 1
+if eq j 0
+put EV base add get EV base 1
+end
+if eq j 1
+put EV 4 add get EV 4 1
+end
+if eq j 2
+put EV 5 add get EV 5 1
+end
+end
+ret 0
+end
+note wirebits: bit positions of the wire byte that took both values over the 16 IDs
+fn wirebits to ulong
+b = and get EV 6 get EV 7
+n = ulong 0
+for k ulong 8
+n = add n and shr b k 1
+end
+ret n
+end
+note drift: largest |(A[p][k]-A[q][k]) now - (A[p][k]-A[q][k]) at init| over k (arm 1)
+fn drift p ulong q ulong to f64
+m = 0.0f64
+for k ulong 4
+a = sub get PP add mul p 4 k get PP add mul q 4 k
+b = sub get PI add mul p 4 k get PI add mul q 4 k
+d = fabs sub a b
+if gt d m
+m = d
+end
+end
+ret m
+end
+fn rowdrift mask ulong to f64
+if eq mask 39321
+ret drift 0 1
+end
+if eq mask 42405
+ret drift 0 2
+end
+ret fmax drift 0 1 drift 0 2
+end
+fn runone arm ulong seed ulong mask ulong to int
+put CF 0 arm
+put CF 1 4
+if eq arm 1
+put CF 1 28
+end
+if eq arm 2
+put CF 1 0
+end
+put CF 2 0
+pinit seed
+st = trainrun mask
+if ne st 0
+ret st
+end
+ret evalrun mask
+end
+fn otab to void
+ob 9
+end
+fn orow arm ulong seed ulong mask ulong to void
+onum arm
+otab
+onum seed
+otab
+onum mask
+otab
+for i ulong 6
+onum get EV i
+otab
+end
+onum wirebits
+otab
+if eq arm 1
+osci rowdrift mask
+else
+otx XNA
+end
+ob 10
+end
+
+note ---- criteria P1 P2 P3 P4 P6 (P5 needs the other build's table)
+fn mark s ulong seed ulong mask ulong to void
+if eq get CR s 0
+put CR add s 1 seed
+put CR add s 2 mask
+end
+put CR s add get CR s 1
+end
+fn critfull seed ulong mask ulong to void
+if or eq mask 39321 eq mask 42405
+if ge get EV 2 8
+mark 3 seed mask
+end
+d = rowdrift mask
+if not le d 1.0e-9f64
+mark 12 seed mask
+end
+if gt d get CD 0
+put CD 0 d
+end
+end
+if eq mask 65535
+c = rowdrift mask
+if gt c get CD 1
+put CD 1 c
+end
+end
+end
+fn crit arm ulong seed ulong mask ulong to void
+tok = get EV 0
+hok = get EV 2
+if eq arm 0
+bad = ulong 0
+if or ne tok get EV 1 ne hok get EV 3
+bad = 1
+end
+if or ne get EV 4 0 ne get EV 5 0
+bad = 1
+end
+if eq bad 1
+mark 0 seed mask
+end
+end
+if eq arm 1
+critfull seed mask
+end
+if eq arm 2
+if or ne tok get EV 1 ne hok get EV 3
+mark 6 seed mask
+end
+end
+if eq arm 3
+if eq mask 65535
+if ge add tok hok 16
+mark 9 seed mask
+end
+end
+end
+end
+note oline: P<n> PASS, or P<n> FAIL bad_rows=.. first_seed=.. first_mask=..; gives 1 on FAIL
+fn oline n ulong s ulong to ulong
+ob 80
+onum n
+bad = get CR s
+if eq bad 0
+otx XPASS
+ret 0
+end
+otx XFAIL
+otx XBAD
+onum bad
+otx XSEED
+onum get CR add s 1
+otx XMASK
+onum get CR add s 2
+ob 10
+ret 1
+end
+fn op5 to ulong
+code = get CR 15
+ob 80
+ob 53
+if eq code 0
+otx XPASS
+ret 0
+end
+otx XFAIL
+if eq code 1
+otx XNOPEER
+ret 1
+end
+if eq code 2
+otx XUNREAD
+ret 1
+end
+otx XDIFF
+onum get CR 16
+otx XOWN
+onum get CR 17
+otx XPEER
+onum get CR 18
+ob 10
+ret 1
+end
+fn op6 to ulong
+lem = get CR 12
+ctl = get CD 1
+bad = ulong 0
+if ne lem 0
+bad = 1
+end
+if not gt ctl 0.001f64
+bad = 1
+end
+ob 80
+ob 54
+if eq bad 0
+otx XPASS
+ret 0
+end
+otx XFAIL
+otx XLEMBAD
+onum lem
+otx XLEMMAX
+osci get CD 0
+otx XCTLMAX
+osci ctl
+ob 10
+ret 1
+end
+
+note ---- the grid
+fn gridseed i ulong to ulong
+if eq i 0
+ret 17
+end
+if eq i 1
+ret 29
+end
+ret 43
+end
+fn gridmask i ulong to ulong
+if eq i 0
+ret 65535
+end
+if eq i 1
+ret 38505
+end
+if eq i 2
+ret 39321
+end
+ret 42405
+end
+fn rungrid to int
+otx XHEAD
+for arm ulong 4
+for si ulong 3
+for mi ulong 4
+seed = gridseed si
+mask = gridmask mi
+st = runone arm seed mask
+if ne st 0
+ret st
+end
+orow arm seed mask
+crit arm seed mask
+end
+end
+end
+ret 0
+end
+
+note ---- P5: the other build's table, read from a file
+note peerload: bound: every pass reads at least one of at most 16385 bytes
+fn peerload n ulong to long
+fd = fopen AR 0 n 0 0
+if lt fd 0
+ret -1
+end
+got = ulong 0
+er = ulong 0
+while lt got 16385 bound 16386
+k = read int fd PB got sub 16385 got
+if lt k 0
+er = 1
+break
+end
+if eq k 0
+break
+end
+got = add got ulong k
+end
+c = fclose int fd
+if eq er 1
+ret -1
+end
+ret long got
+end
+note peercmp: 0 when OB[0..tl) equals PB[0..pl), else 1 + index of the first difference
+fn peercmp tl ulong pl ulong to ulong
+m = tl
+if lt pl m
+m = pl
+end
+for i ulong m
+if ne get OB i get PB i
+ret add i 1
+end
+end
+if ne tl pl
+ret add m 1
+end
+ret 0
+end
+fn peercheck tl ulong to void
+put CR 17 tl
+n = argread 2 AR 0 256
+if le n 0
+put CR 15 2
+ret
+end
+pl = peerload ulong n
+if lt pl 0
+put CR 15 2
+ret
+end
+put CR 18 ulong pl
+df = peercmp tl ulong pl
+put CR 15 0
+if ne df 0
+put CR 15 3
+put CR 16 df
+end
+end
+fn runall peer ulong to int
+st = rungrid
+if ne st 0
+ret st
+end
+put CR 15 1
+if eq peer 1
+peercheck get OL 0
+end
+fail = oline 1 0
+fail = add fail oline 2 3
+fail = add fail oline 3 6
+fail = add fail oline 4 9
+fail = add fail op5
+fail = add fail op6
+if eq fail 0
+otx XNLP
+oflush
+ret 0
+end
+otx XNLF
+oflush
+ret 1
+end
+fn runtable to int
+st = rungrid
+if ne st 0
+ret st
+end
+oflush
+ret 0
+end
+
+note ---- POST HOC sweep. Added after the first full run; NOT a pre-registered criterion.
+note For seeds 1..64 on the two correlated masks: how many seeds reach 8 of 8 held out, and for
+note arm 1 the largest drift of the always-equal pair (drift 0 1 on 39321, drift 0 2 on 42405).
+note The runs are the same runone as the grid: same model, optimizer, epochs and evaluation.
+fn sweepone arm ulong mask ulong to int
+n = ulong 0
+k = ulong 0
+m = 0.0f64
+for i ulong 64
+st = runone arm add i 1 mask
+if ne st 0
+ret st
+end
+n = add n 1
+if eq get EV 2 8
+k = add k 1
+end
+if eq arm 1
+d = rowdrift mask
+if not le d m
+m = d
+end
+end
+end
+otx XSWA
+onum arm
+otx XSWM
+onum mask
+otx XSWS
+onum n
+otx XSWK
+onum k
+otx XSWD
+if eq arm 1
+osci m
+else
+otx XNA
+end
+ob 10
+ret 0
+end
+fn runsweep to int
+otx XSWH
+for a ulong 2
+for mi ulong 2
+st = sweepone a gridmask add mi 2
+if ne st 0
+ret st
+end
+end
+end
+oflush
+ret 0
+end
+
+note ---- arguments
+fn argnum ix ulong to ulong
+n = argread ix AR 0 256
+if or le n 0 gt n 10
+exit 2
+end
+v = ulong 0
+for i ulong ulong n
+c = get AR i
+if or lt c 48 gt c 57
+exit 2
+end
+v = add mul v 10 ulong sub c 48
+end
+ret v
+end
+note argword: 1 all, 2 table, 3 grad, 4 sweep, 0 anything else
+fn argword ix ulong to ulong
+n = argread ix AR 0 256
+if eq n 5
+s = and and eq get AR 0 115 eq get AR 1 119 eq get AR 2 101
+if and and s eq get AR 3 101 eq get AR 4 112
+ret 4
+end
+end
+if eq n 3
+if and and eq get AR 0 97 eq get AR 1 108 eq get AR 2 108
+ret 1
+end
+end
+if eq n 5
+a = and and eq get AR 0 116 eq get AR 1 97 eq get AR 2 98
+if and and a eq get AR 3 108 eq get AR 4 101
+ret 2
+end
+end
+if eq n 4
+g = and and eq get AR 0 103 eq get AR 1 114 eq get AR 2 97
+if and g eq get AR 3 100
+ret 3
+end
+end
+ret 0
+end
+fn single to int
+arm = argnum 1
+seed = argnum 2
+mask = argnum 3
+if gt arm 3
+ret 2
+end
+if or eq seed 0 gt seed 4294967295
+ret 2
+end
+if or eq mask 0 gt mask 65535
+ret 2
+end
+st = runone arm seed mask
+if ne st 0
+ret st
+end
+orow arm seed mask
+oflush
+ret 0
+end
+
+note ---- gradient self-check (soft mode: s_k = h_k, no quantizer)
+note gpoint: seeded init plus an offset per parameter that keeps every u_k off the softsign kink:
+note tied 2^i * 1e-4, untied 2^(i div 4) * 1e-4. Then u_k is a multiple of 1/64 plus an amount
+note between 1e-4 and 31e-4, which is never within 1e-4 of zero.
+fn gpoint seed ulong to void
+pinit seed
+for i ulong get CF 1
+e = i
+if eq get CF 0 1
+e = div i 4
+end
+put PP i add get PP i mul 0.0001f64 f64 shl ulong 1 e
+end
+end
+fn gloss to f64
+st = forward
+ret loss
+end
+note gdiff: |hand-written - central difference| for parameter i at the current input, step 1e-6
+fn gdiff i ulong to f64
+keep = get PP i
+put PP i add keep 0.000001f64
+up = gloss
+put PP i sub keep 0.000001f64
+dn = gloss
+put PP i keep
+cd = div sub up dn 0.000002f64
+ret fabs sub cd get PG i
+end
+note gcheck: largest gdiff over all 16 IDs and all parameters
+fn gcheck seed ulong to f64
+gpoint seed
+worst = 0.0f64
+for id ulong 16
+setin id id
+st = forward
+gradient
+for i ulong get CF 1
+d = gdiff i
+if ne d d
+ret d
+end
+if gt d worst
+worst = d
+end
+end
+end
+ret worst
+end
+fn gradmode to int
+seed = argnum 2
+if or eq seed 0 gt seed 4294967295
+ret 2
+end
+bad = ulong 0
+for a ulong 2
+put CF 0 a
+put CF 1 4
+if eq a 1
+put CF 1 28
+end
+put CF 2 1
+w = gcheck seed
+otx XGARM
+onum a
+otx XGDIFF
+osci w
+ob 10
+if not lt w 1.0e-7f64
+bad = 1
+end
+end
+put CF 2 0
+if eq bad 0
+otx XGPASS
+oflush
+ret 0
+end
+otx XGFAIL
+oflush
+ret 1
+end
+

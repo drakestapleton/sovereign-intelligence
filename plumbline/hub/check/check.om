@@ -1,0 +1,2076 @@
+om2
+note plumbline/hub/check/check.om: hubcheck, an independent verifier of a built static site.
+note
+note   hubcheck DIR
+note
+note It reads the directory DIR and judges the files in it. It knows nothing about the program
+note that wrote them. The rules R01..R13, the bounds (reported as R00), the output lines and
+note what is not checked are in README.md beside this file. One unit, no imports:
+note   omc < check.om > hubcheck                                            (AArch64)
+note   { printf 'target x86linux\n'; cat check.om; } | omc-x86 > hubcheck   (x86-64)
+note Exit 0: every rule holds. Exit 1: violations were printed. Exit 2: usage, or DIR unreadable.
+note
+note Names: messages are texts m*, words to match are texts k*, so no local collides with them.
+
+note fb: the file being checked at [0, 4194305); a link's target page at [4194305, 8388610)
+global fb uchar 8388610
+note nb: entry paths relative to DIR, each in its own 1001-byte slot; eo, en, ek: slot offset,
+note length and kind of entry i (sorted by path before any check runs)
+global nb uchar 2002000
+global eo ulong 2000
+global en ulong 2000
+global ek uchar 2000
+note pb: an absolute path being built; db: nine getdents64 buffers, one per directory level;
+note kb: the path a link names; sb: a piece of an output line; dg: digits
+global pb uchar 4200
+global db uchar 294912
+global kb uchar 1100
+global sb uchar 1100
+global dg uchar 24
+note g: scalars, by the constants below; g 17..23 are the page-basics counters of R08
+global g ulong 32
+note ts: tag scanner state. 0, 1 tag name start and length; 2, 3 attribute name start and
+note length (length 0: the tag has ended); 4, 5 value start and length; 6 the attribute has a
+note value; 7 position after the tag; 8, 10..13 per-tag state of the pass; 9 attributes so far
+global ts ulong 16
+
+note GRL root path length, GNE entries, GND directories walked, GV violations, GCUR entry
+note being checked (2000: none), GLNK and GFRG links and fragments checked, GHTM html files,
+note GXL a path was too long, GTGT entry held in the target region plus 1, GTN its length,
+note GKL length of the key in kb, GKS and GKN the fragment looked for, GFND it was found,
+note GPN length of the path in pb, GK kind of the entry being checked, GFN its length
+const GRL ulong 0
+const GNE ulong 1
+const GND ulong 2
+const GV ulong 3
+const GCUR ulong 4
+const GLNK ulong 5
+const GFRG ulong 6
+const GHTM ulong 7
+const GXL ulong 8
+const GTGT ulong 9
+const GTN ulong 10
+const GKL ulong 11
+const GKS ulong 12
+const GKN ulong 13
+const GFND ulong 14
+const GPN ulong 15
+const GK ulong 16
+const GFN ulong 24
+
+text musage "usage: hubcheck DIR\n"
+text mnodir "hubcheck: cannot read the directory\n"
+text mfail "HUBCHECK FAIL R"
+text mfail11 "HUBCHECK FAIL R11 "
+text msp " "
+text mcol ": "
+text mnl "\n"
+text mdot "."
+text mline "line "
+text mpass "HUBCHECK PASS files="
+text mphtml " html="
+text mplnk " links="
+text mpfrg " fragments="
+text mviol "HUBCHECK FAIL violations="
+text mmany "more than 2000 files or more than 2000 directories"
+text mxlong "a path under DIR is over 1000 bytes"
+text mdeep "directory nested deeper than 8 levels"
+text mnord "cannot read the directory"
+text mnorf "cannot read the file"
+text mbig "file over 4 MiB"
+text mnreg "not a regular file"
+text mbext "file extension is not allowed"
+text mmiss "missing"
+text mempty "empty"
+text mscr "script tag is not the allowed JSON-LD block"
+text mscr2 "more than one script block"
+text mscr3 "JSON-LD block is not closed"
+text mscr4 "'<' inside the JSON-LD block"
+text mhand "event handler attribute: "
+text mjs "javascript: URL: "
+text mamp "character reference before the URL scheme: "
+text mfel "forbidden element: <"
+text mmref "meta refresh"
+text mreq " is not a local path or a data: URL: "
+text mlnk "link href is not a local path or a data: URL: "
+text msset "srcset candidate is not a local path or a data: URL: "
+text msvg "svg href is not a local path, a fragment or a data: URL: "
+text mcimp "@import in CSS"
+text mcurl "CSS url() target is not a local path or a data: URL: "
+text mplain "plain http URL: "
+text mtrk "tracker or outside font host: "
+text mrefu "refused local path: "
+text mnofile "no such file: "
+text mfnp "fragment on a file that is not a page: "
+text mnoid "no id for the fragment: "
+text mnodoc "does not start with <!doctype html>"
+text mnolang "no <html lang='en'>"
+text mtcnt "<title> count is "
+text mhcnt "<h1 count is "
+text mnot1 ", not 1"
+text mtbad "<title> text does not start with INTERPLANE"
+text mnovp "no <meta name='viewport'>"
+text mnodesc "no <meta name='description'> with content"
+text mnochs "no <meta charset='utf-8'>"
+text mendash "en dash U+2013"
+text memdash "em dash U+2014"
+text mclose "'}' without an open '{'"
+text mopen "'{' is never closed"
+text mctl "control byte "
+text mbadu "invalid UTF-8"
+
+text kscript "script"
+text ksa "<script type='application/ld+json'>"
+text ksb "<script type=\"application/ld+json\">"
+text ksc "</script>"
+text kjs "javascript:"
+text khref "href"
+text ksrc "src"
+text kxhref "xlink:href"
+text kiframe "iframe"
+text kobject "object"
+text kembed "embed"
+text kform "form"
+text kbase "base"
+text kmeta "meta"
+text khteq "http-equiv"
+text krefr "refresh"
+text klink "link"
+text kimage "image"
+text kuse "use"
+text kfeimg "feimage"
+text kstyle "style"
+text kcstyle "</style"
+text kposter "poster"
+text kping "ping"
+text kbackg "background"
+text ksrcset "srcset"
+text krel "rel"
+text krss "stylesheet"
+text kricon "icon"
+text krpre "preload"
+text krpc "preconnect"
+text krdns "dns-prefetch"
+text krman "manifest"
+text kdata "data:"
+text kimport "@import"
+text kurl "url("
+text kid "id"
+text khtml "html"
+text klang "lang"
+text ken "en"
+text kname "name"
+text kvp "viewport"
+text kdesc "description"
+text kcont "content"
+text kchs "charset"
+text kutf8 "utf-8"
+text ktitle "title"
+text kh1 "h1"
+text kinter "INTERPLANE"
+text kdoct "<!doctype html>"
+text khttp "http://"
+text kns1 "http://www.w3.org/2000/svg"
+text kns2 "http://www.w3.org/1999/xlink"
+text kns3 "http://www.sitemaps.org/schemas/sitemap/0.9"
+text kpc22 "%22"
+text kpc27 "%27"
+text ktr1 "fonts.googleapis"
+text ktr2 "fonts.gstatic"
+text ktr3 "googletagmanager"
+text ktr4 "google-analytics"
+text ktr5 "plausible.io"
+text ktr6 "cloudflareinsights"
+text ktr7 "umami"
+text ktr8 "doubleclick"
+text ktr9 "static.ads-twitter"
+text kcss "css"
+text ktxt "txt"
+text kxml "xml"
+text kjson "json"
+text ksvg "svg"
+text kwebp "webp"
+text kpng "png"
+text kico "ico"
+text kindex "index.html"
+text kreq2 "style.css"
+text kreq3 "robots.txt"
+text kreq4 "sitemap.xml"
+text kreq5 "llms.txt"
+
+note ---------------------------------------------------------------- output
+
+fn say t view uchar * to void
+w = write 1 t 0 len t
+end
+
+note sayn: v in decimal on stdout
+fn sayn v ulong to void
+x = v
+k = ulong 1
+put dg 0 uchar add rem x 10 48
+x = div x 10
+while gt x 0 bound 24
+put dg k uchar add rem x 10 48
+k = add k 1
+x = div x 10
+end
+while gt k 0 bound 24
+k = sub k 1
+w = write 1 dg k 1
+end
+end
+
+note sayb: at most 80 bytes of fb from o, control bytes shown as '?'
+fn sayb o ulong n ulong to void
+m = n
+if gt m 80
+m = 80
+end
+for i ulong m
+c = get fb add o i
+if or lt c 32 eq c 127
+c = 63
+end
+put sb i c
+end
+if gt m 0
+w = write 1 sb 0 m
+end
+end
+
+note sayp: the path of entry i relative to DIR, control bytes shown as '?'; "." for no entry
+fn sayp i ulong to void
+if ge i 2000
+say mdot
+ret
+end
+o = get eo i
+n = get en i
+for j ulong n
+c = get nb add o j
+if or lt c 32 eq c 127
+c = 63
+end
+put sb j c
+end
+w = write 1 sb 0 n
+end
+
+note vhead: count one violation of rule r. True when its line is to be printed (the first 50);
+note "HUBCHECK FAIL Rnn <path>: " is then already written and the caller adds the detail.
+fn vhead r ulong to bool
+v = add get g GV 1
+put g GV v
+if gt v 50
+ret false
+end
+say mfail
+put dg 0 uchar add 48 div r 10
+put dg 1 uchar add 48 rem r 10
+w = write 1 dg 0 2
+say msp
+sayp get g GCUR
+say mcol
+ret true
+end
+
+note lineof: the 1-based line of position p in the file being checked
+fn lineof p ulong to ulong
+k = ulong 1
+for i ulong p bound 4194306
+if eq get fb i 10
+k = add k 1
+end
+end
+ret k
+end
+
+note vat: vhead, then "line N: " for position p
+fn vat r ulong p ulong to bool
+if vhead r
+say mline
+sayn lineof p
+say mcol
+ret true
+end
+ret false
+end
+
+note v0, v1, v2: a violation with a fixed detail; at a line; at a line with a piece of the file
+fn v0 r ulong t view uchar * to void
+if vhead r
+say t
+say mnl
+end
+end
+
+fn v1 r ulong p ulong t view uchar * to void
+if vat r p
+say t
+say mnl
+end
+end
+
+fn v2 r ulong p ulong t view uchar * o ulong n ulong to void
+if vat r p
+say t
+sayb o n
+say mnl
+end
+end
+
+note vreq: an R11 violation about the required file t
+fn vreq t view uchar * d view uchar * to void
+v = add get g GV 1
+put g GV v
+if gt v 50
+ret
+end
+say mfail11
+say t
+say mcol
+say d
+say mnl
+end
+
+note ---------------------------------------------------------------- bytes of fb
+
+fn isws c uchar to bool
+ret or or eq c 32 eq c 10 or eq c 9 or eq c 13 eq c 12
+end
+
+fn low c uchar to uchar
+if ge c 65
+if le c 90
+ret add c 32
+end
+end
+ret c
+end
+
+fn alpha c uchar to bool
+d = low c
+ret and ge d 97 le d 122
+end
+
+note pfx: does fb[p, e) start with the text t
+fn pfx p ulong e ulong t view uchar * to bool
+n = len t
+if gt n sub e p
+ret false
+end
+for i ulong n
+if ne get fb add p i get t i
+ret false
+end
+end
+ret true
+end
+
+note pfxi: the same, ignoring ASCII case in fb (t is lower case)
+fn pfxi p ulong e ulong t view uchar * to bool
+n = len t
+if gt n sub e p
+ret false
+end
+for i ulong n
+if ne low get fb add p i get t i
+ret false
+end
+end
+ret true
+end
+
+note eqx: do the n bytes of fb at o equal the text t
+fn eqx o ulong n ulong t view uchar * to bool
+if ne n len t
+ret false
+end
+ret pfx o add o n t
+end
+
+note eqi: the same, ignoring ASCII case in fb
+fn eqi o ulong n ulong t view uchar * to bool
+if ne n len t
+ret false
+end
+ret pfxi o add o n t
+end
+
+note same: are the n bytes of fb at a and at b equal
+fn same a ulong b ulong n ulong to bool
+for i ulong n bound 4194306
+if ne get fb add a i get fb add b i
+ret false
+end
+end
+ret true
+end
+
+note bytepos: first position of the byte c in fb[q0, e), or e
+fn bytepos q0 ulong e ulong c uchar to ulong
+q = q0
+while lt q e bound 4194306
+if eq get fb q c
+break
+end
+q = add q 1
+end
+ret q
+end
+
+note skipw: first position in fb[q0, e) that is not white space, or e
+fn skipw q0 ulong e ulong to ulong
+q = q0
+while lt q e bound 4194306
+if not isws get fb q
+break
+end
+q = add q 1
+end
+ret q
+end
+
+note wsend: first white space in fb[q0, e), or e
+fn wsend q0 ulong e ulong to ulong
+q = q0
+while lt q e bound 4194306
+if isws get fb q
+break
+end
+q = add q 1
+end
+ret q
+end
+
+note ---------------------------------------------------------------- the entry list
+
+note nbeq: do the m bytes of nb at x equal the text t
+fn nbeq x ulong m ulong t view uchar * to bool
+if ne m len t
+ret false
+end
+for i ulong m
+if ne get nb add x i get t i
+ret false
+end
+end
+ret true
+end
+
+note kindof: kind of the path nb[o, o+n) by the extension of its last component. 1 html,
+note 2 css, 3 txt, 4 xml, 5 json, 6 svg, 7 webp, 8 png, 9 ico, 10 anything else. Lower case only.
+fn kindof o ulong n ulong to uchar
+d = n
+i = n
+while gt i 0 bound 1001
+i = sub i 1
+c = get nb add o i
+if eq c 47
+break
+end
+if eq c 46
+d = i
+break
+end
+end
+if eq d n
+ret 10
+end
+x = add add o d 1
+m = sub sub n d 1
+if nbeq x m khtml
+ret 1
+end
+if nbeq x m kcss
+ret 2
+end
+if nbeq x m ktxt
+ret 3
+end
+if nbeq x m kxml
+ret 4
+end
+if nbeq x m kjson
+ret 5
+end
+if nbeq x m ksvg
+ret 6
+end
+if nbeq x m kwebp
+ret 7
+end
+if nbeq x m kpng
+ret 8
+end
+if nbeq x m kico
+ret 9
+end
+ret 10
+end
+
+note toomany: the tree is over the file or directory bound. Nothing else was printed yet, and
+note nothing else is: which entries were read first depends on the listing order.
+fn toomany to void
+put g GCUR 2000
+put g GV 0
+if vhead 0
+say mmany
+say mnl
+end
+say mviol
+sayn 1
+say mnl
+exit 1
+end
+
+note addent: list pb[root+1, e) as an entry of kind k (0: a regular file, kind by extension;
+note 11 not a regular file; 12 a directory nested too deep; 13 an unreadable directory)
+fn addent e ulong k uchar to void
+c = get g GNE
+if ge c 2000
+toomany
+end
+s = add get g GRL 1
+n = sub e s
+o = mul c 1001
+for i ulong n
+put nb add o i get pb add s i
+end
+put eo c o
+put en c n
+kk = k
+if eq kk 0
+kk = kindof o n
+end
+put ek c kk
+put g GNE add c 1
+end
+
+note nodir: the directory pb[0, base) at level lvl cannot be read
+fn nodir lvl ulong base ulong to void
+if eq lvl 0
+w = write 2 mnodir 0 len mnodir
+exit 2
+end
+addent base 13
+end
+
+note dname: length of the zero-terminated name at o of db, inside the record that ends at z
+fn dname o ulong z ulong to ulong
+n = ulong 0
+while lt add o n z bound 32769
+if eq get db add o n 0
+break
+end
+n = add n 1
+end
+ret n
+end
+
+note isdots: is the name db[o, o+n) "." or ".."
+fn isdots o ulong n ulong to bool
+if eq n 1
+ret eq get db o 46
+end
+if eq n 2
+ret and eq get db o 46 eq get db add o 1 46
+end
+ret false
+end
+
+note dsub: the directory pb[0, e) was found in a directory of level lvl. DIR is level 0; a
+note directory of level 9 is listed as too deep and not entered.
+fn dsub lvl ulong e ulong to void
+if ge lvl 8
+addent e 12
+ret
+end
+d = add get g GND 1
+put g GND d
+if gt d 2000
+toomany
+end
+walk add lvl 1 e
+end
+
+note dcopy: pb[base, ...) becomes '/' and the name db[o, o+n)
+fn dcopy base ulong o ulong n ulong to void
+put pb base 47
+s = add base 1
+for i ulong n
+put pb add s i get db add o i
+end
+end
+
+note dent: take the getdents64 record at p of db (length at 16, type at 18, name from 19) found
+note in the directory pb[0, base) of level lvl; its length. Type 4 is a directory and 8 a
+note regular file; every other type, a symbolic link and DT_UNKNOWN included, is listed as not
+note a regular file and never opened. The record layout is the same on AArch64 and x86-64.
+fn dent lvl ulong base ulong p ulong to ulong
+x = add ulong get db add p 16 mul ulong get db add p 17 256
+if lt x 20
+nodir 0 base
+end
+o = add p 19
+n = dname o add p x
+if eq n 0
+ret x
+end
+if isdots o n
+ret x
+end
+e = add add base 1 n
+if gt sub e add get g GRL 1 1000
+put g GXL 1
+ret x
+end
+dcopy base o n
+t = get db add p 18
+if eq t 4
+dsub lvl e
+ret x
+end
+if eq t 8
+addent e 0
+ret x
+end
+addent e 11
+ret x
+end
+
+note walk: list everything under the directory pb[0, base) of level lvl, depth first. Each
+note level reads into its own 32768-byte part of db, so a deeper level never overwrites the
+note records its parents are still reading.
+fn walk lvl ulong base ulong to void
+fd = fopen pb 0 base 524288 0
+if lt fd 0
+nodir lvl base
+ret
+end
+off = mul lvl 32768
+while true bound 1048577
+k = getdnts int fd db off 32768
+if lt k 0
+nodir lvl base
+break
+end
+if eq k 0
+break
+end
+p = off
+z = add off ulong k
+while lt p z bound 32769
+p = add p dent lvl base p
+end
+end
+c = fclose int fd
+end
+
+note eless: is the path of entry x before that of entry y in byte order
+fn eless x ulong y ulong to bool
+a = get eo x
+b = get eo y
+m = get en x
+n = get en y
+k = m
+if lt n k
+k = n
+end
+for i ulong k
+c = get nb add a i
+d = get nb add b i
+if lt c d
+ret true
+end
+if gt c d
+ret false
+end
+end
+ret lt m n
+end
+
+fn eswap x ulong y ulong to void
+a = get eo x
+b = get en x
+c = get ek x
+put eo x get eo y
+put en x get en y
+put ek x get ek y
+put eo y a
+put en y b
+put ek y c
+end
+
+note esort: insertion sort of the at most 2000 entries by path, so that nothing printed
+note depends on the order in which the directories were listed
+fn esort to void
+n = get g GNE
+i = ulong 1
+while lt i n bound 2001
+j = i
+while gt j 0 bound 2001
+if not eless j sub j 1
+break
+end
+eswap j sub j 1
+j = sub j 1
+end
+i = add i 1
+end
+end
+
+note epath: pb becomes DIR/<path of entry i>, its length goes to g GPN
+fn epath i ulong to void
+r = get g GRL
+o = get eo i
+n = get en i
+put pb r 47
+for j ulong n
+put pb add add r 1 j get nb add o j
+end
+put g GPN add add r 1 n
+end
+
+note slurp: read entry i into fb from o (0, or 4194305 for a link target). The byte count;
+note 4194305 when the file is over 4 MiB, 4194306 when it cannot be read.
+fn slurp i ulong o ulong to ulong
+epath i
+fd = fopen pb 0 get g GPN 524288 0
+if lt fd 0
+ret 4194306
+end
+p = ulong 0
+while lt p 4194305 bound 4194306
+k = read int fd fb add o p sub 4194305 p
+if lt k 0
+c = fclose int fd
+ret 4194306
+end
+if eq k 0
+break
+end
+p = add p ulong k
+end
+c = fclose int fd
+ret p
+end
+
+note keytxt: the key becomes the text t
+fn keytxt t view uchar * to void
+n = len t
+for i ulong n
+put kb i get t i
+end
+put g GKL n
+end
+
+note keyfb: the key becomes the n bytes of fb at s (n at most 1000); a key that is empty or
+note ends in '/' names that directory's index.html
+fn keyfb s ulong n ulong to void
+for i ulong n
+put kb i get fb add s i
+end
+dir = eq n 0
+if gt n 0
+dir = eq get kb sub n 1 47
+end
+m = n
+if dir
+for j ulong len kindex
+put kb add n j get kindex j
+end
+m = add n len kindex
+end
+put g GKL m
+end
+
+note ecmp: entry i against the key: 0 before it, 1 equal, 2 after it
+fn ecmp i ulong to ulong
+o = get eo i
+m = get en i
+n = get g GKL
+k = m
+if lt n k
+k = n
+end
+for j ulong k
+a = get nb add o j
+b = get kb j
+if lt a b
+ret 0
+end
+if gt a b
+ret 2
+end
+end
+if lt m n
+ret 0
+end
+if gt m n
+ret 2
+end
+ret 1
+end
+
+note lookup: the entry whose path is the key and which is a regular file; 2000 when none
+fn lookup to ulong
+lo = ulong 0
+hi = get g GNE
+while lt lo hi bound 16
+mid = div add lo hi 2
+c = ecmp mid
+if eq c 1
+if gt get ek mid 10
+ret 2000
+end
+ret mid
+end
+if eq c 0
+lo = add mid 1
+end
+if eq c 2
+hi = mid
+end
+end
+ret 2000
+end
+
+note ---------------------------------------------------------------- the tag scanner
+note A tag starts at every '<' that a letter follows, wherever it stands: inside a comment, a
+note quoted value of another tag, a style or script block. Nothing is skipped, so the scanner
+note sees every tag a browser sees and some a browser would not; the rules fail closed.
+note Attributes are split as HTML does: name up to white space, '/', '>' or '='; a value in
+note double quotes, in single quotes, or bare up to white space or '>'.
+
+note tname: p is at '<', a letter follows. Record the name; the position after it.
+fn tname p ulong e ulong to ulong
+q = add p 1
+while lt q e bound 4194306
+c = get fb q
+if or or isws c eq c 47 eq c 62
+break
+end
+q = add q 1
+end
+put ts 0 add p 1
+put ts 1 sub q add p 1
+ret q
+end
+
+note skipsl: first position in fb[q0, e) that is neither white space nor '/', or e
+fn skipsl q0 ulong e ulong to ulong
+q = q0
+while lt q e bound 4194306
+c = get fb q
+if not or isws c eq c 47
+break
+end
+q = add q 1
+end
+ret q
+end
+
+note nend: end of the attribute name that starts at a; its first byte is taken as it is
+fn nend a ulong e ulong to ulong
+q = add a 1
+while lt q e bound 4194306
+c = get fb q
+if or or isws c eq c 47 or eq c 62 eq c 61
+break
+end
+q = add q 1
+end
+ret q
+end
+
+note uend: end of the bare value that starts at q0: white space or '>'
+fn uend q0 ulong e ulong to ulong
+q = q0
+while lt q e bound 4194306
+c = get fb q
+if or isws c eq c 62
+break
+end
+q = add q 1
+end
+ret q
+end
+
+note aval: q is just after an '='. Record the value in ts 4, 5; the position after it.
+fn aval q0 ulong e ulong to ulong
+q = skipw q0 e
+put ts 4 q
+if ge q e
+ret e
+end
+c = get fb q
+if eq c 62
+ret q
+end
+if or eq c 34 eq c 39
+v = add q 1
+z = bytepos v e c
+put ts 4 v
+put ts 5 sub z v
+if lt z e
+ret add z 1
+end
+ret e
+end
+z = uend q e
+put ts 5 sub z q
+ret z
+end
+
+note anext: the next attribute of the tag, from q0. ts 3 is 0 when the tag has ended (ts 7 is
+note then the position after it); otherwise ts 2..6 describe the attribute. The position to
+note go on from.
+fn anext q0 ulong e ulong to ulong
+q = skipsl q0 e
+put ts 3 0
+put ts 5 0
+put ts 6 0
+if ge q e
+put ts 7 e
+ret e
+end
+if eq get fb q 62
+put ts 7 add q 1
+ret add q 1
+end
+a = q
+q = nend a e
+put ts 2 a
+put ts 3 sub q a
+q = skipw q e
+if ge q e
+ret e
+end
+if ne get fb q 61
+ret q
+end
+put ts 6 1
+ret aval add q 1 e
+end
+
+note tn, an: is the tag name, the attribute name the lower-case text t (ASCII case ignored);
+note av: is the attribute value exactly t; avi: the same, ASCII case ignored
+fn tn t view uchar * to bool
+ret eqi get ts 0 get ts 1 t
+end
+
+fn an t view uchar * to bool
+ret eqi get ts 2 get ts 3 t
+end
+
+fn av t view uchar * to bool
+ret eqx get ts 4 get ts 5 t
+end
+
+fn avi t view uchar * to bool
+ret eqi get ts 4 get ts 5 t
+end
+
+note ---------------------------------------------------------------- R02 handlers
+
+note jsurl: does fb[s, e) spell "javascript:" once leading bytes up to space are dropped,
+note with TAB, LF and CR ignored between the letters and ASCII case ignored (as a browser reads
+note a URL)
+fn jsurl s ulong e ulong to bool
+q = s
+while lt q e bound 4194306
+if gt get fb q 32
+break
+end
+q = add q 1
+end
+for i ulong len kjs
+while lt q e bound 4194306
+c = get fb q
+if not or or eq c 9 eq c 10 eq c 13
+break
+end
+q = add q 1
+end
+if ge q e
+ret false
+end
+if ne low get fb q get kjs i
+ret false
+end
+q = add q 1
+end
+ret true
+end
+
+note ampsch: is there an '&' in fb[s, e) before the first ':', '/' or '?'. A character
+note reference there could spell a scheme that jsurl does not see. A fragment is left alone.
+fn ampsch s ulong e ulong to bool
+if ge s e
+ret false
+end
+if eq get fb s 35
+ret false
+end
+q = s
+while lt q e bound 4194306
+c = get fb q
+if eq c 38
+ret true
+end
+if or or eq c 58 eq c 47 eq c 63
+ret false
+end
+q = add q 1
+end
+ret false
+end
+
+fn a02 to void
+a = get ts 2
+n = get ts 3
+if ge n 3
+if eq low get fb a 111
+if eq low get fb add a 1 110
+v2 2 a mhand a n
+end
+end
+end
+if eq get ts 6 0
+ret
+end
+s = get ts 4
+m = get ts 5
+if jsurl s add s m
+v2 2 s mjs s m
+ret
+end
+if or or an khref an ksrc an kxhref
+if ampsch s add s m
+v2 2 s mamp s m
+end
+end
+end
+
+note ---------------------------------------------------------------- R03 embeds
+
+fn b03 p ulong to void
+put ts 8 0
+if or or tn kiframe tn kobject tn kembed
+v2 3 p mfel get ts 0 get ts 1
+end
+if or tn kform tn kbase
+v2 3 p mfel get ts 0 get ts 1
+end
+if tn kmeta
+put ts 8 1
+end
+end
+
+fn a03 to void
+if eq get ts 8 1
+if an khteq
+if avi krefr
+v1 3 get ts 2 mmref
+end
+end
+end
+end
+
+note ---------------------------------------------------------------- R04 outside requests
+
+note oklocal: is fb[s, e) a local path: '/' first, then neither '/' nor a backslash, and no
+note byte up to space, no backslash and no '&' anywhere (a browser would read those as
+note something else than the path that is written)
+fn oklocal s ulong e ulong to bool
+if ge s e
+ret false
+end
+if ne get fb s 47
+ret false
+end
+q = add s 1
+if lt q e
+if eq get fb q 47
+ret false
+end
+end
+while lt q e bound 4194306
+c = get fb q
+if or or le c 32 eq c 92 eq c 38
+ret false
+end
+q = add q 1
+end
+ret true
+end
+
+note okreq: may a browser fetch fb[s, s+m): a data: URL or a local path
+fn okreq s ulong m ulong to bool
+e = add s m
+if pfx s e kdata
+ret true
+end
+ret oklocal s e
+end
+
+note srcset: every candidate of the srcset value fb[s, e) must pass okreq. A candidate is a run
+note without white space; commas at its end are dropped; a descriptor runs to the next comma.
+fn srcset s ulong e ulong to void
+q = s
+while lt q e bound 4194306
+while lt q e bound 4194306
+c = get fb q
+if not or isws c eq c 44
+break
+end
+q = add q 1
+end
+if ge q e
+break
+end
+a = q
+q = wsend q e
+z = q
+while gt z a bound 4194306
+if ne get fb sub z 1 44
+break
+end
+z = sub z 1
+end
+if not okreq a sub z a
+v2 4 a msset a sub z a
+end
+if eq z q
+q = bytepos q e 44
+end
+end
+end
+
+note relhit: is the rel token fb[a, a+n) one that makes a browser fetch the href
+fn relhit a ulong n ulong to bool
+if or or eqi a n krss eqi a n kricon eqi a n krpre
+ret true
+end
+ret or or eqi a n krpc eqi a n krdns eqi a n krman
+end
+
+note reltok: does the rel value fb[s, e) hold such a token
+fn reltok s ulong e ulong to bool
+q = s
+while lt q e bound 4194306
+q = skipw q e
+if ge q e
+break
+end
+a = q
+q = wsend q e
+if relhit a sub q a
+ret true
+end
+end
+ret false
+end
+
+note cssurl: p is at "url(" in fb[p, e). Its target, quoted or not, must pass okreq.
+fn cssurl p ulong e ulong to void
+q = skipw add p 4 e
+if lt q e
+c = get fb q
+if or eq c 34 eq c 39
+q = add q 1
+end
+end
+z = q
+while lt z e bound 4194306
+d = get fb z
+if or or eq d 41 eq d 34 or eq d 39 isws d
+break
+end
+z = add z 1
+end
+if not okreq q sub z q
+v2 4 p mcurl q sub z q
+end
+end
+
+note cssrng: CSS in fb[s, e): no @import, and every url( target passes okreq. ASCII case is
+note ignored; CSS escapes are not decoded (README, what is not checked).
+fn cssrng s ulong e ulong to void
+p = s
+while lt p e bound 4194306
+c = low get fb p
+if eq c 64
+if pfxi p e kimport
+v1 4 p mcimp
+end
+end
+if eq c 117
+if pfxi p e kurl
+cssurl p e
+end
+end
+p = add p 1
+end
+end
+
+note closer: first position in fb[q0, e) where the closing tag t starts (ASCII case ignored)
+fn closer q0 ulong e ulong t view uchar * to ulong
+q = q0
+while lt q e bound 4194306
+if eq get fb q 60
+if pfxi q e t
+ret q
+end
+end
+q = add q 1
+end
+ret e
+end
+
+note b04: ts 8 is 1 for a link tag, 2 for an svg image, use or feimage, 3 for a style tag;
+note ts 10 is set when a rel token asks for a fetch; ts 11 is 2 when the link has an href
+note that may not be fetched, which is then at ts 12, 13
+fn b04 to void
+put ts 8 0
+put ts 10 0
+put ts 11 0
+if tn klink
+put ts 8 1
+end
+if or or tn kimage tn kuse tn kfeimg
+put ts 8 2
+end
+if tn kstyle
+put ts 8 3
+end
+end
+
+note a04l: an attribute of a link tag. A tag may repeat href and a browser takes the first, so
+note the first href that is not fetchable is the one kept (ts 11 is then 2).
+fn a04l s ulong m ulong to void
+if an krel
+if reltok s add s m
+put ts 10 1
+end
+end
+if an khref
+if ne get ts 11 2
+if not okreq s m
+put ts 11 2
+put ts 12 s
+put ts 13 m
+end
+end
+end
+end
+
+note a04s: an attribute of an svg image, use or feimage: href may be a fragment too
+fn a04s s ulong m ulong to void
+if or an khref an kxhref
+if gt m 0
+if eq get fb s 35
+ret
+end
+end
+if not okreq s m
+v2 4 s msvg s m
+end
+end
+end
+
+fn a04 to void
+s = get ts 4
+m = get ts 5
+if or or an ksrc an kposter or an kping an kbackg
+if not okreq s m
+if vat 4 get ts 2
+sayb get ts 2 get ts 3
+say mreq
+sayb s m
+say mnl
+end
+end
+ret
+end
+if an ksrcset
+srcset s add s m
+ret
+end
+if an kstyle
+cssrng s add s m
+ret
+end
+k = get ts 8
+if eq k 1
+a04l s m
+end
+if eq k 2
+a04s s m
+end
+end
+
+note e04: the tag has ended. A link whose rel asks for a fetch needs a fetchable href; the
+note content of a style tag, up to its closing tag, is CSS.
+fn e04 e ulong to void
+k = get ts 8
+if eq k 1
+if eq get ts 10 1
+if eq get ts 11 2
+v2 4 get ts 12 mlnk get ts 12 get ts 13
+end
+end
+end
+if eq k 3
+q = get ts 7
+cssrng q closer q e kcstyle
+end
+end
+
+note ---------------------------------------------------------------- R07 local links
+
+note badpath: is the local path fb[s, h) refused: over 1000 bytes, "..", "//", a backslash,
+note an '&' or a byte up to space in it
+fn badpath s ulong h ulong to bool
+if gt sub h s 1000
+ret true
+end
+q = s
+while lt q h bound 1001
+c = get fb q
+if or or le c 32 eq c 92 eq c 38
+ret true
+end
+if lt add q 1 h
+d = get fb add q 1
+if and eq c 47 eq d 47
+ret true
+end
+if and eq c 46 eq d 46
+ret true
+end
+end
+q = add q 1
+end
+ret false
+end
+
+note tload: have entry i in the target region of fb (kept until another target is needed)
+fn tload i ulong to void
+if eq get g GTGT add i 1
+ret
+end
+n = slurp i 4194305
+if gt n 4194304
+n = 0
+end
+put g GTGT add i 1
+put g GTN n
+end
+
+note fragck: the link value fb[s, s+m) has the fragment fb[f, f+n), n above 0. It must be the
+note value of an id attribute in entry i, or in the page being checked when i is 2000.
+fn fragck i ulong s ulong m ulong f ulong n ulong to void
+put g GFRG add get g GFRG 1
+put g GKS f
+put g GKN n
+put g GFND 0
+self = ge i 2000
+if lt i 2000
+self = eq i get g GCUR
+end
+if self
+scan 0 get g GFN 9
+end
+if not self
+k = get ek i
+if not or eq k 1 eq k 6
+v2 7 s mfnp s m
+ret
+end
+tload i
+scan 4194305 add 4194305 get g GTN 9
+end
+if eq get g GFND 0
+v2 7 s mnoid s m
+end
+end
+
+note loclink: the href or src value fb[s, s+m) starts with '/'. Its path must name a regular
+note file under DIR, and its fragment, when there is one, an id in that file. The path ends
+note at the first '?' or '#'; a query is not looked at, as a static host does not look at it.
+fn loclink s ulong m ulong to void
+put g GLNK add get g GLNK 1
+e = add s m
+h = bytepos s e 35
+q = bytepos s h 63
+if badpath s q
+v2 7 s mrefu s m
+ret
+end
+keyfb add s 1 sub sub q s 1
+i = lookup
+if ge i 2000
+v2 7 s mnofile s m
+ret
+end
+if lt add h 1 e
+fragck i s m add h 1 sub sub e h 1
+end
+end
+
+note a07: this pass scans the target page from inside the attribute hook (fragck), which
+note overwrites ts; it reads what it needs from ts before that and nothing after. Leading
+note bytes up to space are dropped first, as a browser drops them from a URL.
+fn a07 to void
+if eq get ts 6 0
+ret
+end
+if not or an khref an ksrc
+ret
+end
+z = add get ts 4 get ts 5
+s = get ts 4
+while lt s z bound 4194306
+if gt get fb s 32
+break
+end
+s = add s 1
+end
+m = sub z s
+if eq m 0
+ret
+end
+c = get fb s
+if eq c 35
+if gt m 1
+fragck 2000 s m add s 1 sub m 1
+end
+ret
+end
+if eq c 47
+loclink s m
+end
+end
+
+note a09: the pass that looks for id = the fragment g GKS, g GKN
+fn a09 to void
+if eq get ts 6 0
+ret
+end
+if an kid
+if eq get ts 5 get g GKN
+if same get ts 4 get g GKS get g GKN
+put g GFND 1
+end
+end
+end
+end
+
+note ---------------------------------------------------------------- R08 page basics
+
+fn b08 to void
+put ts 8 0
+put ts 10 0
+put ts 11 0
+if tn kmeta
+put ts 8 1
+end
+end
+
+note a08m: an attribute of a meta tag
+fn a08m to void
+if an kname
+if av kvp
+put ts 10 1
+end
+if av kdesc
+put ts 10 2
+end
+end
+if an kcont
+if gt get ts 5 0
+put ts 11 1
+end
+end
+if an kchs
+if av kutf8
+put g 22 1
+end
+end
+end
+
+fn a08 to void
+if tn khtml
+if an klang
+if av ken
+put g 19 1
+end
+end
+end
+if eq get ts 8 1
+a08m
+end
+end
+
+note e08: a title tag counts when it has no attribute, as the rule writes it: <title>
+fn e08 e ulong to void
+if eq get ts 8 1
+if eq get ts 10 1
+put g 20 1
+end
+if eq get ts 10 2
+if eq get ts 11 1
+put g 21 1
+end
+end
+end
+if tn ktitle
+if eq get ts 9 0
+c = add get g 17 1
+put g 17 c
+if eq c 1
+if pfx get ts 7 e kinter
+put g 23 1
+end
+end
+end
+end
+if tn kh1
+put g 18 add get g 18 1
+end
+end
+
+note ---------------------------------------------------------------- the passes
+
+fn tbeg mode ulong p ulong to void
+if eq mode 3
+b03 p
+end
+if eq mode 4
+b04
+end
+if eq mode 8
+b08
+end
+end
+
+fn attr mode ulong to void
+if eq mode 2
+a02
+end
+if eq mode 3
+a03
+end
+if eq mode 4
+a04
+end
+if eq mode 7
+a07
+end
+if eq mode 8
+a08
+end
+if eq mode 9
+a09
+end
+end
+
+fn tend mode ulong e ulong to void
+if eq mode 4
+e04 e
+end
+if eq mode 8
+e08 e
+end
+end
+
+note tag: the tag at p of fb[p, e), for the pass mode
+fn tag p ulong e ulong mode ulong to void
+q = tname p e
+put ts 9 0
+tbeg mode p
+while true bound 4194306
+q = anext q e
+if eq get ts 3 0
+break
+end
+attr mode
+put ts 9 add get ts 9 1
+end
+tend mode e
+end
+
+note scan: run the pass mode over every tag of fb[s, e). 2 handlers, 3 embeds, 4 outside
+note requests, 7 local links, 8 page basics, 9 the id a fragment names.
+fn scan s ulong e ulong mode ulong to void
+p = s
+while lt add p 1 e bound 4194306
+if eq get fb p 60
+if alpha get fb add p 1
+tag p e mode
+end
+end
+p = add p 1
+end
+end
+
+note ---------------------------------------------------------------- R01 script
+
+note r01one: the cnt-th "<script" of the file is at p
+fn r01one p ulong n ulong cnt ulong to void
+q = ulong 0
+if pfx p n ksa
+q = add p len ksa
+end
+if pfx p n ksb
+q = add p len ksb
+end
+if eq q 0
+v1 1 p mscr
+ret
+end
+if gt cnt 1
+v1 1 p mscr2
+ret
+end
+q = bytepos q n 60
+if ge q n
+v1 1 p mscr3
+ret
+end
+if not pfx q n ksc
+v1 1 q mscr4
+end
+end
+
+note r01: every "<script", in any case and anywhere in the file, must be the one allowed block
+fn r01 n ulong to void
+cnt = ulong 0
+p = ulong 0
+while lt p n bound 4194306
+if eq get fb p 60
+if pfxi add p 1 n kscript
+cnt = add cnt 1
+r01one p n cnt
+end
+end
+p = add p 1
+end
+end
+
+note ---------------------------------------------------------------- R05 http
+
+note nsone: is the namespace t at p, and ended there: by the end of the file, a quote, white
+note space, '<', '>' or a percent-encoded quote
+fn nsone p ulong n ulong t view uchar * to bool
+if not pfx p n t
+ret false
+end
+q = add p len t
+if ge q n
+ret true
+end
+c = get fb q
+if or or eq c 39 eq c 34 isws c
+ret true
+end
+if or eq c 60 eq c 62
+ret true
+end
+if eq c 37
+ret or pfx q n kpc22 pfx q n kpc27
+end
+ret false
+end
+
+fn nsok p ulong n ulong to bool
+if nsone p n kns1
+ret true
+end
+if nsone p n kns2
+ret true
+end
+ret nsone p n kns3
+end
+
+note urlend: where the URL at p stops for display: white space, a quote, '<', '>' or ')'
+fn urlend p ulong n ulong to ulong
+q = p
+while lt q n bound 4194306
+c = get fb q
+if or or isws c eq c 39 or eq c 34 or eq c 60 eq c 62
+break
+end
+if eq c 41
+break
+end
+q = add q 1
+end
+ret q
+end
+
+fn r05 n ulong to void
+p = ulong 0
+while lt p n bound 4194306
+if eq low get fb p 104
+if pfxi p n khttp
+if not nsok p n
+v2 5 p mplain p sub urlend p n p
+end
+end
+end
+p = add p 1
+end
+end
+
+note ---------------------------------------------------------------- R06 trackers
+
+note trkv: the tracker substring t is at p. A line number is given for text kinds only.
+fn trkv p ulong t view uchar * to void
+if le get g GK 6
+if vat 6 p
+say mtrk
+say t
+say mnl
+end
+ret
+end
+if vhead 6
+say mtrk
+say t
+say mnl
+end
+end
+
+fn trkone p ulong n ulong t view uchar * to void
+if pfxi p n t
+trkv p t
+end
+end
+
+fn r06 n ulong to void
+p = ulong 0
+while lt p n bound 4194306
+c = low get fb p
+if or eq c 102 eq c 103
+trkone p n ktr1
+trkone p n ktr2
+trkone p n ktr3
+trkone p n ktr4
+end
+if or eq c 112 eq c 99
+trkone p n ktr5
+trkone p n ktr6
+end
+if or or eq c 117 eq c 100 eq c 115
+trkone p n ktr7
+trkone p n ktr8
+trkone p n ktr9
+end
+p = add p 1
+end
+end
+
+note ---------------------------------------------------------------- R08, R09, R10, R12
+
+note vcnt: "<what> count is N, not 1"
+fn vcnt t view uchar * c ulong to void
+if vhead 8
+say t
+sayn c
+say mnot1
+say mnl
+end
+end
+
+fn r08 n ulong to void
+for i ulong 7
+put g add 17 i 0
+end
+scan 0 n 8
+if not pfxi 0 n kdoct
+v0 8 mnodoc
+end
+if eq get g 19 0
+v0 8 mnolang
+end
+c = get g 17
+if ne c 1
+vcnt mtcnt c
+end
+if eq c 1
+if eq get g 23 0
+v0 8 mtbad
+end
+end
+h = get g 18
+if ne h 1
+vcnt mhcnt h
+end
+if eq get g 20 0
+v0 8 mnovp
+end
+if eq get g 21 0
+v0 8 mnodesc
+end
+if eq get g 22 0
+v0 8 mnochs
+end
+end
+
+fn r09 n ulong to void
+p = ulong 0
+while lt add p 2 n bound 4194306
+if eq get fb p 226
+if eq get fb add p 1 128
+c = get fb add p 2
+if eq c 147
+v1 9 p mendash
+end
+if eq c 148
+v1 9 p memdash
+end
+end
+end
+p = add p 1
+end
+end
+
+fn r10 n ulong to void
+d = ulong 0
+p = ulong 0
+while lt p n bound 4194306
+c = get fb p
+if eq c 123
+d = add d 1
+end
+if eq c 125
+if eq d 0
+v1 10 p mclose
+ret
+end
+d = sub d 1
+end
+p = add p 1
+end
+if gt d 0
+v0 10 mopen
+end
+end
+
+note inr: is p inside the file and its byte in lo..hi
+fn inr p ulong n ulong lo uchar hi uchar to bool
+if ge p n
+ret false
+end
+c = get fb p
+ret and ge c lo le c hi
+end
+
+note u8len: length of the well-formed UTF-8 sequence whose lead byte (128 or more) is at p;
+note 0 when it is not one. Overlong forms, surrogates and values above U+10FFFF are refused.
+fn u8len p ulong n ulong to ulong
+c = get fb p
+if lt c 194
+ret 0
+end
+if gt c 244
+ret 0
+end
+lo = uchar 128
+hi = uchar 191
+if le c 223
+if inr add p 1 n lo hi
+ret 2
+end
+ret 0
+end
+if eq c 224
+lo = 160
+end
+if eq c 237
+hi = 159
+end
+if eq c 240
+lo = 144
+end
+if eq c 244
+hi = 143
+end
+if not inr add p 1 n lo hi
+ret 0
+end
+if not inr add p 2 n 128 191
+ret 0
+end
+if le c 239
+ret 3
+end
+if not inr add p 3 n 128 191
+ret 0
+end
+ret 4
+end
+
+note r12: valid UTF-8 and no control byte but LF and TAB; the first offence is reported
+fn r12 n ulong to void
+p = ulong 0
+while lt p n bound 4194306
+c = get fb p
+k = ulong 1
+if lt c 128
+if or and lt c 32 and ne c 10 ne c 9 eq c 127
+if vat 12 p
+say mctl
+sayn ulong c
+say mnl
+end
+ret
+end
+end
+if ge c 128
+k = u8len p n
+if eq k 0
+v1 12 p mbadu
+ret
+end
+end
+p = add p k
+end
+end
+
+note ---------------------------------------------------------------- one entry, and main
+
+note need: R11, the required file t exists as a regular file and is not empty
+fn need t view uchar * to void
+keytxt t
+i = lookup
+if ge i 2000
+vreq t mmiss
+ret
+end
+if eq slurp i 0 0
+vreq t mempty
+end
+end
+
+note judge: every rule that applies to entry i, in rule order
+fn judge i ulong to void
+put g GCUR i
+k = get ek i
+put g GK ulong k
+if eq k 12
+v0 0 mdeep
+ret
+end
+if eq k 13
+v0 0 mnord
+ret
+end
+if eq k 11
+v0 13 mnreg
+ret
+end
+n = slurp i 0
+put g GFN n
+if eq n 4194306
+v0 0 mnorf
+ret
+end
+if eq n 4194305
+v0 0 mbig
+ret
+end
+page = or eq k 1 eq k 6
+if eq k 1
+put g GHTM add get g GHTM 1
+end
+if page
+r01 n
+scan 0 n 2
+scan 0 n 3
+scan 0 n 4
+end
+if eq k 2
+cssrng 0 n
+end
+if le k 6
+r05 n
+end
+r06 n
+if page
+scan 0 n 7
+end
+if eq k 1
+r08 n
+end
+if or eq k 1 eq k 2
+r09 n
+end
+if eq k 2
+r10 n
+end
+if le k 6
+r12 n
+end
+if eq k 10
+v0 13 mbext
+end
+end
+
+fn main to int
+if ne argcnt 2
+w = write 2 musage 0 len musage
+ret 2
+end
+a = argread 1 pb 0 3000
+if le a 0
+w = write 2 musage 0 len musage
+ret 2
+end
+m = ulong a
+while gt m 1 bound 3001
+if ne get pb sub m 1 47
+break
+end
+m = sub m 1
+end
+put g GRL m
+put g GCUR 2000
+walk 0 m
+esort
+if eq get g GXL 1
+v0 0 mxlong
+end
+need kindex
+need kreq2
+need kreq3
+need kreq4
+need kreq5
+c = get g GNE
+i = ulong 0
+while lt i c bound 2001
+judge i
+i = add i 1
+end
+v = get g GV
+if gt v 0
+say mviol
+sayn v
+say mnl
+ret 1
+end
+say mpass
+sayn c
+say mphtml
+sayn get g GHTM
+say mplnk
+sayn get g GLNK
+say mpfrg
+sayn get g GFRG
+say mnl
+ret 0
+end
