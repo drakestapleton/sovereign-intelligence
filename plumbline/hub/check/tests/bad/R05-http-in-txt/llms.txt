@@ -1,9 +1,0 @@
-# INTERPLANE fixture
-
-> A small valid site that the hubcheck tests copy and then break in one place.
-
-## Pages
-
-- [Home](http://example.org/): the overview
-- [About](https://example.org/about/): who keeps it
-- [Guide](https://example.org/docs/guide.html): install and verify

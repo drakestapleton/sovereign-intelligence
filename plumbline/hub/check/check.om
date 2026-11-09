@@ -1399,16 +1399,18 @@ end
 end
 
 note loclink: the href or src value fb[s, s+m) starts with '/'. Its path must name a regular
-note file under DIR, and its fragment, when there is one, an id in that file.
+note file under DIR, and its fragment, when there is one, an id in that file. The path ends
+note at the first '?' or '#'; a query is not looked at, as a static host does not look at it.
 fn loclink s ulong m ulong to void
 put g GLNK add get g GLNK 1
 e = add s m
 h = bytepos s e 35
-if badpath s h
+q = bytepos s h 63
+if badpath s q
 v2 7 s mrefu s m
 ret
 end
-keyfb add s 1 sub sub h s 1
+keyfb add s 1 sub sub q s 1
 i = lookup
 if ge i 2000
 v2 7 s mnofile s m

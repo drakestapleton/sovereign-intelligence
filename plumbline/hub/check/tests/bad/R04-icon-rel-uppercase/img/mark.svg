@@ -1,5 +1,0 @@
-<svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' viewBox='0 0 32 32'>
-<defs><path id='beam' d='M5 11h22M5 21h22' stroke='#14161b' stroke-width='2' fill='none'/></defs>
-<use xlink:href='#beam'/>
-<path d='M16 4v24' stroke='#f2a93b' stroke-width='3' fill='none'/>
-</svg>

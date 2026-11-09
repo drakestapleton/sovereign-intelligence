@@ -123,6 +123,45 @@ for t in $TARGETS; do
 done
 pass "hub controls ($TARGETS): wrong total, missing section, registry without a table and http:// refused with no file written; hostile description escaped; sample registry counted as 3; no count stated without a registry"
 
+# --- H3. The verifier: an independent Omega program that judges an output directory.
+K=$P/hub/check
+build1() { # build1 NAME TARGET UNIT: compile one unit for one target into $O/NAME-TARGET
+  if [ "$2" = a64 ]; then a64 "$OMC_A64" < "$3" > "$O/$1-a64" || fail "$1 (a64) does not compile"
+  else { printf 'target x86linux\n'; cat "$3"; } | x86 "$OMC_X86" > "$O/$1-x86" || fail "$1 (x86) does not compile"; fi
+  chmod +x "$O/$1-$2"
+}
+build hubcheck $K/check.om
+build hcrun $K/tests/run.om
+build hcsubst $K/tests/subst.om
+for t in $TARGETS; do
+  # the driver starts hubcheck itself, so under emulation it needs the emulator's full path
+  if [ $t = a64 ]; then q=$A64; else q=$X86; fi
+  runner=""
+  if [ -n "$q" ]; then runner=$(command -v "$q"); fi
+  $t "$O/hubcheck-$t" "$O/site-$t" > "$O/hubcheck-$t.out" || fail "hubcheck ($t) rejects the generated site: $(cat "$O/hubcheck-$t.out")"
+  $t "$O/hubcheck-$t" "$O/c-hostile-$t" > /dev/null || fail "hubcheck ($t) rejects the site built from the hostile description"
+  mkdir -p "$O/hc-work-$t"
+  $t "$O/hcrun-$t" "$O/hubcheck-$t" $K/tests "$O/hc-work-$t" $runner > "$O/hcrun-$t.out" \
+    || fail "hubcheck ($t) fails its own case table: $(tail -3 "$O/hcrun-$t.out")"
+  cp -r "$O/site-$t" "$O/site-planted-$t"
+  printf "<script src='https://evil.example/x.js'></script>\n" >> "$O/site-planted-$t/stack/index.html"
+  if $t "$O/hubcheck-$t" "$O/site-planted-$t" > "$O/hubcheck-planted-$t.out"; then fail "hubcheck ($t) passed a site with a planted outside script"; fi
+  grep -q '^HUBCHECK FAIL R01 stack/index.html' "$O/hubcheck-planted-$t.out" || fail "hubcheck ($t) failed the planted site for another reason"
+  for m in r09 r03; do
+    if [ $m = r09 ]; then from='\nr09 n\n'; want=2; else from='\nscan 0 n 3\n'; want=6; fi
+    $t "$O/hcsubst-$t" $K/check.om "$O/check-$m-$t.om" "$from" '\n' > /dev/null 2>&1 || fail "subst ($t) could not build the $m mutant of the verifier"
+    build1 hubcheck-$m $t "$O/check-$m-$t.om"
+    mkdir -p "$O/hc-work-$m-$t"
+    if $t "$O/hcrun-$t" "$O/hubcheck-$m-$t" $K/tests "$O/hc-work-$m-$t" $runner > "$O/hcrun-$m-$t.out"; then fail "the verifier's case table passed the $m mutant ($t)"; fi
+    grep -q "^HUBCHECK-TESTS FAIL cases=[0-9]* failed=$want\$" "$O/hcrun-$m-$t.out" || fail "the $m mutant ($t) did not fail exactly $want cases: $(tail -1 "$O/hcrun-$m-$t.out")"
+  done
+done
+if [ "$TARGETS" = "a64 x86" ]; then
+  cmp -s "$O/hubcheck-a64.out" "$O/hubcheck-x86.out" || fail "hubcheck: the two targets judged the site differently"
+  cmp -s "$O/hcrun-a64.out" "$O/hcrun-x86.out" || fail "hubcheck: the two targets ran the case table differently"
+fi
+pass "hubcheck ($TARGETS): $(cat "$O/hubcheck-a64.out"); $(tail -1 "$O/hcrun-a64.out"); a planted outside script fails R01; the verifier with rule R09 removed fails 2 of its cases and with R03 removed fails 6"
+
 # --- N1. The Neuralese experiment: its recorded table and verdicts, on both targets.
 build nl8 $N/nl8.om $N/main.om
 for t in $TARGETS; do

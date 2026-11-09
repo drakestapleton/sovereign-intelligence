@@ -6,19 +6,24 @@ note
 note Reads IN (at most 4 MiB), looks for the bytes of FROM, and writes OUT: IN with that one
 note occurrence replaced by the bytes of TO (TO may be empty). FROM must occur exactly once:
 note zero or several occurrences are refused and OUT is not written. Overlapping occurrences
-note count separately. IN and OUT may be the same path. The tests use it to plant one violation
-note in a copy of a fixture, and to build a mutant of check.om with one check removed.
+note count separately. IN and OUT may be the same path. FROM and TO take the escapes of
+note cases.tsv: \n \t \r \\ and \xHH (two hex digits); any other backslash is a usage error.
+note The tests use it to build a mutant of check.om with one check removed:
+note   subst check.om mutant.om '\nr09 n\n' '\n'
 note Exit 0 done, 1 refused (stderr says why), 2 usage or a file error.
 note   omc < subst.om > subst        { printf 'target x86linux\n'; cat subst.om; } | omc-x86 > subst
 
+note fb: the file; pa, pz: the paths IN and OUT; ab: an argument as given; fr, tx: FROM and
+note TO with the escapes decoded
 global fb uchar 4194305
 global pa uchar 4096
 global pz uchar 4096
+global ab uchar 4096
 global fr uchar 4096
 global tx uchar 4096
 global dg uchar 24
 
-text musage "usage: subst IN OUT FROM TO\n"
+text musage "usage: subst IN OUT FROM TO   (FROM, TO: text with the escapes \\n \\t \\r \\\\ \\xHH)\n"
 text mopen "subst: cannot read IN\n"
 text mbig "subst: IN is over 4 MiB\n"
 text mwrite "subst: cannot write OUT\n"
@@ -42,6 +47,77 @@ while gt k 0 bound 24
 k = sub k 1
 w = write d dg k 1
 end
+end
+
+note usage: say how to call it and exit 2
+fn usage to void
+w = write 2 musage 0 len musage
+exit 2
+end
+
+fn hexv c uchar to ulong
+if and ge c 48 le c 57
+ret ulong sub c 48
+end
+if and ge c 97 le c 102
+ret ulong sub c 87
+end
+if and ge c 65 le c 70
+ret ulong sub c 55
+end
+ret 16
+end
+
+note escb: the escape whose letter is at i (after the backslash) in ab[i, e): its byte plus
+note 256 times the bytes it takes; 0 when it is not an escape
+fn escb i ulong e ulong to ulong
+d = get ab i
+if eq d 110
+ret 266
+end
+if eq d 116
+ret 265
+end
+if eq d 114
+ret 269
+end
+if eq d 92
+ret 348
+end
+if eq d 120
+if le add i 3 e
+h = hexv get ab add i 1
+l = hexv get ab add i 2
+if and lt h 16 lt l 16
+ret add 768 add mul h 16 l
+end
+end
+end
+ret 0
+end
+
+note unesc: decode ab[0, e) into tx; its length. A wrong escape is a usage error.
+fn unesc e ulong to ulong
+i = ulong 0
+n = ulong 0
+while lt i e bound 4097
+c = get ab i
+i = add i 1
+if eq c 92
+if ge i e
+usage
+end
+r = escb i e
+if eq r 0
+usage
+end
+c = uchar and r 255
+i = add i shr r 8
+end
+put tx n c
+n = add n 1
+end
+ret n
 end
 
 note rdin: read the file named by pa[0, n) into fb; its length, 4194305 when it is too big,
@@ -103,10 +179,13 @@ end
 ret true
 end
 
-note usage: say how to call it and exit 2
-fn usage to void
-w = write 2 musage 0 len musage
-exit 2
+note argtx: decode argument i into tx; its length
+fn argtx i ulong to ulong
+a = argread i ab 0 4096
+if lt a 0
+usage
+end
+ret unesc ulong a
 end
 
 fn main to int
@@ -115,11 +194,17 @@ usage
 end
 a = argread 1 pa 0 4096
 b = argread 2 pz 0 4096
-f = argread 3 fr 0 4096
-t = argread 4 tx 0 4096
-if or or le a 0 le b 0 or le f 0 lt t 0
+if or le a 0 le b 0
 usage
 end
+m = argtx 3
+if eq m 0
+usage
+end
+for i ulong m
+put fr i get tx i
+end
+t = argtx 4
 n = rdin ulong a
 if eq n 4194306
 w = write 2 mopen 0 len mopen
@@ -129,7 +214,6 @@ if eq n 4194305
 w = write 2 mbig 0 len mbig
 ret 2
 end
-m = ulong f
 cnt = ulong 0
 hit = ulong 0
 p = ulong 0
@@ -153,7 +237,7 @@ ret 2
 end
 ok = wall int fd 0 hit
 if ok
-ok = wtx int fd ulong t
+ok = wtx int fd t
 end
 if ok
 ok = wall int fd add hit m sub sub n hit m
