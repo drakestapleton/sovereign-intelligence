@@ -142,6 +142,8 @@ text kfeimg "feimage"
 text kstyle "style"
 text kcstyle "</style"
 text kposter "poster"
+text kping "ping"
+text kbackg "background"
 text ksrcset "srcset"
 text krel "rel"
 text krss "stylesheet"
@@ -1282,7 +1284,7 @@ end
 fn a04 to void
 s = get ts 4
 m = get ts 5
-if or an ksrc an kposter
+if or or an ksrc an kposter or an kping an kbackg
 if not okreq s m
 if vat 4 get ts 2
 sayb get ts 2 get ts 3

@@ -1,5 +1,5 @@
-# hubcheck test expectations: CASE<TAB>EXIT STATUS<TAB>FIRST LINE OF STDOUT. Read by run.om.
-# Every line below was read and judged against the one change planted in that case (README.md lists them).
+# hubcheck test expectations, read by run.om: CASE <TAB> EXIT STATUS <TAB> FIRST LINE OF STDOUT
+# One case per line. The change planted in each bad/ case is listed in ../README.md.
 good	0	HUBCHECK PASS files=13 html=3 links=23 fragments=10
 bad/R00-depth-9	1	HUBCHECK FAIL R00 d1/d2/d3/d4/d5/d6/d7/d8/d9: directory nested deeper than 8 levels
 bad/R01-inline-script	1	HUBCHECK FAIL R01 about/index.html: line 22: script tag is not the allowed JSON-LD block
@@ -23,6 +23,7 @@ bad/R04-css-url-http	1	HUBCHECK FAIL R04 style.css: line 8: CSS url() target is 
 bad/R04-css-url-https	1	HUBCHECK FAIL R04 style.css: line 8: CSS url() target is not a local path or a data: URL: https://cdn.example.org/dot.png
 bad/R04-icon-rel-uppercase	1	HUBCHECK FAIL R04 docs/guide.html: line 10: link href is not a local path or a data: URL: https://example.org/favicon.ico
 bad/R04-img-https	1	HUBCHECK FAIL R04 index.html: line 23: src is not a local path or a data: URL: https://example.org/mark.svg
+bad/R04-ping	1	HUBCHECK FAIL R04 about/index.html: line 15: ping is not a local path or a data: URL: https://stats.example.org/hit
 bad/R04-preconnect	1	HUBCHECK FAIL R04 about/index.html: line 11: link href is not a local path or a data: URL: https://cdn.example.org
 bad/R04-protocol-relative-css	1	HUBCHECK FAIL R04 index.html: line 11: link href is not a local path or a data: URL: //cdn.example.org/x.css
 bad/R04-srcset-https	1	HUBCHECK FAIL R04 index.html: line 23: srcset candidate is not a local path or a data: URL: https://example.org/dot.webp
