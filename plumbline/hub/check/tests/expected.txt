@@ -1,0 +1,62 @@
+# hubcheck test expectations: CASE<TAB>EXIT STATUS<TAB>FIRST LINE OF STDOUT. Read by run.om.
+# Every line below was read and judged against the one change planted in that case (README.md lists them).
+good	0	HUBCHECK PASS files=13 html=3 links=23 fragments=10
+bad/R00-depth-9	1	HUBCHECK FAIL R00 d1/d2/d3/d4/d5/d6/d7/d8/d9: directory nested deeper than 8 levels
+bad/R01-inline-script	1	HUBCHECK FAIL R01 about/index.html: line 22: script tag is not the allowed JSON-LD block
+bad/R01-lt-in-json-ld	1	HUBCHECK FAIL R01 index.html: line 13: '<' inside the JSON-LD block
+bad/R01-script-in-svg-file	1	HUBCHECK FAIL R01 img/mark.svg: line 5: script tag is not the allowed JSON-LD block
+bad/R01-script-uppercase	1	HUBCHECK FAIL R01 index.html: line 27: script tag is not the allowed JSON-LD block
+bad/R01-second-json-ld	1	HUBCHECK FAIL R01 index.html: line 14: more than one script block
+bad/R02-javascript-entity	1	HUBCHECK FAIL R02 index.html: line 18: character reference before the URL scheme: java&#115;cript:alert(1)
+bad/R02-javascript-tab	1	HUBCHECK FAIL R02 docs/guide.html: line 13: javascript: URL: java?script:alert(1)
+bad/R02-javascript-url	1	HUBCHECK FAIL R02 about/index.html: line 15: javascript: URL: javascript:void(0)
+bad/R02-onclick-uppercase	1	HUBCHECK FAIL R02 index.html: line 17: event handler attribute: ONCLICK
+bad/R02-onerror-unquoted	1	HUBCHECK FAIL R02 index.html: line 23: event handler attribute: onerror
+bad/R03-base	1	HUBCHECK FAIL R03 docs/guide.html: line 5: forbidden element: <base
+bad/R03-embed	1	HUBCHECK FAIL R03 docs/guide.html: line 19: forbidden element: <embed
+bad/R03-form	1	HUBCHECK FAIL R03 about/index.html: line 20: forbidden element: <form
+bad/R03-iframe	1	HUBCHECK FAIL R03 index.html: line 25: forbidden element: <iframe
+bad/R03-meta-refresh	1	HUBCHECK FAIL R03 index.html: line 5: meta refresh
+bad/R03-object	1	HUBCHECK FAIL R03 about/index.html: line 20: forbidden element: <object
+bad/R04-css-import	1	HUBCHECK FAIL R04 style.css: line 1: @import in CSS
+bad/R04-css-url-http	1	HUBCHECK FAIL R04 style.css: line 8: CSS url() target is not a local path or a data: URL: http://cdn.example.org/dot.png
+bad/R04-css-url-https	1	HUBCHECK FAIL R04 style.css: line 8: CSS url() target is not a local path or a data: URL: https://cdn.example.org/dot.png
+bad/R04-icon-rel-uppercase	1	HUBCHECK FAIL R04 docs/guide.html: line 10: link href is not a local path or a data: URL: https://example.org/favicon.ico
+bad/R04-img-https	1	HUBCHECK FAIL R04 index.html: line 23: src is not a local path or a data: URL: https://example.org/mark.svg
+bad/R04-preconnect	1	HUBCHECK FAIL R04 about/index.html: line 11: link href is not a local path or a data: URL: https://cdn.example.org
+bad/R04-protocol-relative-css	1	HUBCHECK FAIL R04 index.html: line 11: link href is not a local path or a data: URL: //cdn.example.org/x.css
+bad/R04-srcset-https	1	HUBCHECK FAIL R04 index.html: line 23: srcset candidate is not a local path or a data: URL: https://example.org/dot.webp
+bad/R04-style-attr-url	1	HUBCHECK FAIL R04 index.html: line 21: CSS url() target is not a local path or a data: URL: https://example.org/bg.png
+bad/R04-svg-image-href	1	HUBCHECK FAIL R04 docs/guide.html: line 18: svg href is not a local path, a fragment or a data: URL: https://example.org/i.png
+bad/R05-http-in-txt	1	HUBCHECK FAIL R05 llms.txt: line 7: plain http URL: http://example.org/
+bad/R05-http-link	1	HUBCHECK FAIL R05 about/index.html: line 18: plain http URL: http://example.org/contact
+bad/R05-namespace-near-miss	1	HUBCHECK FAIL R05 docs/guide.html: line 18: plain http URL: http://www.w3.org/2000/svg/x
+bad/R06-doubleclick-in-png	1	HUBCHECK FAIL R06 img/dot.png: tracker or outside font host: doubleclick
+bad/R06-google-fonts-mixed-case	1	HUBCHECK FAIL R06 docs/guide.html: line 16: tracker or outside font host: fonts.googleapis
+bad/R06-plausible-in-json	1	HUBCHECK FAIL R06 facts.json: line 5: tracker or outside font host: plausible.io
+bad/R07-bare-fragment	1	HUBCHECK FAIL R07 about/index.html: line 14: no id for the fragment: #content
+bad/R07-directory-without-slash	1	HUBCHECK FAIL R07 index.html: line 18: no such file: /about
+bad/R07-dot-dot	1	HUBCHECK FAIL R07 docs/guide.html: line 17: refused local path: /docs/../about/#method
+bad/R07-fragment-on-other-page	1	HUBCHECK FAIL R07 index.html: line 22: no id for the fragment: /about/#install
+bad/R07-id-only-as-data-id	1	HUBCHECK FAIL R07 index.html: line 22: no id for the fragment: /about/#team
+bad/R07-missing-file	1	HUBCHECK FAIL R07 index.html: line 18: no such file: /team/
+bad/R08-charset-latin1	1	HUBCHECK FAIL R08 about/index.html: no <meta charset='utf-8'>
+bad/R08-empty-description	1	HUBCHECK FAIL R08 index.html: no <meta name='description'> with content
+bad/R08-no-doctype	1	HUBCHECK FAIL R08 docs/guide.html: does not start with <!doctype html>
+bad/R08-no-lang	1	HUBCHECK FAIL R08 about/index.html: no <html lang='en'>
+bad/R08-no-viewport	1	HUBCHECK FAIL R08 docs/guide.html: no <meta name='viewport'>
+bad/R08-title-wrong-start	1	HUBCHECK FAIL R08 index.html: <title> text does not start with INTERPLANE
+bad/R08-two-h1	1	HUBCHECK FAIL R08 about/index.html: <h1 count is 2, not 1
+bad/R09-em-dash-css	1	HUBCHECK FAIL R09 style.css: line 7: em dash U+2014
+bad/R09-en-dash-html	1	HUBCHECK FAIL R09 index.html: line 21: en dash U+2013
+bad/R10-extra-close	1	HUBCHECK FAIL R10 style.css: line 6: '}' without an open '{'
+bad/R10-missing-close	1	HUBCHECK FAIL R10 style.css: '{' is never closed
+bad/R11-empty-llms	1	HUBCHECK FAIL R11 llms.txt: empty
+bad/R11-no-robots	1	HUBCHECK FAIL R11 robots.txt: missing
+bad/R12-crlf	1	HUBCHECK FAIL R12 robots.txt: line 2: control byte 13
+bad/R12-invalid-utf8	1	HUBCHECK FAIL R12 llms.txt: line 7: invalid UTF-8
+bad/R12-overlong-utf8	1	HUBCHECK FAIL R12 facts.json: line 3: invalid UTF-8
+bad/R13-js-file	1	HUBCHECK FAIL R13 app.js: file extension is not allowed
+bad/R13-no-extension	1	HUBCHECK FAIL R13 CNAME: file extension is not allowed
+bad/R13-symlink	1	HUBCHECK FAIL R13 latest.html: not a regular file
+bad/R13-uppercase-extension	1	HUBCHECK FAIL R13 img/LOGO.PNG: file extension is not allowed

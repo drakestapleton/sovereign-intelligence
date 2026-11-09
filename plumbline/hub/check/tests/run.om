@@ -1,0 +1,590 @@
+om2
+note plumbline/hub/check/tests/run.om: the test driver of hubcheck.
+note
+note   run HUBCHECK TESTS [RUNNER]
+note
+note HUBCHECK is the built checker, TESTS this directory. For every line of TESTS/expected.txt
+note   <case directory, relative to TESTS> TAB <exit status> TAB <first line of stdout>
+note it runs HUBCHECK on TESTS/<case> as a child process (fork, execprog, a pipe on the child's
+note stdout, waitpid) and compares the child's exit status and its first output line with the
+note line. Lines that are empty or start with '#' are skipped. Then every directory in TESTS/bad
+note must be a case of expected.txt, so that no fixture is left out without notice.
+note RUNNER, when given, is the program that runs HUBCHECK: the child is RUNNER HUBCHECK CASE.
+note It is how an AArch64 build is tested on a machine that needs qemu-aarch64-static.
+note Output: a FAIL block per failing case, then one line,
+note   HUBCHECK-TESTS PASS cases=N           exit 0
+note   HUBCHECK-TESTS FAIL cases=N failed=F  exit 1
+note Exit 2: usage, or expected.txt cannot be read.
+note   omc < run.om > run        { printf 'target x86linux\n'; cat run.om; } | omc-x86 > run
+
+note xb: expected.txt; ob: the child's stdout (the first 65536 bytes); jb: what is read past
+note that; av: the packed argument list of the child; hp, tp, rp: HUBCHECK, TESTS, RUNNER;
+note pb: a path; db: directory records; st: wait status; pf: pipe descriptors; bn: the first
+note directory of TESTS/bad, in byte order, that expected.txt does not list
+global xb uchar 262145
+global ob uchar 65536
+global jb uchar 4096
+global av uchar 4096
+global hp uchar 1024
+global tp uchar 1024
+global rp uchar 1024
+global pb uchar 4096
+global db uchar 32768
+global st uchar 4
+global pf uchar 8
+global dg uchar 24
+global bn uchar 256
+global g ulong 16
+
+note GH, GT, GR lengths of hp, tp, rp (GR 0: no runner); GX length of xb; GON length of ob;
+note GCS cases run; GFL failures; GBN length of bn; GUN directories not listed; GAV, GAC
+note bytes and records of av
+const GH ulong 0
+const GT ulong 1
+const GR ulong 2
+const GX ulong 3
+const GON ulong 4
+const GCS ulong 5
+const GFL ulong 6
+const GBN ulong 7
+const GUN ulong 8
+const GAV ulong 9
+const GAC ulong 10
+
+text musage "usage: run HUBCHECK TESTS [RUNNER]\n"
+text mnoexp "run: cannot read TESTS/expected.txt (or it is over 256 KiB)\n"
+text mexp "/expected.txt"
+text mbad "/bad"
+text kbad "bad/"
+text mfail "FAIL "
+text mcol ": "
+text mnl "\n"
+text mwp "wrongly passes"
+text mwf "wrongly fails"
+text mwo "wrong exit status or first line"
+text mnr "the child could not be run"
+text mexpd "  expected: exit "
+text mobs "  observed: exit "
+text mcomma ", "
+text mform "FAIL expected.txt: a line is not CASE TAB STATUS TAB FIRST-LINE\n"
+text mnone "FAIL expected.txt: no case is listed\n"
+text mnobad "FAIL bad: cannot read the directory TESTS/bad\n"
+text mnl1 "FAIL bad/"
+text mnl2 ": not in expected.txt (directories of TESTS/bad that are not listed: "
+text mnl3 ")\n"
+text mpass "HUBCHECK-TESTS PASS cases="
+text mfl "HUBCHECK-TESTS FAIL cases="
+text mfl2 " failed="
+
+fn say t view uchar * to void
+w = write 1 t 0 len t
+end
+
+note sayn: v in decimal on stdout
+fn sayn v ulong to void
+x = v
+k = ulong 1
+put dg 0 uchar add rem x 10 48
+x = div x 10
+while gt x 0 bound 24
+put dg k uchar add rem x 10 48
+k = add k 1
+x = div x 10
+end
+while gt k 0 bound 24
+k = sub k 1
+w = write 1 dg k 1
+end
+end
+
+note padd: append a text to the path pb
+fn padd p ulong t view uchar * to ulong
+n = len t
+for i ulong n
+put pb add p i get t i
+end
+ret add p n
+end
+
+note ptests: pb becomes TESTS; its length
+fn ptests to ulong
+n = get g GT
+for i ulong n
+put pb i get tp i
+end
+ret n
+end
+
+note rdexp: read TESTS/expected.txt into xb; false when it cannot be read or is too big
+fn rdexp to bool
+n = padd ptests mexp
+fd = fopen pb 0 n 524288 0
+if lt fd 0
+ret false
+end
+p = ulong 0
+while lt p 262145 bound 262146
+k = read int fd xb p sub 262145 p
+if lt k 0
+c = fclose int fd
+ret false
+end
+if eq k 0
+break
+end
+p = add p ulong k
+end
+c = fclose int fd
+put g GX p
+ret lt p 262145
+end
+
+note ahead: start a record of n bytes in av; where its bytes go
+fn ahead n ulong to ulong
+p = get g GAV
+put av p uchar and n 255
+put av add p 1 uchar shr n 8
+put g GAV add add p 2 n
+put g GAC add get g GAC 1
+ret add p 2
+end
+
+note argv: the packed list of the child for the case xb[co, co+cn):
+note [RUNNER] HUBCHECK TESTS/<case>
+fn argv co ulong cn ulong to void
+put g GAV 2
+put g GAC 0
+arun
+ahub
+t = get g GT
+s = ahead add add t 1 cn
+for k ulong t
+put av add s k get tp k
+end
+put av add s t 47
+u = add add s t 1
+for m ulong cn
+put av add u m get xb add co m
+end
+put av 0 uchar get g GAC
+put av 1 0
+end
+
+note arun, ahub: the records RUNNER (when there is one) and HUBCHECK
+fn arun to void
+r = get g GR
+if gt r 0
+p = ahead r
+for i ulong r
+put av add p i get rp i
+end
+end
+end
+
+fn ahub to void
+h = get g GH
+q = ahead h
+for j ulong h
+put av add q j get hp j
+end
+end
+
+note drain: read the child's stdout to its end; the first 65536 bytes stay in ob
+fn drain rfd int to ulong
+n = ulong 0
+while true bound 16777216
+k = long 0
+if lt n 65536
+k = read rfd ob n sub 65536 n
+end
+if ge n 65536
+k = read rfd jb 0 4096
+end
+if le k 0
+break
+end
+if lt n 65536
+n = add n ulong k
+end
+end
+ret n
+end
+
+note spawn: run the list in av with stdout on a pipe. The child's exit status, 256 plus the
+note signal when a signal ended it, 512 when it could not be started.
+fn spawn to ulong
+put g GON 0
+r = pipefds pf 0 8 524288
+if lt r 0
+ret 512
+end
+rfd = int or ulong get pf 0 shl ulong get pf 1 8
+wfd = int or ulong get pf 4 shl ulong get pf 5 8
+pid = fork
+if lt pid 0
+c = fclose rfd
+c = fclose wfd
+ret 512
+end
+if eq pid 0
+y = dupfd wfd 1 0
+y = execprog av 0 get g GAV
+exit 127
+end
+c = fclose wfd
+put g GON drain rfd
+c = fclose rfd
+r = waitpid int pid st 0 4 0
+if ne r pid
+ret 512
+end
+if ne get st 0 0
+ret add 256 ulong get st 0
+end
+ret ulong get st 1
+end
+
+note oline: length of the first line of ob
+fn oline to ulong
+n = get g GON
+i = ulong 0
+while lt i n bound 65537
+if eq get ob i 10
+break
+end
+i = add i 1
+end
+ret i
+end
+
+note sameln: is the first line of ob (m bytes) the expected line xb[o, o+n)
+fn sameln m ulong o ulong n ulong to bool
+if ne m n
+ret false
+end
+for i ulong n bound 262146
+if ne get ob i get xb add o i
+ret false
+end
+end
+ret true
+end
+
+note tabpos: first TAB in xb[s, e), or e
+fn tabpos s ulong e ulong to ulong
+i = s
+while lt i e bound 262146
+if eq get xb i 9
+break
+end
+i = add i 1
+end
+ret i
+end
+
+note stnum: the decimal status xb[s, e); 1000 when it is not 1 to 3 digits
+fn stnum s ulong e ulong to ulong
+n = sub e s
+if or eq n 0 gt n 3
+ret 1000
+end
+v = ulong 0
+for i ulong n
+c = get xb add s i
+if or lt c 48 gt c 57
+ret 1000
+end
+v = add mul v 10 ulong sub c 48
+end
+ret v
+end
+
+note report: the case xb[co, co+cn) failed; want and got are the exit statuses, the expected
+note line is xb[lo, lo+ln)
+fn report co ulong cn ulong want ulong got ulong lo ulong ln ulong to void
+put g GFL add get g GFL 1
+say mfail
+w = write 1 xb co cn
+say mcol
+kind = ulong 0
+if and eq got 0 ne want 0
+kind = 1
+end
+if and eq want 0 ne got 0
+kind = 2
+end
+if ge got 256
+kind = 3
+end
+if eq kind 0
+say mwo
+end
+if eq kind 1
+say mwp
+end
+if eq kind 2
+say mwf
+end
+if eq kind 3
+say mnr
+end
+say mnl
+say mexpd
+sayn want
+say mcomma
+w = write 1 xb lo ln
+say mnl
+say mobs
+sayn got
+say mcomma
+m = oline
+if gt m 0
+w = write 1 ob 0 m
+end
+say mnl
+end
+
+note runline: one line xb[s, e) of expected.txt
+fn runline s ulong e ulong to void
+if ge s e
+ret
+end
+if eq get xb s 35
+ret
+end
+a = tabpos s e
+b = e
+if lt a e
+b = tabpos add a 1 e
+end
+want = ulong 1000
+if lt b e
+want = stnum add a 1 b
+end
+if or eq a s eq want 1000
+put g GFL add get g GFL 1
+say mform
+ret
+end
+put g GCS add get g GCS 1
+cn = sub a s
+argv s cn
+got = spawn
+lo = add b 1
+ln = sub e lo
+ok = eq got want
+if ok
+ok = sameln oline lo ln
+end
+if not ok
+report s cn want got lo ln
+end
+end
+
+note listed: is there a line of expected.txt for the case bad/<db[o, o+n)>
+fn listed o ulong n ulong to bool
+x = get g GX
+s = ulong 0
+while lt s x bound 262146
+e = s
+while lt e x bound 262146
+if eq get xb e 10
+break
+end
+e = add e 1
+end
+if islist s e o n
+ret true
+end
+s = add e 1
+end
+ret false
+end
+
+note islist: does the line xb[s, e) start with "bad/", the name db[o, o+n) and a TAB
+fn islist s ulong e ulong o ulong n ulong to bool
+if lt sub e s add n 5
+ret false
+end
+for i ulong 4
+if ne get xb add s i get kbad i
+ret false
+end
+end
+for j ulong n
+if ne get xb add add s 4 j get db add o j
+ret false
+end
+end
+ret eq get xb add add s 4 n 9
+end
+
+note first: keep db[o, o+n) in bn when it is before the name held there in byte order
+fn first o ulong n ulong to void
+m = get g GBN
+u = get g GUN
+put g GUN add u 1
+keep = eq u 0
+if gt u 0
+keep = before o n m
+end
+if keep
+for i ulong n
+put bn i get db add o i
+end
+put g GBN n
+end
+end
+
+note before: is the name db[o, o+n) before bn[0, m) in byte order
+fn before o ulong n ulong m ulong to bool
+k = n
+if lt m k
+k = m
+end
+for i ulong k
+a = get db add o i
+b = get bn i
+if lt a b
+ret true
+end
+if gt a b
+ret false
+end
+end
+ret lt n m
+end
+
+note bdent: the directory record at p of db; its length. A directory (type 4) that is not
+note "." or ".." must be listed in expected.txt.
+fn bdent p ulong to ulong
+x = add ulong get db add p 16 mul ulong get db add p 17 256
+if lt x 20
+ret 32768
+end
+o = add p 19
+n = ulong 0
+while lt add o n add p x bound 32769
+if eq get db add o n 0
+break
+end
+n = add n 1
+end
+if ne get db add p 18 4
+ret x
+end
+if eq get db o 46
+if eq n 1
+ret x
+end
+if eq n 2
+if eq get db add o 1 46
+ret x
+end
+end
+end
+if and gt n 0 le n 255
+if not listed o n
+first o n
+end
+end
+ret x
+end
+
+note badlist: every directory of TESTS/bad must be a case
+fn badlist to void
+n = padd ptests mbad
+fd = fopen pb 0 n 524288 0
+if lt fd 0
+put g GFL add get g GFL 1
+say mnobad
+ret
+end
+while true bound 1048577
+k = getdnts int fd db 0 32768
+if lt k 0
+put g GFL add get g GFL 1
+say mnobad
+break
+end
+if eq k 0
+break
+end
+p = ulong 0
+while lt p ulong k bound 32769
+p = add p bdent p
+end
+end
+c = fclose int fd
+u = get g GUN
+if gt u 0
+put g GFL add get g GFL 1
+say mnl1
+w = write 1 bn 0 get g GBN
+say mnl2
+sayn u
+say mnl3
+end
+end
+
+note usage: say how to call it and exit 2
+fn usage to void
+w = write 2 musage 0 len musage
+exit 2
+end
+
+fn main to int
+ac = argcnt
+if or lt ac 3 gt ac 4
+usage
+end
+h = argread 1 hp 0 1000
+t = argread 2 tp 0 1000
+if or le h 0 le t 0
+usage
+end
+put g GH ulong h
+put g GT ulong t
+if eq ac 4
+r = argread 3 rp 0 1000
+if le r 0
+usage
+end
+put g GR ulong r
+end
+if not rdexp
+w = write 2 mnoexp 0 len mnoexp
+ret 2
+end
+x = get g GX
+s = ulong 0
+while lt s x bound 262146
+e = s
+while lt e x bound 262146
+if eq get xb e 10
+break
+end
+e = add e 1
+end
+runline s e
+s = add e 1
+end
+if eq get g GCS 0
+put g GFL add get g GFL 1
+say mnone
+end
+badlist
+f = get g GFL
+if gt f 0
+say mfl
+sayn get g GCS
+say mfl2
+sayn f
+say mnl
+ret 1
+end
+say mpass
+sayn get g GCS
+say mnl
+ret 0
+end

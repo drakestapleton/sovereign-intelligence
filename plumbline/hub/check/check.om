@@ -1229,7 +1229,8 @@ ret e
 end
 
 note b04: ts 8 is 1 for a link tag, 2 for an svg image, use or feimage, 3 for a style tag;
-note ts 10 is set when a rel token asks for a fetch; ts 11..13 hold the href of a link
+note ts 10 is set when a rel token asks for a fetch; ts 11 is 2 when the link has an href
+note that may not be fetched, which is then at ts 12, 13
 fn b04 to void
 put ts 8 0
 put ts 10 0
@@ -1245,7 +1246,8 @@ put ts 8 3
 end
 end
 
-note a04l: an attribute of a link tag
+note a04l: an attribute of a link tag. A tag may repeat href and a browser takes the first, so
+note the first href that is not fetchable is the one kept (ts 11 is then 2).
 fn a04l s ulong m ulong to void
 if an krel
 if reltok s add s m
@@ -1253,9 +1255,13 @@ put ts 10 1
 end
 end
 if an khref
-put ts 11 1
+if ne get ts 11 2
+if not okreq s m
+put ts 11 2
 put ts 12 s
 put ts 13 m
+end
+end
 end
 end
 
@@ -1310,10 +1316,8 @@ fn e04 e ulong to void
 k = get ts 8
 if eq k 1
 if eq get ts 10 1
-if eq get ts 11 1
-if not okreq get ts 12 get ts 13
+if eq get ts 11 2
 v2 4 get ts 12 mlnk get ts 12 get ts 13
-end
 end
 end
 end
@@ -1414,7 +1418,8 @@ end
 end
 
 note a07: this pass scans the target page from inside the attribute hook (fragck), which
-note overwrites ts; it reads what it needs from ts before that and nothing after.
+note overwrites ts; it reads what it needs from ts before that and nothing after. Leading
+note bytes up to space are dropped first, as a browser drops them from a URL.
 fn a07 to void
 if eq get ts 6 0
 ret
@@ -1422,8 +1427,15 @@ end
 if not or an khref an ksrc
 ret
 end
+z = add get ts 4 get ts 5
 s = get ts 4
-m = get ts 5
+while lt s z bound 4194306
+if gt get fb s 32
+break
+end
+s = add s 1
+end
+m = sub z s
 if eq m 0
 ret
 end
@@ -1680,12 +1692,15 @@ end
 ret nsone p n kns3
 end
 
-note urlend: where the URL at p stops for display: white space, a quote, '<' or '>'
+note urlend: where the URL at p stops for display: white space, a quote, '<', '>' or ')'
 fn urlend p ulong n ulong to ulong
 q = p
 while lt q n bound 4194306
 c = get fb q
 if or or isws c eq c 39 or eq c 34 or eq c 60 eq c 62
+break
+end
+if eq c 41
 break
 end
 q = add q 1
