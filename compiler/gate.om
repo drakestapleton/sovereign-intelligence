@@ -6,7 +6,7 @@ note scratch directory WORK:
 note   "$OMC" < compiler/gate.om > WORK/gate && chmod +x WORK/gate && WORK/gate "$OMC" WORK
 note It checks that OMC is the pinned omc by its sha256 (any other omc, or none: SI NOT_RUN, exit 3),
 note builds si from compiler/si.om and links from compiler/links.om with it into WORK/si and
-note WORK/links, then runs twenty-six cases:
+note WORK/links, then runs thirty-three cases:
 note   1 the committed inputs regenerate README.md and repos.tsv byte-identically (exit 0)
 note   2 head mutant: the last digit of the first inventory row's head moved on by one is refused
 note   3 RID mutant: the last character of the first inventory row's RID changed is refused
@@ -19,7 +19,7 @@ note     (the withdrawn crypto project), is refused by links
 note   8 vendored mutant: WORK/7-tree, the committed repos.tsv beside a planted project directory
 note     omega-mv holding main.om, is refused by links
 note   9 minimal tree: WORK/A-tree, the committed repos.tsv and compiler/ holding only its eight
-note     allowed file names (empty), passes links; cases 10-26 each change one thing in it
+note     allowed file names (empty), passes links; cases 10-33 each change one thing in it
 note  10-20 link-row mutants of WORK/B-tree to WORK/L-tree/repos.tsv, each refused by links with
 note     its own message: the first link row's name Omega-Pearl and aien-CRYPTO-mv (withdrawn
 note     crypto, any case) and ../x (bad name); its head with capitals, with a g, and 41 digits;
@@ -28,8 +28,13 @@ note     the header's first field nam; and the header with no row after it
 note  21-26 planted entries, each refused by links as not an SI file: compiler/evil.om (WORK/M-tree),
 note     compiler/si.om as a symbolic link to gate.om (N), a root symbolic link lnk to compiler (O),
 note     a root file evil.rs (P), a root directory vendor (Q) and gpu/x.bin (R)
+note  27 README.zh-CN.md, an empty regular file at the root of the minimal tree (WORK/S-tree),
+note     passes links: the one translation SI holds (Drake, 2026-11-11, "approved for all")
+note  28-33 planted entries, each refused by links as not an SI file: compiler/README.zh-CN.md
+note     (WORK/T-tree), a root README.zh-TW.md (U), README.fr.md (V) and readme.zh-cn.md (W), and a
+note     root README.zh-CN.md as a symbolic link to repos.tsv (X) and as a directory (Y)
 note The si mutants are written to WORK/head.tsv and WORK/rid.tsv. Cases 2-4, 6, 7 and 10-20 first
-note check that the input's sha256 differs from the committed file's, and cases 8 and 21-26 that the
+note check that the input's sha256 differs from the committed file's, and cases 8 and 21-33 that the
 note planted entry exists, so an edit that did not apply cannot pass as a refusal. An si refusal
 note must be exit 1, stderr starting "si: " and the expected message, the README copy unchanged and
 note no repos.tsv written; a links refusal exit 1 and stderr starting "links: " and the expected
@@ -121,6 +126,11 @@ text tp3 "/lnk"
 text tp4 "/evil.rs"
 text tp5 "/vendor"
 text tp6 "/gpu/x.bin"
+text tp7 "/README.zh-CN.md"
+text tp8 "/compiler/README.zh-CN.md"
+text tp9 "/README.zh-TW.md"
+text tp10 "/README.fr.md"
+text tp11 "/readme.zh-cn.md"
 text tgpud "/gpu"
 text ts2 "gate.om"
 text ts3 "compiler"
@@ -142,6 +152,13 @@ text crlink "links-root-link"
 text crfile "links-root-file"
 text crdir "links-root-dir"
 text cgfile "links-gpu-file"
+text czh "links-root-readme-zh-CN"
+text czsub "links-compiler-readme-zh-CN"
+text cztw "links-root-readme-zh-TW"
+text czfr "links-root-readme-fr"
+text czlc "links-root-readme-zh-cn-lowercase"
+text czlink "links-root-readme-zh-CN-link"
+text czdir "links-root-readme-zh-CN-dir"
 text rpearl "Omega-Pearl"
 text rcrypt "aien-CRYPTO-mv"
 text rbadn "../x"
@@ -1378,7 +1395,8 @@ lcheck v t m true
 end
 
 note lpath: append the entry plant k puts in a tree: 1 compiler/evil.om, 2 compiler/si.om,
-note 3 lnk, 4 evil.rs, 5 vendor, 6 gpu/x.bin
+note 3 lnk, 4 evil.rs, 5 vendor, 6 gpu/x.bin, 7 README.zh-CN.md, 8 compiler/README.zh-CN.md,
+note 9 README.zh-TW.md, 10 README.fr.md, 11 readme.zh-cn.md, 12 and 13 README.zh-CN.md
 fn lpath k ulong to void
 if eq k 1
 padd tp1
@@ -1398,17 +1416,37 @@ end
 if eq k 6
 padd tp6
 end
+if or or eq k 7 eq k 12 eq k 13
+padd tp7
+end
+if eq k 8
+padd tp8
+end
+if eq k 9
+padd tp9
+end
+if eq k 10
+padd tp10
+end
+if eq k 11
+padd tp11
+end
 end
 
-note lsym: the plant k (2 or 3) of WORK/<v>-tree as a symbolic link: compiler/si.om to gate.om,
-note lnk to compiler. symlnk takes the packed list target, link path, as aadd builds it.
+note lsym: the plant k (2, 3 or 12) of WORK/<v>-tree as a symbolic link: compiler/si.om to gate.om,
+note lnk to compiler, README.zh-CN.md to repos.tsv (a regular file, so a check that followed the
+note link would admit it). symlnk takes the packed list target, link path, as aadd builds it.
 fn lsym v ulong k ulong to void
 astart
 pclr
 if eq k 2
 padd ts2
-else
+end
+if eq k 3
 padd ts3
+end
+if eq k 12
+padd trepos
 end
 aadd
 pcase v xtree
@@ -1419,8 +1457,8 @@ put av 1 0
 r = symlnk av 0 get avp 0
 end
 
-note lput: plant k in WORK/<v>-tree: an empty file (1, 4, 6), a symbolic link (2, 3, replacing
-note compiler/si.om for 2) or a directory (5)
+note lput: plant k in WORK/<v>-tree: an empty file (1, 4, 6, 7 to 11), a symbolic link (2, 3, 12,
+note replacing compiler/si.om for 2) or a directory (5, 13)
 fn lput v ulong k ulong to void
 if eq k 6
 pcase v xtree
@@ -1432,11 +1470,11 @@ lpath k
 if eq k 2
 r2 = unlink pb 0 get pbn 0
 end
-if or eq k 2 eq k 3
+if or or eq k 2 eq k 3 eq k 12
 lsym v k
 ret
 end
-if eq k 5
+if or eq k 5 eq k 13
 r3 = makedir pb 0 get pbn 0 493
 ret
 end
@@ -1459,6 +1497,34 @@ badw t fplant
 ret
 end
 lcheck v t mlven false
+end
+
+note ladmit: links case v, a minimal tree with plant k (lput) that must exist (lstat), passes
+fn ladmit v ulong t view uchar * k ulong to void
+if not lbase v
+badw t fio
+ret
+end
+lput v k
+pcase v xtree
+lpath k
+r = lstat pb 0 get pbn 0 sb 0 256
+if ne r 0
+badw t fplant
+ret
+end
+rc = runlk v
+if and eq rc 0 lhas v xout mlpass
+ok t
+say tsep
+showx v xout
+ret
+end
+bad t
+say frc
+sayn rc
+say tsep
+showx v xerr
 end
 
 note lgood: links case v, the minimal tree of lbase, passes; every other tree case is one change of it
@@ -1539,6 +1605,13 @@ lplant 31 crlink 3
 lplant 32 crfile 4
 lplant 33 crdir 5
 lplant 34 cgfile 6
+ladmit 35 czh 7
+lplant 36 czsub 8
+lplant 37 cztw 9
+lplant 38 czfr 10
+lplant 39 czlc 11
+lplant 40 czlink 12
+lplant 41 czdir 13
 say tsum
 sayn get tally 0
 say tsumf

@@ -1,3 +1,7 @@
+<!-- languages -->
+**English** · [简体中文](README.zh-CN.md)
+<!-- /languages -->
+
 > ## I tried it GitHub's way. GitHub said no.
 >
 > I tried to be good and do it their way: everything public, on GitHub, in the open. 109 repositories in the `aien-dev` organization. On 7 November 2026 GitHub's answer was no. It flagged the organization, hid every repository and suspended my machine account.

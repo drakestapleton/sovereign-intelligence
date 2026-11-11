@@ -14,8 +14,10 @@ note      rad:z2ft64) are refused;
 note   2. no new project source is vendored into SI. The entries of ROOT, ROOT/compiler and
 note      ROOT/gpu must each be on the lists below, with the kind named there; .git is
 note      skipped. ROOT may hold the regular files README.md, repos.tsv, CITATION.cff,
-note      LICENSE, .gitignore and build.sh, the untracked build outputs si, si.sh and links
-note      (files) and out (build.sh's directory), and the directories .claude, compiler, docs,
+note      LICENSE, .gitignore and build.sh, README.zh-CN.md (the Simplified Chinese README, exactly
+note      that name and only at ROOT; Drake, 2026-11-11, "approved for all"), the untracked build
+note      outputs si, si.sh and links (files) and out (build.sh's directory), and the
+note      directories .claude, compiler, docs,
 note      evidence, gpu, harness, seed, stack, tests and tools: the GitHub line's existing
 note      directories, grandfathered as they are, contents unchecked (Drake, 2026-11-07).
 note      ROOT/gpu may hold only the directory cuda-crack. ROOT/compiler
@@ -68,6 +70,7 @@ text a6 "si"
 text a7 "si.sh"
 text a8 "links"
 text a9 "build.sh"
+text a10 "README.zh-CN.md"
 text d1 ".claude"
 text d2 "docs"
 text d3 "evidence"
@@ -399,7 +402,7 @@ fn rootf o ulong n ulong to bool
 if or or or or eqd o n a1 eqd o n a2 eqd o n a3 eqd o n a4 eqd o n a5
 ret true
 end
-ret or or or eqd o n a6 eqd o n a7 eqd o n a8 eqd o n a9
+ret or or or or eqd o n a6 eqd o n a7 eqd o n a8 eqd o n a9 eqd o n a10
 end
 
 fn rootd o ulong n ulong to bool
