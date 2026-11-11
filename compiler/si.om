@@ -161,7 +161,45 @@ text shd1 "mkdir -p -- \"$SI_DIR\"\ncd -- \"$SI_DIR\"\nsi_ok=0\nsi_bad=0\nsi_mis
 text shd2 "si_check() {\n  si_got=\"$(git -C \"$1\" rev-parse HEAD 2>/dev/null || true)\"\n  if [ \"$si_got\" = \"$2\" ]; then\n    si_say \"OK        $1 $2\"\n    si_ok=$((si_ok + 1))\n  else\n    si_say \"MISMATCH  $1 manifest $2, checkout ${si_got:-none}\"\n    si_bad=$((si_bad + 1))\n  fi\n}\n\nsi_fresh() {\n  si_tip=\"$(git -C \"$1\" rev-parse HEAD 2>/dev/null || true)\"\n  if [ \"$si_tip\" != \"$2\" ] && git -C \"$1\" checkout --quiet --detach \"$2\" 2>/dev/null; then\n    si_say \"$1: checked out the manifest commit; its branch has moved on to $si_tip\"\n  fi\n  si_check \"$1\" \"$2\"\n}\n\n"
 text shd3 "si_repo() {\n  if [ \"$SI_ONLY\" = \"core\" ] && [ \"$4\" != \"core\" ]; then return 0; fi\n  if [ -e \"$1\" ]; then\n    si_say \"$1: already here, checking it\"\n    si_check \"$1\" \"$3\"\n    return 0\n  fi\n  if [ \"$si_rad\" = \"1\" ]; then\n    si_say \"$1: rad clone $2\"\n    if rad clone --timeout \"$SI_RAD_TIMEOUT\" \"$2\" \"$1\" </dev/null; then\n      si_fresh \"$1\" \"$3\"\n      return 0\n    fi\n    rm -rf -- \"./$1\"\n  fi\n  for si_src in \"$SI_HTTP\" \"$SI_HTTP2\"; do\n    si_say \"$1: git clone $si_src/${2#rad:}.git\"\n    if git clone --quiet -- \"$si_src/${2#rad:}.git\" \"$1\" </dev/null; then\n      si_fresh \"$1\" \"$3\"\n      return 0\n    fi\n    rm -rf -- \"./$1\"\n  done\n  si_say \"MISSING   $1 $2 (could not fetch it; this Radicle ID finds it on any seed)\"\n  si_miss=$((si_miss + 1))\n}\n\n"
 text she0 "\n"
-text she1 "si_say \"\"\nsi_say \"Done in $(pwd): $si_ok OK, $si_bad MISMATCH, $si_miss MISSING.\"\nif [ \"$si_miss\" -gt 0 ]; then\n  if [ \"$si_rad\" = \"1\" ]; then\n    si_say \"Is your Radicle node running? Start it with: rad node start\"\n    si_say \"Then run this again; projects already here are only checked.\"\n  else\n    si_say \"\"\n    si_say \"Radicle fetches the missing projects peer-to-peer: https://radicle.xyz\"\n    si_say \"Its official installer, run as your own user:\"\n    si_say \"  curl -sSf https://radicle.xyz/install | sh\"\n    if [ \"$SI_INSTALL_RAD\" = \"1\" ]; then\n      si_say \"SI_INSTALL_RAD=1: running it now.\"\n      curl -sSf https://radicle.xyz/install | sh\n      si_say \"Next: rad auth, then rad node start, then run this again.\"\n    else\n      si_say \"This script does not run it unless you set SI_INSTALL_RAD=1.\"\n    fi\n  fi\nfi\nif [ \"$si_bad\" -gt 0 ]; then exit 2; fi\nif [ \"$si_miss\" -gt 0 ]; then exit 3; fi\nexit 0\n"
+text she1 "si_say \"\"\nsi_say \"Done in $(pwd): $si_ok OK, $si_bad MISMATCH, $si_miss MISSING.\"\nif [ \"$si_miss\" -gt 0 ]; then\n  if [ \"$si_rad\" = \"1\" ]; then\n    si_say \"Is your Radicle node running? Start it with: rad node start\"\n    si_say \"Then run this again; projects already here are only checked.\"\n  else\n    si_say \"\"\n    si_say \"Radicle fetches the missing projects peer-to-peer: https://radicle.xyz\"\n    si_say \"Its official installer, run as your own user:\"\n    si_say \"  curl -sSf https://radicle.xyz/install | sh\"\n    if [ \"$SI_INSTALL_RAD\" = \"1\" ]; then\n      si_say \"SI_INSTALL_RAD=1: running it now.\"\n      curl -sSf https://radicle.xyz/install | sh\n      si_say \"Next: rad auth, then rad node start, then run this again.\"\n    else\n      si_say \"This script does not run it unless you set SI_INSTALL_RAD=1.\"\n    fi\n  fi\nfi\n"
+text rlay "layers.tsv"
+text rom "compiler/rebuild.om"
+global rbo ulong 4
+text rb0 "if [ \"${SI_REBUILD:-0}\" = 1 ]; then\n  mkdir -p .si-check\n  cat > .si-check/rebuild.om <<'SI_OMEGA_REBUILD_SOURCE'\n"
+text rb1 "SI_OMEGA_REBUILD_SOURCE\n  cat > .si-check/layers.tsv <<'SI_OMEGA_REBUILD_LAYERS'\n"
+text rb2 "SI_OMEGA_REBUILD_LAYERS\n  cat > .si-check/repos.tsv <<'SI_OMEGA_REBUILD_REPOS'\n"
+text rb3 "SI_OMEGA_REBUILD_REPOS\n  if omega-mv/seed/out/omc < .si-check/rebuild.om > .si-check/rebuild; then\n    chmod +x .si-check/rebuild\n  else\n    si_die \"cannot build the rebuild checker with omega-mv/seed/out/omc\"\n  fi\n  exec .si-check/rebuild run .si-check/layers.tsv .si-check/repos.tsv \"$PWD\" \"$PWD/.si-check\" \"wrap=${SI_REBUILD_WRAP:-}\"\nfi\n"
+text rbfin "if [ \"$si_bad\" -gt 0 ]; then exit 2; fi\nif [ \"$si_miss\" -gt 0 ]; then exit 3; fi\nexit 0\n"
+
+fn rload t view uchar * slot ulong to void
+for i ulong len t
+put pb i get t i
+end
+put pbn 0 len t
+fd = fopen pb 0 len t 0 0
+if lt fd 0
+dief topen
+end
+s = get srcn 0
+p = s
+while lt p 4194304 bound 4194305
+k = read int fd src p sub 4194304 p
+if lt k 0
+dief tread
+end
+if eq k 0
+break
+end
+p = add p ulong k
+end
+c = fclose int fd
+if ge p 4194304
+dief tbig
+end
+put rbo slot s
+put rbo add slot 1 sub p s
+put srcn 0 p
+end
 
 note die: report m and up to 200 bytes of src from o on stderr, then exit 1
 fn die m view uchar * o ulong n ulong to void
@@ -1082,7 +1120,15 @@ end
 em shr3
 end
 em she0
+em rb0
+ems get rbo 0 get rbo 1
+em rb1
+ems get rbo 2 get rbo 3
+em rb2
+gen_repos
+em rb3
 em she1
+em rbfin
 end
 
 fn main to int
@@ -1098,6 +1144,8 @@ vs = load 3
 ve = get srcn 0
 rs = load 4
 re = get srcn 0
+rload rom 0
+rload rlay 2
 parse_inventory ins ine
 parse_order ors ore
 parse_state vs ve

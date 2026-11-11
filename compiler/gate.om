@@ -6,7 +6,7 @@ note scratch directory WORK:
 note   "$OMC" < compiler/gate.om > WORK/gate && chmod +x WORK/gate && WORK/gate "$OMC" WORK
 note It checks that OMC is the pinned omc by its sha256 (any other omc, or none: SI NOT_RUN, exit 3),
 note builds si from compiler/si.om and links from compiler/links.om with it into WORK/si and
-note WORK/links, then runs thirty-five cases:
+note WORK/links, then runs the original thirty-five cases and seven rebuild cases:
 note   1 the committed inputs (compiler/inventory.tsv, order.tsv and the generated Radicle state
 note     compiler/state.tsv) regenerate README.md and repos.tsv byte-identically (exit 0)
 note   2 typed head: the first inventory row given a fourth field of 40 hex digits after its RID
@@ -51,6 +51,9 @@ note message; links passing exit 0 and stdout starting "links: pass: ". Each cas
 note FAIL with the evidence, then "SI pass=N fail=M"; exit 0 when no case fails, 1 otherwise, 2 on
 note a usage error. links reads a directory entry's kind from getdents64 and refuses DT_UNKNOWN,
 note which no case plants: ext4 and tmpfs never return it.
+note Rebuild: a real Git fixture's two rebuilt artifacts must match its committed file. A changed
+note artifact, exit 7, an off-chip hardware row even with hw=yes, and a deleted layer row must
+note fail. Missing commands and macOS-only steps are NOT_RUN and cannot satisfy layers 1 and 2.
 note SHA-256 (fn kinit to fn finish) is copied unchanged from omega-mv om/sha256/sha256-om2.om
 note at f4df82394e35893dcf1354dda69a2fe028d94bc1 (Apache-2.0, FIPS 180-4).
 
@@ -1774,6 +1777,256 @@ say tsep
 showx v xerr
 end
 
+text rbom "compiler/rebuild.om"
+text rbin "rebuild"
+text rbcomp "build rebuild from compiler/rebuild.om"
+text rbd "/rb"
+text rbp "/rb/p"
+text rbpin "/rb/p/pinned"
+text rbrepos "/rb/repos.tsv"
+text rbtable "/rb/layers.tsv"
+text rbgout "/rb/git.out"
+text rbgerr "/rb/git.err"
+text rbabc "abc"
+text rbrp0 "name\trid\thead\ttier\tdescription\np\tx\t"
+text rbrp1 "\tcore\tfixture\n"
+text rbhdr "layers\t2\nlayer\trepo\tneeds\tcommand\tartifact\tcompare\n"
+text rbrow1 "1\tp\tany\tcp pinned built\tbuilt\tpinned\n"
+text rbrow2 "2\tp\tany\tcp pinned built\tbuilt\tpinned\n"
+text rbwrong "2\tp\tany\tprintf wrong > built\tbuilt\tpinned\n"
+text rbexit "2\tp\tany\texit 7\t-\t-\n"
+text rbchip "2\tp\tpci:ffff:ffff\tcp pinned built\tbuilt\tpinned\n"
+text rbnone "2\tp\tany\t-\t-\t-\n"
+text rbmac "2\tp\tmacos\tcp pinned built\tbuilt\tpinned\n"
+text rbpass "REBUILD pass=2 fail=0 not_run=0"
+text rbdiff "FAIL artifact differs from committed"
+text rbnz "FAIL command exited nonzero"
+text rbseven " | rc 7 |"
+text rbnot "NOT_RUN hardware row; no PCI device"
+text rbmiss "layer 2 has no row"
+text rbno "NOT_RUN no documented rebuild command"
+text rbmacm "NOT_RUN macOS only"
+text rbc0 "rebuild-positive"
+text rbc1 "rebuild-byte-mutant"
+text rbc2 "rebuild-exit-mutant"
+text rbc3 "rebuild-offchip-mutant"
+text rbc4 "rebuild-missing-layer-mutant"
+text rbc5 "rebuild-no-command"
+text rbc6 "rebuild-macos-only"
+text rbgit "/usr/bin/git"
+text rbinit "init"
+text rbquiet "-q"
+text rbcd "-C"
+text rbadd "add"
+text rbf "pinned"
+text rbc "-c"
+text rbuser "user.name=Fixture"
+text rbmail "user.email=fixture@example.invalid"
+text rbcommit "commit"
+text rbqm "-qm"
+text rbmsg "fixture"
+text rbrev "rev-parse"
+text rbhead "HEAD"
+text rbrun "run"
+text rbhw "hw=yes"
+text rbnull "/dev/null"
+
+fn rbput t view uchar * n ulong to ulong
+for i ulong len t
+put fb add n i get t i
+end
+ret add n len t
+end
+fn rbpath t view uchar * to void
+pwd
+put pbn 0 sub get pbn 0 1
+padd t
+end
+fn rbarg t view uchar * to void
+pclr
+padd t
+aadd
+end
+fn rbg v ulong to ulong
+astart
+rbarg rbgit
+if eq v 0
+rbarg rbinit
+rbarg rbquiet
+rbpath rbp
+aadd
+else
+rbarg rbcd
+rbpath rbp
+aadd
+if eq v 1
+rbarg rbadd
+rbarg rbf
+end
+if eq v 2
+rbarg rbc
+rbarg rbuser
+rbarg rbc
+rbarg rbmail
+rbarg rbcommit
+rbarg rbqm
+rbarg rbmsg
+end
+if eq v 3
+rbarg rbrev
+rbarg rbhead
+end
+end
+pclr
+padd rbnull
+i = opr
+rbpath rbgout
+o = opw
+rbpath rbgerr
+e = opw
+ret spawn i o e
+end
+fn rbprep to void
+rbpath rbd
+c = makedir pb 0 get pbn 0 493
+rbpath rbp
+c = makedir pb 0 get pbn 0 493
+rbpath rbpin
+n = rbput rbabc 0
+if not wrf n
+fatal fio 0
+end
+for i ulong 4
+rc = rbg i
+if ne rc 0
+fatal rbcomp rc
+end
+end
+rbpath rbgout
+n = rdf
+if lt n 40
+fatal fio 0
+end
+for i ulong 40
+put gb i get fb i
+end
+n = rbput rbrp0 0
+for i ulong 40
+put fb add n i get gb i
+end
+n = rbput rbrp1 add n 40
+rbpath rbrepos
+if not wrf n
+fatal fio 0
+end
+end
+fn rbcall v ulong to ulong
+astart
+pwd
+padd rbin
+aadd
+rbarg rbrun
+rbpath rbtable
+aadd
+rbpath rbrepos
+aadd
+rbpath rbd
+aadd
+rbpath rbd
+aadd
+rbarg rbhw
+pclr
+padd rbnull
+i = opr
+pcase v xout
+o = opw
+pcase v xerr
+e = opw
+ret spawn i o e
+end
+fn rbat o ulong m view uchar * to bool
+for j ulong len m
+if ne get fb add o j get m j
+ret false
+end
+end
+ret true
+end
+fn rbhas v ulong x view uchar * m view uchar * to bool
+pcase v x
+n = rdf
+if ge n 4194304
+ret false
+end
+if lt n len m
+ret false
+end
+for i ulong add sub n len m 1
+if rbat i m
+ret true
+end
+end
+ret false
+end
+fn rbmatch v ulong to bool
+if eq v 61
+ret rbhas v xout rbpass
+end
+if eq v 62
+ret rbhas v xout rbdiff
+end
+if eq v 63
+ret and rbhas v xout rbnz rbhas v xout rbseven
+end
+if eq v 64
+ret rbhas v xout rbnot
+end
+if eq v 65
+ret or rbhas v xout rbmiss rbhas v xerr rbmiss
+end
+if eq v 66
+ret rbhas v xout rbno
+end
+ret rbhas v xout rbmacm
+end
+fn rbcase v ulong t view uchar * row2 view uchar * to void
+n = rbput rbhdr 0
+n = rbput rbrow1 n
+if ne v 65
+n = rbput row2 n
+end
+rbpath rbtable
+if not wrf n
+fatal fio 0
+end
+rc = rbcall v
+match = rbmatch v
+want = ulong 1
+if eq v 61
+want = 0
+end
+if and eq rc want match
+ok t
+else
+bad t
+say frc
+sayn rc
+say fio
+end
+say tnl
+end
+fn rbcases to void
+build rbom rbin rbcomp
+rbprep
+rbcase 61 rbc0 rbrow2
+rbcase 62 rbc1 rbwrong
+rbcase 63 rbc2 rbexit
+rbcase 64 rbc3 rbchip
+rbcase 65 rbc4 rbrow2
+rbcase 66 rbc5 rbnone
+rbcase 67 rbc6 rbmac
+end
+
 fn main to int
 if ne argcnt 3
 say tusage
@@ -1847,6 +2100,7 @@ lplant 38 czfr 10
 lplant 39 czlc 11
 lplant 40 czlink 12
 lplant 41 czdir 13
+rbcases
 say tsum
 sayn get tally 0
 say tsumf

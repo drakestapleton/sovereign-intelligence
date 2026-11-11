@@ -66,14 +66,58 @@ curl -fsSL https://www.aienos.com/si | sha256sum
 "$OMC" < compiler/links.om > links && chmod +x links && ./links .
 ```
 
-It writes nothing and checks two things. Every row of `repos.tsv` is a name, a valid Radicle ID (`rad:z` then 27 or 28 base58 characters that decode to a 20-byte id), a 40-digit head and a tier of `core` or `rest`; the withdrawn crypto projects (any name containing `pearl` or `crypto`, in any case, and any RID starting `rad:z2ft64`) are refused. And no project source is copied in: the entries of the root, `compiler/` and `gpu/` must be on the fixed lists in `links.om` (the root's files and the directories the GitHub line already had, `gpu/cuda-crack` only, and the eight files of `compiler/`: `README.md`, `si.om`, `gate.om`, `links.om`, `inventory.tsv`, `order.tsv`, `state.tsv` and `gate-3c37e6fb.tsv`), `.git` skipped. One translation is allowed: `README.zh-CN.md`, the Simplified Chinese README, as a regular file at the root, with exactly that name (Drake, 2026-11-11, "approved for all", answering "sovereign-intelligence: allow README.zh-CN.md at the root in the links.om allow-list"). No other language, no other spelling or case, no symbolic link or directory of that name, and no copy of it in `compiler/` or `gpu/`. Directories below those three levels, such as `docs/` and `tools/`, are not walked. It prints `links: pass: N link rows, every RID valid; root, compiler/ and gpu/ hold only SI entries` and exits 0, or `links: ` and the first refusal on stderr and exits 1. `build.sh` step 5b runs it on both targets, with a crypto-RID control.
+It writes nothing. Every `repos.tsv` row must have a name, a valid Radicle ID (`rad:z` then 27 or 28 base58 characters decoding to a 20-byte id), a lowercase 40-digit head and tier `core` or `rest`. Withdrawn crypto names and RIDs remain refused. The root, `compiler/` and `gpu/` entries must be on `links.om`'s existing lists; the rebuild mode adds only the regular root file `layers.tsv` and regular `compiler/rebuild.om`. `.git` is skipped, and subdirectories below those three levels are not walked. The existing regular-root-only `README.zh-CN.md` allowance is unchanged. It prints `links: pass: N link rows, every RID valid; root, compiler/ and gpu/ hold only SI entries`, exit 0, or the first refusal with `links: ` on stderr, exit 1. `build.sh` runs it for both targets with a crypto-RID control.
 
 ## Gate
 
-`gate.om` is the gate of `si.om` and `links.om`, also in pure seeded Omega. From the repository root, with the pinned `omc` and an existing scratch directory `$W`:
+`gate.om` gates `si.om`, `links.om` and `rebuild.om`, in pure seeded Omega. From the repository root, with the pinned `omc` and a new, existing scratch directory `$W`:
 
 ```sh
 "$OMC" < compiler/gate.om > "$W/gate" && chmod +x "$W/gate" && "$W/gate" "$OMC" "$W"
 ```
 
-It first checks the `omc` it is given by its sha256: any other `omc`, or none, prints `SI NOT_RUN` and exits 3. It then builds `si` from `si.om` and `links` from `links.om` and checks 35 cases. For `si`: the committed inputs regenerate `README.md` and `repos.tsv` byte-identically. Four refusals, each with exit 1, the matching message, the README unchanged and nothing written: a typed head (the first inventory row given a fourth field of 40 hex digits after its RID), an inventory with one RID character changed (no Radicle state for it), the old five-field inventory of commit `3c37e6fb` (`gate-3c37e6fb.tsv`, refused as typed), and a private repository (the committed `state.tsv` with its first `V` line, the first inventory project's, made `private`). And a stale block: a `README.md` whose first generated head is one digit off regenerates to the committed `README.md` and `repos.tsv`, which is the comparison `build.sh` step 5 fails on. For `links`: the repository root passes; a `repos.tsv` whose first RID ends in `0` (not base58), one whose first RID starts `rad:z2ft64`, and the committed `repos.tsv` beside a planted project directory `omega-mv/main.om` are each refused with exit 1 and the matching message. A minimal tree (the committed `repos.tsv` and `compiler/` with its eight file names, empty) passes, and 17 one-change variants of it are each refused with their own message: link-row names `Omega-Pearl`, `aien-CRYPTO-mv` and `../x`; heads with capitals, with a `g` and of 41 digits; tier `Core`; a 29-character RID and `rad:z` then 28 `z` (more than 20 bytes); a broken header and a header with no rows; and the planted entries `compiler/evil.om`, `compiler/si.om` as a symbolic link, a root symbolic link, a root file, a root directory and `gpu/x.bin`. The translation has seven more: a root `README.zh-CN.md` (an empty regular file) passes, and `compiler/README.zh-CN.md`, root `README.zh-TW.md`, `README.fr.md` and `readme.zh-cn.md`, and a root `README.zh-CN.md` that is a symbolic link to `repos.tsv` or a directory are each refused as not an SI file. Each mutated input must have a sha256 different from the committed file's (each planted entry must exist), so a mutation that did not apply counts as a failure. It prints `SI pass=35 fail=0` and exits 0. One `links` path has no case: a directory entry of unknown type (`DT_UNKNOWN`), which `links` refuses but ext4 and tmpfs never return.
+It checks the supplied compiler by SHA-256 first; another compiler or none prints `SI NOT_RUN`, exit 3. The original 35 cases remain: byte-identical regeneration; typed head, unknown RID, historical typed inventory and private-state refusals; stale README regeneration; current and minimal link trees; every existing malformed name, RID, head, tier and header; forbidden vendored files, directories and links; and all seven translation-path controls. Mutated inputs must differ from the originals and planted entries must exist. The seven rebuild cases add a real Git fixture with two byte-identical rebuilt artifacts, a changed-artifact mutant, command exit 7 (must be `FAIL` with rc 7), an off-chip hardware mutant even with `hw=yes`, a deleted layer row, no documented command, and macOS-only. The first two layers being `NOT_RUN` must make the run exit 1. The complete gate prints `SI pass=42 fail=0`, exit 0. `DT_UNKNOWN` refusal remains without a fixture on ext4/tmpfs, which never return it.
+
+## Rebuild mode
+
+`si` embeds `compiler/rebuild.om`, `layers.tsv` and its generated `repos.tsv` in `si.sh`. With `SI_REBUILD=1`, after the normal fetch it writes them under `SI_DIR/.si-check`, builds the checker with the fetched `omega-mv/seed/out/omc`, then executes it. Without that opt-in, the fetch/check behavior and exit codes are unchanged. The checker is a Linux program; the one-command bootstrap rebuild mode requires AArch64 Linux.
+
+For an already fetched tree, from this repository:
+
+```sh
+"$OMC" < compiler/rebuild.om > out/rebuild && chmod +x out/rebuild
+out/rebuild check layers.tsv
+mkdir -p /path/to/results
+out/rebuild run layers.tsv repos.tsv /path/to/checkouts /path/to/results
+```
+
+Each table row is `layer TAB repo TAB needs TAB command TAB artifact TAB compare`. The initial `layers TAB N` declaration requires every layer 1..N to have a row, in order; deleting a layer's only row is refused before executing anything. Separate host, doctor and hardware checks, and the forge and site, have their own rows. No code lists the layers or their commands.
+
+`needs` is `any`, `aarch64-linux`, `macos`, or `pci:VVVV:DDDD`. `macos` is always `NOT_RUN` here. A PCI row requires both an actual matching vendor/device in Linux sysfs and the explicit standalone `hw=yes` option. The generated bootstrap does not supply that option. Hardware detection reads sysfs only; no GPU device is opened by the checker. Even on-chip, host rows do not qualify hardware.
+
+The command is run in the manifest checkout, with stdin `/dev/null` and stdout/stderr in `layer-L-R.log`. The output binds the row to its manifest commit, full command, exit code and artifact SHA-256. `compare` is a file at that commit: `git cat-file` retrieves its immutable bytes and the checker compares SHA-256, so a build cannot overwrite the reference. `-` means no comparable published artifact is supplied; passing that row claims only the repository's own build/check success, not byte reproduction of a release. A missing manifest project is `NOT_RUN`, not silently fetched or added. A nonzero command is `FAIL`, including exits that the called gate labels `NOT_RUN`.
+
+The table's commands were read from each project's Radicle source documentation on 2026-11-11:
+
+| Layer | Documented source and artifact |
+|---|---|
+| Seed | omega-mv `AGENTS.md`, “Build”; `sh seed/omega-from-seed.sh` grows `build/seed/birth/stage3`, compared with committed `seed/out/omc` |
+| Self-check | omega-mv `seed/README.md`, “Rung R5”, and the self-compile invocation in `seed/omega-from-seed.sh`; compile `seed/omc/omc.om` with the rebuilt compiler and compare again with committed `seed/out/omc` |
+| GPU toolchain | CUDApp `README.md` build section and `AGENTS.md` host/GPU commands: `make`, `make test`, `make doctor`; hardware recipe `make hello-gpu`, `make hello-gpu-control`, `make zero-cuda-gate` |
+| Runtime | aien-sovereign-core-mv `README.md`, “Build and test”: `scripts/repro-build.sh -p aien-cli` and `cargo test --workspace -- --test-threads=1` |
+| Own model tools | aien-train `README.md`, CPU reproduction, and `tests/omegallm/build.sh`: pinned CPU compiler, `sh tests/omegallm/build.sh`, then `ollm adamck`; `OUT` keeps its artifact in this clone |
+| Forge/site | interplane-forge `README.md`: `./run.sh build`, `bash server/tests/counts.sh` (requires its documented base and compiler); interplane.io `README.md`, “Build”: its pinned `scripts/build-native.sh`, `site build`, `site verify` |
+| App | Hop `README.md` and `Omega/README.md`: `sh Omega/tests/check-mac.sh`, macOS arm64 only |
+
+The train and site rows retrieve their own documented historical compiler pins from the fetched omega-mv Git history, never repin them to the newest compiler. Runtime and CUDApp commands still use their documented Rust/C build dependencies; this orchestrator does not claim those layers are all Omega. The fetched projects' own compiler/referee provenance is unchanged.
+
+No layer lacks a documented command in that source snapshot. The current SI inventory does not include `interplane-forge` or `hop`; their rows therefore report `NOT_RUN not in repos.tsv`. This change intentionally adds neither project to the inventory.
+
+For a shared host, `SI_REBUILD_WRAP` (or standalone `wrap=WORDS`) prefixes **each row separately**, so each heavy command can acquire one CPU-pool ticket. Words split at spaces, so use paths without spaces. Example, with the operator's chosen lock and cores:
+
+```sh
+SI_REBUILD=1 SI_REBUILD_WRAP="flock /path/to/pool.lock timeout --kill-after=5 590 taskset -c 4,5" sh out/si.sh
+```
+
+The lock has no outer timeout. An inner timeout releases the ticket before ten minutes and is a command failure, not a pass or a skipped layer. On a host sharing its GPU with a live model, a device-isolated wrapper can additionally hide device nodes (`bwrap --dev-bind / / --dev /dev --proc /proc --`); the run must report that environment, and the doctor can fail for those hidden nodes. Neither a source landing nor this command publishes `/si`: publication needs the website's separately authorized build/release gates and a fresh Radicle-state generation followed by a served-script hash check.
+

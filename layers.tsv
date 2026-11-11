@@ -1,0 +1,12 @@
+layers	7
+layer	repo	needs	command	artifact	compare
+1	omega-mv	aarch64-linux	sh seed/omega-from-seed.sh	build/seed/birth/stage3	seed/out/omc
+2	omega-mv	aarch64-linux	build/seed/birth/stage3 < seed/omc/omc.om > build/si-self && cmp build/seed/birth/stage3 build/si-self	build/si-self	seed/out/omc
+3	CUDApp	any	make && make test	build/libomega_gpu.a	-
+3	CUDApp	any	make doctor	build/cudapp-doctor	-
+3	CUDApp	pci:10de:2e12	make hello-gpu && make hello-gpu-control && make zero-cuda-gate	build/hello_gpu	-
+4	aien-sovereign-core-mv	any	scripts/repro-build.sh -p aien-cli && cargo test --workspace -- --test-threads=1	target/release/aien-cli	-
+5	aien-train	aarch64-linux	git -C ../omega-mv show e5b32567:seed/out/omc > .si-omc && chmod +x .si-omc && OMC=$PWD/.si-omc OUT=$PWD/.si-build sh tests/omegallm/build.sh && .si-build/ollm adamck	.si-build/ollm	-
+6	interplane-forge	aarch64-linux	./run.sh build && bash server/tests/counts.sh	server/forged	-
+6	interplane.io	aarch64-linux	git -C ../omega-mv show b2ad967e:seed/out/omc > .si-omc && chmod +x .si-omc && OMC=$PWD/.si-omc sh scripts/build-native.sh target/site && target/site build dist dist-hopbot && target/site verify dist dist-hopbot	target/site	-
+7	hop	macos	sh Omega/tests/check-mac.sh	-	-

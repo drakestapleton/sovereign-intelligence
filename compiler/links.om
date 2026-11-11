@@ -71,6 +71,7 @@ text a7 "si.sh"
 text a8 "links"
 text a9 "build.sh"
 text a10 "README.zh-CN.md"
+text a11 "layers.tsv"
 text d1 ".claude"
 text d2 "docs"
 text d3 "evidence"
@@ -89,6 +90,7 @@ text c4 "inventory.tsv"
 text c5 "order.tsv"
 text c6 "state.tsv"
 text c7 "gate-3c37e6fb.tsv"
+text c8 "rebuild.om"
 
 note src: repos.tsv; pb: the path being checked; rt: ROOT; db: getdents64 records; sb: stat
 global src uchar 1048576
@@ -399,6 +401,9 @@ end
 
 note rootf, rootd: may [o, o+n) of db stand in ROOT as a regular file, as a directory
 fn rootf o ulong n ulong to bool
+if eqd o n a11
+ret true
+end
 if or or or or eqd o n a1 eqd o n a2 eqd o n a3 eqd o n a4 eqd o n a5
 ret true
 end
@@ -425,6 +430,9 @@ ret and dir eqd o n g1
 end
 if not reg
 ret false
+end
+if eqd o n c8
+ret true
 end
 if or or or eqd o n a1 eqd o n c1 eqd o n c2 eqd o n c3
 ret true

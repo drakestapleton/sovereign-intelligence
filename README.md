@@ -192,6 +192,20 @@ sh si.sh
 
 The script is generated, never written by hand, and made again each time my website is deployed. I choose which projects are in it and write their one-line descriptions. Everything else comes from Radicle: each project's main branch and its latest commit at that moment. That commit is the newest work, not a review: the table below says how many landing receipts (a record that the project's own checks passed on a fresh copy before it landed) exist for exactly that commit. [`compiler/si.om`](compiler/si.om), an Omega program, builds the script, the table below and [`repos.tsv`](repos.tsv); [`compiler/README.md`](compiler/README.md) shows how to rebuild all three and compare their sha256 with what is served.
 
+### Rebuild and check the stack
+
+After building this checkout, its generated bootstrap has an opt-in rebuild mode:
+
+```sh
+SI_REBUILD=1 sh out/si.sh
+```
+
+This fetches first, then runs the rows in [`layers.tsv`](layers.tsv), from the seed upward. The checker is [`compiler/rebuild.om`](compiler/rebuild.om), compiled with the fetched Omega compiler; commands are the individual repositories' documented commands, not a second implementation here. This mode requires AArch64 Linux. It does not start or replace a model server, install an app, publish a site or run a GPU command. Hardware rows stay `NOT_RUN` without a separate authorized hardware invocation; Hop's macOS check is `NOT_RUN` on Linux.
+
+Each layer step prints `PASS`, `FAIL <reason>` or `NOT_RUN <reason>`, its manifest commit, command, exit code and built artifact's SHA-256, followed by the totals. Layers with separate host and hardware checks have separate lines, as do the forge and site steps. A `-` means no command ran or no artifact is available. Exit 0 requires no `FAIL` and every step in layers 1 and 2 to pass. The rebuilt compiler must equal the compiler committed at the manifest head; its self-compile must equal those same bytes. Elsewhere `PASS` means the repository's own build and checks passed, not that an unprovided published binary was compared.
+
+The table is separate from the project list: it adds no fetched repository. A step whose project is not in `repos.tsv` is `NOT_RUN` and says so. A command recorded as `-` is `NOT_RUN no documented rebuild command`; an actual command that exits nonzero is always `FAIL`. See [`compiler/README.md`](compiler/README.md#rebuild-mode) for command sources, standalone use and CPU-pool wrapping. The served `/si` gains this mode only through a separately authorized site release; a source landing does not deploy it.
+
 Or take single projects straight from Radicle:
 
 ```sh

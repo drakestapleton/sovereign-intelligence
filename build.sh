@@ -146,13 +146,13 @@ a64 $O/omc < $B/omc.mut.om > $B/omc.mut
 pass "control: a one-line edit of omc.om changes the compiler it builds, so its pin catches it"
 
 # 5. The front door: compiler/si.om must regenerate what is committed.
-siin="compiler/inventory.tsv compiler/order.tsv compiler/state.tsv"
+siin="compiler/inventory.tsv compiler/order.tsv compiler/state.tsv compiler/rebuild.om"
 for t in a64 x86; do
   if [ $t = x86 ] && [ "$X86" = none ]; then note "NOT_RUN si on x86-64"; continue; fi
   w=$O/si-$t
   mkdir -p $w/compiler
   cp $siin $w/compiler/
-  cp README.md repos.tsv $w/
+  cp README.md repos.tsv layers.tsv $w/
   if [ $t = a64 ]; then
     a64 $O/omc < compiler/si.om > $O/si-a64.bin
   else
@@ -183,6 +183,12 @@ if command -v rad >/dev/null 2>&1 && command -v jq >/dev/null 2>&1 && [ -d "${RA
 else
   note "NOT_RUN front-door freshness: no rad, jq or Radicle storage here"
 fi
+
+# The layer table is refused before a rebuild can run if any declared layer has no row.
+a64 $O/omc < compiler/rebuild.om > $O/rebuild
+mk $O/rebuild
+a64 $O/rebuild check layers.tsv || fail "rebuild: refused layers.tsv"
+pass "rebuild layer table"
 
 # 5b. The link table: compiler/links.om must accept this checkout (every repos.tsv row a valid,
 # non-crypto RID; no project source vendored in) and refuse the same checkout with one RID broken.

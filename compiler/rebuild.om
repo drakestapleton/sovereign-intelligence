@@ -1,0 +1,1445 @@
+om2
+note compiler/rebuild.om: after /si has fetched the projects, rebuild each layer of the stack from
+note source and compare it with what is published, layer by layer from the seed upward. Pure seeded
+note Omega. Table-driven: the layers, their repositories and their commands are the rows of
+note layers.tsv beside repos.tsv; this program holds no layer, repository or command of its own.
+note
+note Build with the seeded compiler (compiler/README.md names the pins):
+note   omc < compiler/rebuild.om > rebuild && chmod +x rebuild
+note Run:
+note   rebuild check LAYERS
+note   rebuild run LAYERS REPOS DIR WORK [hw=yes] [wrap=WORDS]
+note LAYERS  layers.tsv: the line "layers TAB N" (N from 2 to 999), the header line
+note         "layer TAB repo TAB needs TAB command TAB artifact TAB compare", then one row per step:
+note         layer    1..N, rows in layer order, every layer from 1 to N with at least one row
+note         repo     a project name; its commit is the head repos.tsv gives it
+note         needs    any; aarch64-linux; macos (this is a Linux program, so always NOT_RUN); or
+note                  pci:VVVV:DDDD, a hardware row: it runs only with hw=yes and a PCI device
+note                  VVVV:DDDD under /sys/bus/pci/devices, else NOT_RUN, never PASS
+note         command  the repository's own documented command, run by /bin/sh -c in its clone,
+note                  or - when it has none (NOT_RUN no documented rebuild command)
+note         artifact the file the command builds, a path in the clone, or -
+note         compare  a path in the clone whose bytes at the commit the artifact must equal, or -
+note REPOS   repos.tsv: each project's commit is its head there
+note DIR     the directory /si fetched into, one clone per project named as in repos.tsv
+note WORK    an existing directory: a log per row, layer-L-R.log (R the row number), and the
+note         files git writes
+note check validates LAYERS and prints "rebuild: table ok: N layers, R rows". run validates it the
+note same way, then takes the rows in order and prints one line per row:
+note   PASS | layer L | repo | commit C | rc 0 | sha256 S | log G | cmd COMMAND
+note   FAIL <why> | layer L | ...     a clone not at its commit, a command exiting nonzero, a
+note                                  missing artifact, or an artifact whose sha256 differs from
+note                                  the committed file's
+note   NOT_RUN <why> | layer L | ...  needs not met here, no documented command, not fetched
+note and last "REBUILD pass=P fail=F not_run=N rows=R layers=L". Exit 0 when no row FAILs and every
+note row of layers 1 and 2 PASSes, else 1. A refused table: exit 1, one stderr line starting
+note "rebuild: " and nothing run. A usage error: exit 2.
+note A command runs with stdin /dev/null and stdout and stderr in its log. Exec hands a child an
+note empty environment, so the command gets HOME, PATH, USER, LOGNAME, LANG, LC_ALL, TMPDIR,
+note CARGO_HOME and RUSTUP_HOME copied from this program's own, where set, through /usr/bin/env.
+note wrap=WORDS puts WORDS, split at spaces, between those and /bin/sh, for example a CPU pool:
+note wrap=flock /path/pool.lock taskset -c 4,5.
+note SHA-256 (fn kinit to fn finish) is copied unchanged from compiler/gate.om, which copied it
+note from omega-mv om/sha256/sha256-om2.om at f4df82394e35893dcf1354dda69a2fe028d94bc1
+note (Apache-2.0, FIPS 180-4).
+
+text tpre "rebuild: "
+text tnl "\n"
+text tusage "usage: rebuild check LAYERS | rebuild run LAYERS REPOS DIR WORK [hw=yes] [wrap=WORDS]\n"
+text tcheck "check"
+text trun "run"
+text thw "hw=yes"
+text twrap "wrap="
+text targ "cannot read a command-line argument"
+text topen "cannot open "
+text tbig "file over its buffer: "
+text tnodir "WORK is not a directory: "
+text tlay "layers\t"
+text thdr "layer\trepo\tneeds\tcommand\tartifact\tcompare"
+text mfirst "the first line must be layers TAB N, N from 2 to 999"
+text mhdr "the second line must be the header layer TAB repo TAB needs TAB command TAB artifact TAB compare"
+text mcols "a row needs 6 tab-separated fields: line "
+text mlayer "layer is not a number from 1 to the declared count: line "
+text morder "rows are not in layer order: line "
+text mnorow1 "layer "
+text mnorow2 " has no row"
+text mrepo "bad repo name (letters, digits, . _ -, not starting with .): line "
+text mneeds "needs is not any, aarch64-linux, macos or pci:VVVV:DDDD (lowercase hex): line "
+text mcmd "command is empty, over 1024 bytes or has a control byte: line "
+text mpath "artifact or compare is not - or a relative path without .. or control bytes: line "
+text mcmp "compare needs an artifact: line "
+text mmany "more than 4096 rows at line "
+text tok1 "rebuild: table ok: "
+text tok2 " layers, "
+text tok3 " rows\n"
+text nany "any"
+text na64 "aarch64-linux"
+text nmac "macos"
+text npci "pci:"
+text tdash "-"
+text rmac "macOS only; this runner is a Linux program"
+text ra64 "needs AArch64 Linux"
+text rhw "hardware row; runs only with hw=yes, in an authorized hardware window"
+text rchip "hardware row; no PCI device "
+text rchip2 " here"
+text rcmd "no documented rebuild command"
+text rlist "not in repos.tsv, so /si does not fetch it"
+text rbadh "the repos.tsv head is not 40 lowercase hex digits"
+text rfetch "not fetched: no clone in DIR"
+text rhead "clone is not at the repos.tsv commit; it is at "
+text runk "clone HEAD cannot be read"
+text rexit "command exited nonzero"
+text rio "cannot write its log in WORK"
+text rpkt "command, wrap and environment exceed one exec packet (4096 bytes, 64 records)"
+text rart "artifact missing: "
+text rcom "no committed file at the commit: "
+text rdiff "artifact differs from committed "
+text tsp " "
+text vpass "PASS"
+text vfail "FAIL "
+text vnrun "NOT_RUN "
+text bl " | layer "
+text br " | "
+text bc " | commit "
+text brc " | rc "
+text bsha " | sha256 "
+text blog " | log "
+text bcmd " | cmd "
+text sum1 "REBUILD pass="
+text sum2 " fail="
+text sum3 " not_run="
+text sum4 " rows="
+text sum5 " layers="
+text tself "/proc/self/exe"
+text tpcid "/sys/bus/pci/devices"
+text tvend "/vendor"
+text tdev "/device"
+text tnull "/dev/null"
+text tlogp "/layer-"
+text tlog ".log"
+text tcom ".committed"
+text tgit "/git.out"
+text xenv "/usr/bin/env"
+text xsh "/bin/sh"
+text xc "-c"
+text xgit "git"
+text xrp "rev-parse"
+text xhead "HEAD"
+text xcf "cat-file"
+text xblob "blob"
+text e1 "HOME="
+text e2 "PATH="
+text e3 "USER="
+text e4 "LOGNAME="
+text e5 "LANG="
+text e6 "LC_ALL="
+text e7 "TMPDIR="
+text e8 "CARGO_HOME="
+text e9 "RUSTUP_HOME="
+text hexd "0123456789abcdef"
+
+note tb: the layers table; rp: repos.tsv
+global tb uchar 1048576
+global tbn ulong 1
+global rp uchar 4194304
+global rpn ulong 1
+note rows, 12 cells each: layer, repo offset and length, needs (1 any, 2 aarch64-linux, 3 macos,
+note 4 pci), command, artifact and compare offsets and lengths (4..9), line number (10), needs
+note offset (11). nlay: the declared layer count; prevl: the layer of the row before
+global row ulong 49152
+global nrow ulong 1
+global nlay ulong 1
+global prevl ulong 1
+note pb: the path being built; dir: DIR; wk: WORK; wr: the wrap words; cd: the clone of the row
+global pb uchar 8192
+global pbn ulong 1
+global dir uchar 4096
+global dirn ulong 1
+global wk uchar 4096
+global wkn ulong 1
+global wr uchar 4096
+global wrn ulong 1
+global cd uchar 8192
+global cdn ulong 1
+note av: the packed argv of a child (u16 count, then u16 length and bytes per record); ovf is 1
+note when a record did not fit. ev: the environment records handed on, packed the same way
+global av uchar 8192
+global avp ulong 1
+global avc ulong 1
+global ovf ulong 1
+global ev uchar 4096
+global evn ulong 1
+global evc ulong 1
+note st: a child's wait status; gb: small file reads; db: directory entries
+global st uchar 4
+global gb uchar 4096
+global gbn ulong 1
+global db uchar 32768
+note the current row: its commit (cm, cmn 40 when known), exit status (crc, hrc 1 when run),
+note artifact, log and committed sha256 in hex (hx, hl, hc; hsa and hlg 1 when known)
+global cm uchar 40
+global cmn ulong 1
+global crc ulong 1
+global hrc ulong 1
+global hx uchar 64
+global hl uchar 64
+global hc uchar 64
+global hsa ulong 1
+global hlg ulong 1
+global dg uchar 32
+note tally: PASS, FAIL and NOT_RUN rows; l12: rows of layers 1 and 2 that did not PASS;
+note a64: 1 when this program is an AArch64 ELF; hw: 1 with hw=yes
+global tally ulong 3
+global l12 ulong 1
+global a64 ulong 1
+global hw ulong 1
+
+text tslash "/"
+text tcolon ":"
+text tempty ""
+
+note K[0..63]: the first 32 bits of the fractional parts of the cube roots of the first 64 primes.
+note Copied mechanically from seed/qualification/om2/fixtures/sha256-k.dec (tool-computed, never typed).
+fn kinit k edit uint 64 to void
+put k 0 0x428a2f98
+put k 1 0x71374491
+put k 2 0xb5c0fbcf
+put k 3 0xe9b5dba5
+put k 4 0x3956c25b
+put k 5 0x59f111f1
+put k 6 0x923f82a4
+put k 7 0xab1c5ed5
+put k 8 0xd807aa98
+put k 9 0x12835b01
+put k 10 0x243185be
+put k 11 0x550c7dc3
+put k 12 0x72be5d74
+put k 13 0x80deb1fe
+put k 14 0x9bdc06a7
+put k 15 0xc19bf174
+put k 16 0xe49b69c1
+put k 17 0xefbe4786
+put k 18 0x0fc19dc6
+put k 19 0x240ca1cc
+put k 20 0x2de92c6f
+put k 21 0x4a7484aa
+put k 22 0x5cb0a9dc
+put k 23 0x76f988da
+put k 24 0x983e5152
+put k 25 0xa831c66d
+put k 26 0xb00327c8
+put k 27 0xbf597fc7
+put k 28 0xc6e00bf3
+put k 29 0xd5a79147
+put k 30 0x06ca6351
+put k 31 0x14292967
+put k 32 0x27b70a85
+put k 33 0x2e1b2138
+put k 34 0x4d2c6dfc
+put k 35 0x53380d13
+put k 36 0x650a7354
+put k 37 0x766a0abb
+put k 38 0x81c2c92e
+put k 39 0x92722c85
+put k 40 0xa2bfe8a1
+put k 41 0xa81a664b
+put k 42 0xc24b8b70
+put k 43 0xc76c51a3
+put k 44 0xd192e819
+put k 45 0xd6990624
+put k 46 0xf40e3585
+put k 47 0x106aa070
+put k 48 0x19a4c116
+put k 49 0x1e376c08
+put k 50 0x2748774c
+put k 51 0x34b0bcb5
+put k 52 0x391c0cb3
+put k 53 0x4ed8aa4a
+put k 54 0x5b9cca4f
+put k 55 0x682e6ff3
+put k 56 0x748f82ee
+put k 57 0x78a5636f
+put k 58 0x84c87814
+put k 59 0x8cc70208
+put k 60 0x90befffa
+put k 61 0xa4506ceb
+put k 62 0xbef9a3f7
+put k 63 0xc67178f2
+end
+
+note H(0): the first 32 bits of the fractional parts of the square roots of the first 8 primes
+note (fixtures/sha256-iv.dec).
+fn iv s edit uint 8 to void
+put s 0 0x6a09e667
+put s 1 0xbb67ae85
+put s 2 0x3c6ef372
+put s 3 0xa54ff53a
+put s 4 0x510e527f
+put s 5 0x9b05688c
+put s 6 0x1f83d9ab
+put s 7 0x5be0cd19
+end
+
+note Message schedule of the block m[o .. o+64). w is fresh: its incoming contents are never read.
+note The compiler proves that every get of w reads an element written earlier in this function
+note (error 27 otherwise): w[0..16) are the block's big-endian words, w[16..64) the FIPS recurrence.
+fn sched w edit uint 64 fresh m view uchar * o ulong to void
+q = ulong 0
+x = uint 0
+y = uint 0
+for i ulong 16 unroll
+q = add o mul i 4
+x = uint get m q
+x = or shl x 8 uint get m add q 1
+x = or shl x 8 uint get m add q 2
+put w i or shl x 8 uint get m add q 3
+end
+for i ulong 48 unroll
+x = get w add i 1
+y = get w add i 14
+x = add add get w i get w add i 9 xor xor rotr x 7 rotr x 18 shr x 3
+put w add i 16 add x xor xor rotr y 17 rotr y 19 shr y 10
+end
+end
+
+note The 64 rounds on the chaining value s. One round body, emitted 64 times by unroll; i is a constant
+note in each copy, so get kt i and get w i need no run-time check. uint arithmetic wraps mod 2^32.
+note Ch(e,f,g) = (e and f) xor (not e and g) is written g xor (e and (f xor g)); Maj(a,b,c) =
+note (a and b) xor (a and c) xor (b and c) is written (a and b) or (c and (a or b)). Both are bitwise
+note identities. h first becomes T1, then T1 + T2, which is the next a; the names then shift by one.
+note The sums are built a term per line and each Sigma in two lines through t: 12 names are live, and
+note omc hands out 16 registers with no spilling (error 12 under compiler-s1/s2 for longer lines).
+fn rounds s edit uint 8 w view uint 64 kt view uint 64 to void
+a = get s 0
+b = get s 1
+c = get s 2
+d = get s 3
+e = get s 4
+f = get s 5
+g = get s 6
+h = get s 7
+t = uint 0
+for i ulong 64 unroll
+h = add h get kt i
+h = add h get w i
+t = xor rotr e 6 rotr e 11
+t = xor t rotr e 25
+h = add h t
+h = add h xor g and e xor f g
+d = add d h
+t = xor rotr a 2 rotr a 13
+t = xor t rotr a 22
+h = add h t
+t = and c or a b
+h = add h or and a b t
+t = h
+h = g
+g = f
+f = e
+e = d
+d = c
+c = b
+b = a
+a = t
+end
+put s 0 add get s 0 a
+put s 1 add get s 1 b
+put s 2 add get s 2 c
+put s 3 add get s 3 d
+put s 4 add get s 4 e
+put s 5 add get s 5 f
+put s 6 add get s 6 g
+put s 7 add get s 7 h
+end
+
+note One block m[o .. o+64) into s. sched and rounds stay calls: inlined, their names would share
+note one 16-register frame with this function's parameters (no spilling, error 12).
+fn compress s edit uint 8 w edit uint 64 kt view uint 64 m view uchar * o ulong to void
+sched w m o
+rounds s w kt
+end
+
+note The whole blocks of m (len m is a multiple of 64 and at most 2^25, so under 2^19 passes).
+fn run s edit uint 8 w edit uint 64 kt view uint 64 m view uchar * to void
+for j ulong shr len m 6
+compress s w kt m shl j 6
+end
+end
+
+note The whole blocks of m (len m a multiple of 64). A rolled loop traps 4 after 1000000 passes
+note (OMEGESE.md section 2; omc s_for), so m is cut into runs of 2^25 bytes (2^19 blocks):
+note len m = top * 2^44 + mid * 2^25 + rest, and no loop passes 2^20 times. top reaches 1000000
+note only above 1.7e19 bytes, which no AArch64 address space holds.
+fn blocks s edit uint 8 w edit uint 64 kt view uint 64 m view uchar * to void
+q = ulong 0
+for a ulong shr len m 44
+for b ulong 0x80000
+run s w kt part m q 0x2000000
+q = add q 0x2000000
+end
+end
+for b ulong and shr len m 25 0x7ffff
+run s w kt part m q 0x2000000
+q = add q 0x2000000
+end
+run s w kt part m q sub len m q
+end
+
+note Pad the k pending bytes already in p (k < 64; p was all zero past them): 0x80, zeros, and the
+note 64-bit big-endian bit length of the n-byte message in the last 8 bytes of one or two blocks.
+fn finish s edit uint 8 w edit uint 64 kt view uint 64 p edit uchar 128 k ulong n ulong to void
+put p k 0x80
+e = ulong 64
+if ge k 56
+e = 128
+end
+bits = shl n 3
+for i ulong 8 unroll
+put p sub e add i 1 uchar and shr bits mul i 8 0xff
+end
+compress s w kt view p 0
+if eq e 128
+compress s w kt view p 64
+end
+end
+
+
+fn say t view uchar * to void
+w = write 1 t 0 len t
+end
+fn sayn v ulong to void
+d = new uchar 24 0
+x = v
+k = ulong 0
+while or gt x 0 eq k 0 bound 24
+put d k uchar add rem x 10 48
+k = add k 1
+x = div x 10
+end
+while gt k 0 bound 24
+k = sub k 1
+w = write 1 d k 1
+end
+end
+fn die t view uchar * to void
+w = write 2 tpre 0 len tpre
+w = write 2 t 0 len t
+w = write 2 tnl 0 1
+exit 1
+end
+fn badline t view uchar * ln ulong to void
+say tpre
+say t
+sayn ln
+say tnl
+exit 1
+end
+fn patharg a ulong to void
+n = argread a pb 0 8192
+if le n 0
+die targ
+end
+put pbn 0 ulong n
+end
+fn pc t view uchar * to void
+put pbn 0 0
+pa t
+end
+fn pa t view uchar * to void
+p = get pbn 0
+for i ulong len t
+put pb add p i get t i
+end
+put pbn 0 add p len t
+end
+fn pt o ulong n ulong to void
+p = get pbn 0
+for i ulong n
+put pb add p i get tb add o i
+end
+put pbn 0 add p n
+end
+fn pn v ulong to void
+d = new uchar 24 0
+x = v
+k = ulong 0
+while or gt x 0 eq k 0 bound 24
+put d k uchar add rem x 10 48
+k = add k 1
+x = div x 10
+end
+while gt k 0 bound 24
+k = sub k 1
+p = get pbn 0
+put pb p get d k
+put pbn 0 add p 1
+end
+end
+fn eqt o ulong n ulong t view uchar * to bool
+if ne n len t
+ret false
+end
+for i ulong n
+if ne get tb add o i get t i
+ret false
+end
+end
+ret true
+end
+fn num o ulong n ulong to ulong
+v = ulong 0
+if eq n 0
+ret 0
+end
+for i ulong n
+c = get tb add o i
+if or lt c 48 gt c 57
+ret 0
+end
+v = add mul v 10 ulong sub c 48
+if gt v 999
+ret 0
+end
+end
+ret v
+end
+fn nam o ulong n ulong to bool
+if eq n 0
+ret false
+end
+if eq get tb o 46
+ret false
+end
+for i ulong n
+c = get tb add o i
+ok = and ge c 65 le c 90
+ok = or ok and ge c 97 le c 122
+ok = or ok and ge c 48 le c 57
+ok = or ok or eq c 46 or eq c 45 eq c 95
+if not ok
+ret false
+end
+end
+ret true
+end
+fn rel o ulong n ulong to bool
+if eq n 0
+ret false
+end
+if eq get tb o 47
+ret false
+end
+for i ulong n
+c = get tb add o i
+if or lt c 33 gt c 126
+ret false
+end
+if eq c 46
+if lt add i 1 n
+if eq get tb add add o i 1 46
+ret false
+end
+end
+end
+end
+ret true
+end
+fn hexchar c uchar to bool
+ret or and ge c 48 le c 57 and ge c 97 le c 102
+end
+fn needs o ulong n ulong to ulong
+if eqt o n nany
+ret 1
+end
+if eqt o n na64
+ret 2
+end
+if eqt o n nmac
+ret 3
+end
+if ne n 13
+ret 0
+end
+if not eqt o 4 npci
+ret 0
+end
+if ne get tb add o 8 58
+ret 0
+end
+for i ulong 9
+if ne i 4
+if not hexchar get tb add add o 4 i
+ret 0
+end
+end
+end
+ret 4
+end
+fn parserow s ulong e ulong ln ulong to void
+fs = new ulong 6 0
+fnn = new ulong 6 0
+if true
+f = ulong 0
+q = s
+x = s
+while le q e bound 1048577
+endf = eq q e
+if not endf
+endf = eq get tb q 9
+end
+if endf
+if ge f 6
+badline mcols ln
+end
+put fs f x
+put fnn f sub q x
+f = add f 1
+x = add q 1
+end
+q = add q 1
+end
+if ne f 6
+badline mcols ln
+end
+end
+v = num get fs 0 get fnn 0
+if or eq v 0 gt v get nlay 0
+badline mlayer ln
+end
+if lt v get prevl 0
+badline morder ln
+end
+put prevl 0 v
+if not nam get fs 1 get fnn 1
+badline mrepo ln
+end
+k = needs get fs 2 get fnn 2
+if eq k 0
+badline mneeds ln
+end
+if true
+cn = get fnn 3
+if or eq cn 0 gt cn 1024
+badline mcmd ln
+end
+for j ulong cn
+c = get tb add get fs 3 j
+if or lt c 32 gt c 126
+badline mcmd ln
+end
+end
+if not rel get fs 4 get fnn 4
+badline mpath ln
+end
+if not rel get fs 5 get fnn 5
+badline mpath ln
+end
+if eqt get fs 4 get fnn 4 tdash
+if not eqt get fs 5 get fnn 5 tdash
+badline mcmp ln
+end
+end
+end
+r = get nrow 0
+if ge r 4096
+badline mmany ln
+end
+b = mul r 12
+put row b v
+put row add b 1 get fs 1
+put row add b 2 get fnn 1
+put row add b 3 k
+put row add b 4 get fs 3
+put row add b 5 get fnn 3
+put row add b 6 get fs 4
+put row add b 7 get fnn 4
+put row add b 8 get fs 5
+put row add b 9 get fnn 5
+put row add b 10 ln
+put row add b 11 get fs 2
+put nrow 0 add r 1
+end
+fn coverage to void
+for i ulong get nlay 0
+found = false
+for j ulong get nrow 0
+ly = get row mul j 12
+if eq ly add i 1
+found = true
+end
+end
+if not found
+say tpre
+say mnorow1
+sayn add i 1
+say mnorow2
+say tnl
+exit 1
+end
+end
+end
+fn parse to void
+n = get tbn 0
+p = ulong 0
+ln = ulong 0
+while lt p n bound 1048577
+s = p
+while lt p n bound 1048577
+if eq get tb p 10
+break
+end
+p = add p 1
+end
+e = p
+p = add p 1
+ln = add ln 1
+if eq ln 1
+if lt sub e s 8
+die mfirst
+end
+if not eqt s 7 tlay
+die mfirst
+end
+v = num add s 7 sub sub e s 7
+if lt v 2
+die mfirst
+end
+put nlay 0 v
+else
+if eq ln 2
+if not eqt s sub e s thdr
+die mhdr
+end
+else
+parserow s e ln
+end
+end
+end
+if lt ln 2
+die mhdr
+end
+coverage
+end
+fn loadtab to void
+fd = fopen pb 0 get pbn 0 524288 0
+if lt fd 0
+die topen
+end
+p = ulong 0
+while lt p 1048576 bound 1048577
+k = read int fd tb p sub 1048576 p
+if lt k 0
+die topen
+end
+if eq k 0
+break
+end
+p = add p ulong k
+end
+c = fclose int fd
+if ge p 1048576
+die tbig
+end
+put tbn 0 p
+parse
+end
+fn loadrepos to void
+fd = fopen pb 0 get pbn 0 524288 0
+if lt fd 0
+die topen
+end
+p = ulong 0
+while lt p 4194304 bound 4194305
+k = read int fd rp p sub 4194304 p
+if lt k 0
+die topen
+end
+if eq k 0
+break
+end
+p = add p ulong k
+end
+c = fclose int fd
+if ge p 4194304
+die tbig
+end
+put rpn 0 p
+end
+note locate the row's name and copy its manifest commit; false if absent or malformed.
+fn commit b ulong to bool
+put cmn 0 0
+p = ulong 0
+while lt p get rpn 0 bound 4194305
+s = p
+while lt p get rpn 0 bound 4194305
+if or eq get rp p 9 eq get rp p 10
+break
+end
+p = add p 1
+end
+same = eq sub p s get row add b 2
+if same
+for i ulong sub p s
+co = add get row add b 1 i
+cv = get tb co
+if ne get rp add s i cv
+same = false
+end
+end
+end
+if same
+p = add p 1
+while lt p get rpn 0 bound 4194305
+if eq get rp p 9
+break
+end
+p = add p 1
+end
+p = add p 1
+s = p
+while lt p get rpn 0 bound 4194305
+if or eq get rp p 9 eq get rp p 10
+break
+end
+p = add p 1
+end
+if ne sub p s 40
+ret false
+end
+for i ulong 40
+v = get rp add s i
+if not hexchar v
+ret false
+end
+put cm i v
+end
+put cmn 0 40
+ret true
+end
+while lt p get rpn 0 bound 4194305
+if eq get rp p 10
+break
+end
+p = add p 1
+end
+p = add p 1
+end
+ret false
+end
+fn aa t view uchar * to void
+n = len t
+p = get avp 0
+if or gt add add p 2 n 4096 ge get avc 0 64
+put ovf 0 1
+ret
+end
+put av p uchar and n 255
+put av add p 1 uchar shr n 8
+for i ulong n
+put av add add p 2 i get t i
+end
+put avp 0 add add p 2 n
+put avc 0 add get avc 0 1
+end
+fn ap to void
+n = get pbn 0
+p = get avp 0
+if or gt add add p 2 n 4096 ge get avc 0 64
+put ovf 0 1
+ret
+end
+put av p uchar and n 255
+put av add p 1 uchar shr n 8
+for i ulong n
+put av add add p 2 i get pb i
+end
+put avp 0 add add p 2 n
+put avc 0 add get avc 0 1
+end
+fn envkeep n ulong t view uchar * to bool
+if lt n len t
+ret false
+end
+for i ulong len t
+if ne get gb i get t i
+ret false
+end
+end
+ret true
+end
+fn envinit to void
+put evn 0 0
+put evc 0 0
+nenv = ulong envcnt
+for i ulong nenv
+k = envread i gb 0 4096
+if gt k 0
+n = ulong k
+keep = envkeep n e1
+keep = or keep envkeep n e2
+keep = or keep envkeep n e3
+keep = or keep envkeep n e4
+keep = or keep envkeep n e5
+keep = or keep envkeep n e6
+keep = or keep envkeep n e7
+keep = or keep envkeep n e8
+keep = or keep envkeep n e9
+if keep
+p = get evn 0
+if le add add p 2 n 4096
+put ev p uchar and n 255
+put ev add p 1 uchar shr n 8
+for j ulong n
+put ev add add p 2 j get gb j
+end
+put evn 0 add add p 2 n
+put evc 0 add get evc 0 1
+end
+end
+end
+end
+end
+fn start to void
+put avp 0 2
+put avc 0 0
+put ovf 0 0
+aa xenv
+p = ulong 0
+for i ulong get evc 0
+n = add ulong get ev p shl ulong get ev add p 1 8
+p = add p 2
+put pbn 0 n
+for j ulong n
+put pb j get ev add p j
+end
+ap
+p = add p n
+end
+end
+fn wrapadd to void
+p = ulong 0
+while lt p get wrn 0 bound 4097
+if eq get wr p 32
+p = add p 1
+else
+s = p
+while lt p get wrn 0 bound 4097
+if eq get wr p 32
+break
+end
+p = add p 1
+end
+put pbn 0 sub p s
+for i ulong sub p s
+put pb i get wr add s i
+end
+ap
+end
+end
+end
+fn spawn fd int inclone bool to ulong
+if eq get ovf 0 1
+c = fclose fd
+ret 512
+end
+put av 0 uchar get avc 0
+put av 1 uchar 0
+pid = fork
+if lt pid 0
+c = fclose fd
+ret 512
+end
+if eq pid 0
+if inclone
+v = chdir cd 0 get cdn 0
+if ne v 0
+exit 97
+end
+end
+v = dupfd fd 1 0
+v = dupfd fd 2 0
+v = fopen tnull 0 len tnull 0 0
+if ge v 0
+z = dupfd int v 0 0
+end
+v = execprog av 0 get avp 0
+exit 98
+end
+c = fclose fd
+v = waitpid int pid st 0 4 0
+if ne v pid
+ret 512
+end
+if ne get st 0 0
+ret add 256 ulong get st 0
+end
+ret ulong get st 1
+end
+fn workpath to void
+put pbn 0 get wkn 0
+for i ulong get wkn 0
+put pb i get wk i
+end
+end
+fn logpath b ulong to void
+workpath
+pa tlogp
+pn get row b
+pa tdash
+pn add div b 12 1
+pa tlog
+end
+fn clonepath b ulong to void
+put pbn 0 get dirn 0
+for i ulong get dirn 0
+put pb i get dir i
+end
+pa tslash
+pt get row add b 1 get row add b 2
+put cdn 0 get pbn 0
+for i ulong get pbn 0
+put cd i get pb i
+end
+end
+fn cpbase to void
+put pbn 0 get cdn 0
+for i ulong get cdn 0
+put pb i get cd i
+end
+pa tslash
+end
+fn smallread to long
+fd = fopen pb 0 get pbn 0 0 0
+if lt fd 0
+ret -1
+end
+n = read int fd gb 0 4096
+c = fclose int fd
+ret n
+end
+fn outputfd to int
+ret int fopen pb 0 get pbn 0 577 420
+end
+fn headok to bool
+start
+aa xgit
+aa xrp
+aa xhead
+workpath
+pa tgit
+fd = outputfd
+if lt fd 0
+ret false
+end
+rc = spawn fd true
+if ne rc 0
+ret false
+end
+workpath
+pa tgit
+n = smallread
+if lt n 40
+ret false
+end
+for i ulong 40
+if ne get gb i get cm i
+ret false
+end
+end
+ret true
+end
+fn hexstate s view uint 8 to void
+for i ulong 8
+for j ulong 4
+v = get s i
+v = shr v uint sub 24 mul j 8
+by = uchar and v 255
+ix = add mul i 8 mul j 2
+put hx ix get hexd shr by 4
+put hx add ix 1 get hexd and by 15
+end
+end
+end
+fn hashfile to bool
+s = new uint 8 0
+w = new uint 64 0
+kt = new uint 64 0
+pad = new uchar 128 0
+buf = new uchar 64 0
+fd = fopen pb 0 get pbn 0 0 0
+if lt fd 0
+ret false
+end
+kinit kt
+iv s
+total = ulong 0
+pending = ulong 0
+while true bound 9223372036854775807
+n = read int fd buf pending sub 64 pending
+if lt n 0
+c = fclose int fd
+ret false
+end
+if eq n 0
+break
+end
+total = add total ulong n
+pending = add pending ulong n
+if eq pending 64
+compress s w kt view buf 0
+pending = 0
+end
+end
+c = fclose int fd
+for i ulong pending
+put pad i get buf i
+end
+finish s w kt pad pending total
+hexstate s
+ret true
+end
+fn aarch to void
+pc tself
+n = smallread
+if gt n 20
+if and eq get gb 18 183 eq get gb 19 0
+put a64 0 1
+end
+end
+end
+fn chipentry b ulong p ulong rn ulong to bool
+if true
+q = add p 19
+e = q
+while lt e add p rn bound 32769
+if eq get db e 0
+break
+end
+e = add e 1
+end
+pc tpcid
+pa tslash
+for i ulong sub e q
+z = get pbn 0
+put pb z get db add q i
+put pbn 0 add z 1
+end
+end
+base = get pbn 0
+pa tvend
+v = smallread
+okv = ge v 6
+if okv
+for i ulong 4
+co = add get row add b 11 add 4 i
+by = get tb co
+if ne get gb add i 2 by
+okv = false
+end
+end
+end
+put pbn 0 base
+pa tdev
+v = smallread
+okd = ge v 6
+if okd
+for i ulong 4
+co = add get row add b 11 add 9 i
+by = get tb co
+if ne get gb add i 2 by
+okd = false
+end
+end
+end
+ret and okv okd
+end
+fn chip b ulong to bool
+fd = fopen tpcid 0 len tpcid 65536 0
+if lt fd 0
+ret false
+end
+found = false
+while not found bound 9223372036854775807
+n = getdnts int fd db 0 32768
+if le n 0
+break
+end
+p = ulong 0
+while lt p ulong n bound 32769
+rn = ulong get db add p 16
+rn = add rn shl ulong get db add p 17 8
+if lt rn 20
+break
+end
+if chipentry b p rn
+found = true
+break
+end
+p = add p rn
+end
+end
+c = fclose int fd
+ret found
+end
+fn fields b ulong to void
+say bl
+sayn get row b
+say br
+w = write 1 tb get row add b 1 get row add b 2
+say bc
+if eq get cmn 0 40
+w = write 1 cm 0 40
+else
+say tdash
+end
+say brc
+if eq get hrc 0 1
+sayn get crc 0
+else
+say tdash
+end
+say bsha
+if eq get hsa 0 1
+w = write 1 hx 0 64
+else
+say tdash
+end
+say blog
+logpath b
+w = write 1 pb 0 get pbn 0
+say bcmd
+w = write 1 tb get row add b 4 get row add b 5
+say tnl
+end
+fn result b ulong status ulong why view uchar * to void
+if eq status 0
+say vpass
+else
+if eq status 1
+say vfail
+else
+say vnrun
+end
+say why
+if le get row b 2
+put l12 0 1
+end
+end
+put tally status add get tally status 1
+fields b
+end
+fn executerow b ulong to void
+put hsa 0 0
+put hrc 0 0
+put cmn 0 0
+has = commit b
+if not has
+result b 2 rlist
+ret
+end
+k = get row add b 3
+if eq k 3
+result b 2 rmac
+ret
+end
+if eq k 2
+if eq get a64 0 0
+result b 2 ra64
+ret
+end
+end
+if eq k 4
+if not chip b
+result b 2 rchip
+ret
+end
+if eq get hw 0 0
+result b 2 rhw
+ret
+end
+end
+if eqt get row add b 4 get row add b 5 tdash
+result b 2 rcmd
+ret
+end
+clonepath b
+if not headok
+result b 1 rhead
+ret
+end
+start
+wrapadd
+aa xsh
+aa xc
+put pbn 0 0
+pt get row add b 4 get row add b 5
+ap
+logpath b
+fd = outputfd
+if lt fd 0
+result b 1 rio
+ret
+end
+rc = spawn fd true
+put crc 0 rc
+put hrc 0 1
+if not eqt get row add b 6 get row add b 7 tdash
+cpbase
+pt get row add b 6 get row add b 7
+if hashfile
+put hsa 0 1
+end
+end
+if ne rc 0
+result b 1 rexit
+ret
+end
+if not eqt get row add b 6 get row add b 7 tdash
+if eq get hsa 0 0
+result b 1 rart
+ret
+end
+end
+if not eqt get row add b 8 get row add b 9 tdash
+for i ulong 64
+put hc i get hx i
+end
+start
+aa xgit
+aa xcf
+aa xblob
+put pbn 0 40
+for i ulong 40
+put pb i get cm i
+end
+pa tcolon
+pt get row add b 8 get row add b 9
+ap
+workpath
+pa tcom
+fd = outputfd
+if lt fd 0
+result b 1 rio
+ret
+end
+rc = spawn fd true
+if ne rc 0
+result b 1 rcom
+ret
+end
+workpath
+pa tcom
+if not hashfile
+result b 1 rcom
+ret
+end
+same = true
+for i ulong 64
+if ne get hc i get hx i
+same = false
+end
+put hx i get hc i
+end
+if not same
+result b 1 rdiff
+ret
+end
+end
+result b 0 tempty
+end
+fn summary to void
+say sum1
+sayn get tally 0
+say sum2
+sayn get tally 1
+say sum3
+sayn get tally 2
+say sum4
+sayn get nrow 0
+say sum5
+sayn get nlay 0
+say tnl
+end
+fn main to int
+if lt argcnt 3
+say tusage
+ret 2
+end
+patharg 1
+checking = false
+if eq get pbn 0 5
+checking = true
+for i ulong 5
+if ne get pb i get tcheck i
+checking = false
+end
+end
+end
+if not checking
+if lt argcnt 6
+say tusage
+ret 2
+end
+end
+patharg 2
+loadtab
+if checking
+say tok1
+sayn get nlay 0
+say tok2
+sayn get nrow 0
+say tok3
+ret 0
+end
+patharg 3
+loadrepos
+n = argread 4 dir 0 4096
+if le n 0
+die targ
+end
+put dirn 0 ulong n
+n = argread 5 wk 0 4096
+if le n 0
+die targ
+end
+put wkn 0 ulong n
+extra = sub ulong argcnt 6
+for i ulong extra
+patharg add i 6
+if eq get pbn 0 6
+same = true
+for j ulong 6
+if ne get pb j get thw j
+same = false
+end
+end
+if same
+put hw 0 1
+end
+end
+if ge get pbn 0 5
+same = true
+for j ulong 5
+if ne get pb j get twrap j
+same = false
+end
+end
+if same
+put wrn 0 sub get pbn 0 5
+for j ulong get wrn 0
+put wr j get pb add j 5
+end
+end
+end
+end
+envinit
+aarch
+for i ulong get nrow 0
+executerow mul i 12
+end
+summary
+if or gt get tally 1 0 eq get l12 0 1
+ret 1
+end
+ret 0
+end
