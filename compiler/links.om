@@ -22,7 +22,7 @@ note      evidence, gpu, harness, seed, stack, tests and tools: the GitHub line'
 note      directories, grandfathered as they are, contents unchecked (Drake, 2026-11-07).
 note      ROOT/gpu may hold only the directory cuda-crack. ROOT/compiler
 note      may hold only the regular files README.md, si.om, gate.om, links.om, inventory.tsv,
-note      order.tsv, vetted.md and gate-3c37e6fb.tsv. Any other file, directory or symbolic
+note      order.tsv, state.tsv and gate-3c37e6fb.tsv. Any other file, directory or symbolic
 note      link there is refused: a project is linked by its RID, never copied in.
 note It prints "links: pass" and the row count, exit 0; or "links: " and the first refusal on
 note stderr, exit 1. Usage errors exit 2.
@@ -87,7 +87,7 @@ text c2 "gate.om"
 text c3 "links.om"
 text c4 "inventory.tsv"
 text c5 "order.tsv"
-text c6 "vetted.md"
+text c6 "state.tsv"
 text c7 "gate-3c37e6fb.tsv"
 
 note src: repos.tsv; pb: the path being checked; rt: ROOT; db: getdents64 records; sb: stat

@@ -21,7 +21,10 @@
 #   4. controls: a one-word edit of seed0.hex and a one-line edit of omc.om (a global grown by 32 KiB) must change what is
 #      born, so the pins catch them
 #   5. compiler/si.om, built for both targets, must regenerate the committed README.md and repos.tsv
-#      byte for byte, and both builds must write the same si.sh
+#      byte for byte from the typed inventory and the generated Radicle state compiler/state.tsv (it
+#      refuses a typed head, branch or visibility and a listed project that is not public), and both
+#      builds must write the same si.sh; where Radicle storage is at hand, a NOTE counts the listed
+#      heads that have moved on since compiler/state.tsv was read (tools/si-state.sh)
 #      5b. compiler/links.om, built for both targets, must accept this checkout's link table and
 #      tree, and refuse a repos.tsv whose first row carries a withdrawn crypto RID
 #   6. tools/ledger.om, built for both targets, must print tests/ledger/expected.tsv
@@ -143,7 +146,7 @@ a64 $O/omc < $B/omc.mut.om > $B/omc.mut
 pass "control: a one-line edit of omc.om changes the compiler it builds, so its pin catches it"
 
 # 5. The front door: compiler/si.om must regenerate what is committed.
-siin="compiler/inventory.tsv compiler/order.tsv compiler/vetted.md"
+siin="compiler/inventory.tsv compiler/order.tsv compiler/state.tsv"
 for t in a64 x86; do
   if [ $t = x86 ] && [ "$X86" = none ]; then note "NOT_RUN si on x86-64"; continue; fi
   w=$O/si-$t
@@ -156,7 +159,7 @@ for t in a64 x86; do
     { printf 'target x86linux\n'; cat compiler/si.om; } | x86 $O/omc-x86 > $O/si-x86.bin
   fi
   mk $O/si-$t.bin
-  (cd $w && $t ../si-$t.bin compiler/inventory.tsv compiler/order.tsv compiler/vetted.md README.md repos.tsv si.sh) \
+  (cd $w && $t ../si-$t.bin compiler/inventory.tsv compiler/order.tsv compiler/state.tsv README.md repos.tsv si.sh) \
     || fail "si ($t) refused the committed inputs"
   cmp -s $w/README.md README.md || fail "si ($t): README.md is not what compiler/si.om makes from the committed inputs"
   cmp -s $w/repos.tsv repos.tsv || fail "si ($t): repos.tsv is not what compiler/si.om makes from the committed inputs"
@@ -167,7 +170,19 @@ if [ -f $O/si-x86/si.sh ]; then
   pass "si: AArch64 and x86-64 builds write the same si.sh"
 fi
 cp $O/si-a64/si.sh $O/si.sh
-note "si.sh sha256 $(sha $O/si.sh); compare: curl -fsSL https://www.aienos.com/si | sha256sum"
+note "si.sh sha256 $(sha $O/si.sh), from the Radicle state read at $(sed -n 's/^T\t//p' compiler/state.tsv); the served script is regenerated from Radicle at each site deploy"
+if command -v rad >/dev/null 2>&1 && command -v jq >/dev/null 2>&1 && [ -d "${RAD_STORAGE:-$HOME/.radicle/storage}" ]; then
+  if sh tools/si-state.sh compiler/inventory.tsv > $O/state-now.tsv 2> $O/state-now.err; then
+    grep '^H' compiler/state.tsv | LC_ALL=C sort > $O/h-then.tsv
+    grep '^H' $O/state-now.tsv | LC_ALL=C sort > $O/h-now.tsv
+    moved=$(LC_ALL=C comm -13 $O/h-then.tsv $O/h-now.tsv | wc -l | tr -d ' ')
+    note "front door: $moved listed heads have moved on Radicle since compiler/state.tsv was read; regenerate with tools/si-state.sh (compiler/README.md)"
+  else
+    note "NOT_RUN front-door freshness: tools/si-state.sh failed: $(head -n 1 $O/state-now.err)"
+  fi
+else
+  note "NOT_RUN front-door freshness: no rad, jq or Radicle storage here"
+fi
 
 # 5b. The link table: compiler/links.om must accept this checkout (every repos.tsv row a valid,
 # non-crypto RID; no project source vendored in) and refuse the same checkout with one RID broken.

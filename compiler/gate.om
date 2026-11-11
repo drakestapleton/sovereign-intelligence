@@ -6,11 +6,20 @@ note scratch directory WORK:
 note   "$OMC" < compiler/gate.om > WORK/gate && chmod +x WORK/gate && WORK/gate "$OMC" WORK
 note It checks that OMC is the pinned omc by its sha256 (any other omc, or none: SI NOT_RUN, exit 3),
 note builds si from compiler/si.om and links from compiler/links.om with it into WORK/si and
-note WORK/links, then runs thirty-three cases:
-note   1 the committed inputs regenerate README.md and repos.tsv byte-identically (exit 0)
-note   2 head mutant: the last digit of the first inventory row's head moved on by one is refused
-note   3 RID mutant: the last character of the first inventory row's RID changed is refused
-note   4 the stale inventory of commit 3c37e6fb (compiler/gate-3c37e6fb.tsv) is refused
+note WORK/links, then runs thirty-five cases:
+note   1 the committed inputs (compiler/inventory.tsv, order.tsv and the generated Radicle state
+note     compiler/state.tsv) regenerate README.md and repos.tsv byte-identically (exit 0)
+note   2 typed head: the first inventory row given a fourth field of 40 hex digits after its RID
+note     is refused: heads, branches and visibility come only from the Radicle state
+note   3 RID mutant: the last character of the first inventory row's RID changed is refused (no
+note     default branch from a Radicle identity for it)
+note   4 the old inventory of commit 3c37e6fb (compiler/gate-3c37e6fb.tsv), five fields with a typed
+note     visibility and head, is refused as typed
+note  34 private: the committed Radicle state with its first V line (the first inventory row's
+note     project) made "private" is refused: a listed project must be public on Radicle
+note  35 stale block: README.md with the first generated head of its project table one digit off is
+note     not carried forward: si's output is the committed README.md again, so build.sh's
+note     comparison of the committed README.md with si's output catches a stale block
 note   5 links on the repository root passes: every link row valid, no project source vendored
 note   6 link RID mutant: WORK/5-tree/repos.tsv, the first link row's RID ending in 0 (not base58),
 note     is refused by links
@@ -33,8 +42,8 @@ note     passes links: the one translation SI holds (Drake, 2026-11-11, "approve
 note  28-33 planted entries, each refused by links as not an SI file: compiler/README.zh-CN.md
 note     (WORK/T-tree), a root README.zh-TW.md (U), README.fr.md (V) and readme.zh-cn.md (W), and a
 note     root README.zh-CN.md as a symbolic link to repos.tsv (X) and as a directory (Y)
-note The si mutants are written to WORK/head.tsv and WORK/rid.tsv. Cases 2-4, 6, 7 and 10-20 first
-note check that the input's sha256 differs from the committed file's, and cases 8 and 21-33 that the
+note The si mutants are written to WORK/head.tsv, WORK/rid.tsv and WORK/priv.tsv. Cases 2-4, 34,
+note 6, 7 and 10-20 first check that the input's sha256 differs from the committed file's, and cases 8 and 21-33 that the
 note planted entry exists, so an edit that did not apply cannot pass as a refusal. An si refusal
 note must be exit 1, stderr starting "si: " and the expected message, the README copy unchanged and
 note no repos.tsv written; a links refusal exit 1 and stderr starting "links: " and the expected
@@ -60,7 +69,7 @@ text tsumf " fail="
 text tsiom "compiler/si.om"
 text tinv "compiler/inventory.tsv"
 text tord "compiler/order.tsv"
-text tvet "compiler/vetted.md"
+text tsta "compiler/state.tsv"
 text told "compiler/gate-3c37e6fb.tsv"
 text trd "README.md"
 text trepos "repos.tsv"
@@ -94,12 +103,23 @@ text mlven "not an SI file"
 text tz2ft "2ft64"
 text fplant "the planted project file is missing"
 text tcur "current inventory regenerates README.md and repos.tsv byte-identically"
-text thm "head-mutant"
+text thm "typed-head"
 text trm "rid-mutant"
 text tom "old-3c37e6fb"
 text msi "si: "
-text mhead "inventory head is not the vetted head: "
-text mrid "inventory RID has no vetted row: "
+text mhead "inventory carries a typed head, branch or visibility; those come from Radicle (tools/si-state.sh): "
+text mrid "no default branch from a Radicle identity for: "
+text tpv "private-state"
+text tpriv "priv.tsv"
+text mpriv "listed project is not public on Radicle: "
+text tpub "public"
+text tprw "private"
+text tstl "stale-block"
+text tibeg "<!-- si:index:begin -->"
+text tgitc ".git) | `"
+text tixc "` | `"
+text fstale "the stale head could not be planted in the README copy"
+text fstok ": README.md with its first generated head one digit off regenerates to the committed README.md and repos.tsv\n"
 text fsame "input sha256 equals the committed inventory's"
 text frc "exit status "
 text fmsg "stderr lacks the expected refusal"
@@ -118,7 +138,7 @@ text tf3 "/gate.om"
 text tf4 "/links.om"
 text tf5 "/inventory.tsv"
 text tf6 "/order.tsv"
-text tf7 "/vetted.md"
+text tf7 "/state.tsv"
 text tf8 "/gate-3c37e6fb.tsv"
 text tp1 "/compiler/evil.om"
 text tp2 "/compiler/si.om"
@@ -509,10 +529,22 @@ put pbn 0 add p 1
 padd t
 end
 
+note psta: pb becomes the Radicle state of case v: WORK/priv.tsv for case 34 (v 49), else the
+note committed compiler/state.tsv
+fn psta v ulong to void
+pclr
+if eq v 49
+pwd
+padd tpriv
+else
+padd tsta
+end
+end
+
 note pinv: pb becomes the inventory of case v
 fn pinv v ulong to void
 pclr
-if eq v 0
+if or eq v 0 or eq v 49 eq v 50
 padd tinv
 end
 if eq v 1
@@ -724,7 +756,8 @@ fatal fio 0
 end
 end
 
-note runsi: copy README.md to WORK/<v>-README.md, then run WORK/si on case v's inventory, writing
+note runsi: copy README.md to WORK/<v>-README.md (for case 50 with a stale head planted), then run
+note WORK/si on case v's inventory and Radicle state, writing
 note WORK/<v>-README.md, -repos.tsv and -si.sh, stdout to -out, stderr to -err; its exit status
 fn runsi v ulong to ulong
 pclr
@@ -732,6 +765,11 @@ padd trd
 n = rdf
 if ge n 4194304
 ret 513
+end
+if eq v 50
+if not stale n
+ret 514
+end
 end
 pcase v xreadme
 if not wrf n
@@ -750,8 +788,7 @@ aadd
 pclr
 padd tord
 aadd
-pclr
-padd tvet
+psta v
 aadd
 pcase v xreadme
 aadd
@@ -760,7 +797,7 @@ aadd
 pcase v xsh
 aadd
 pclr
-padd tvet
+padd tsta
 i = opr
 pcase v xout
 o = opw
@@ -881,18 +918,15 @@ say tsep
 showerr 0
 end
 
-note mutate: write case v's mutant of the committed inventory: v 1 moves the last digit of the
-note first row's head on by one (f to 0), v 2 changes the last character of its RID to X (X to Y)
+note mutate: write case v's mutant of the committed inventory: v 1 gives the first row a typed
+note head, a fourth field of 40 hex digits after its RID; v 2 changes the last character of its
+note RID to X (X to Y)
 fn mutate v ulong to bool
 pclr
 padd tinv
 n = rdf
-if ge n 4194304
+if ge n 4194000
 ret false
-end
-want = ulong 2
-if eq v 1
-want = 4
 end
 t = ulong 0
 p = ulong 0
@@ -904,7 +938,7 @@ break
 end
 if eq c 9
 t = add t 1
-if eq t want
+if eq t 2
 p = q
 break
 end
@@ -914,23 +948,175 @@ end
 if eq p 0
 ret false
 end
+if eq v 1
+m = sub n p
+for j ulong m
+k = sub sub n 1 j
+put fb add k 41 get fb k
+end
+put fb p uchar 9
+for jj ulong 40
+put fb add add p 1 jj get hexd rem jj 16
+end
+pinv v
+ret wrf add n 41
+end
 x = get fb sub p 1
 y = uchar 88
 if eq x 88
 y = uchar 89
 end
-if eq v 1
-y = uchar add x 1
-if eq x 57
-y = uchar 97
-end
-if eq x 102
-y = uchar 48
-end
-end
 put fb sub p 1 y
 pinv v
 ret wrf n
+end
+
+note mstate: write WORK/priv.tsv, the committed Radicle state with its first V line's "public"
+note made "private": the first inventory row's project, since tools/si-state.sh writes the RIDs
+note in inventory order
+fn mstate to bool
+pclr
+padd tsta
+n = rdf
+if or lt n 16 ge n 4194000
+ret false
+end
+s = vline n
+if eq s n
+ret false
+end
+e = s
+while lt e n bound 4194305
+if eq get fb e 10
+break
+end
+e = add e 1
+end
+if lt sub e s 10
+ret false
+end
+o = sub e 6
+if not ispub o
+ret false
+end
+shift1 n e
+for j ulong 7
+put fb add o j get tprw j
+end
+pwd
+padd tpriv
+ret wrf add n 1
+end
+
+note vline: where the first line starting "V TAB" after the first line of fb[0, n) starts, or n
+fn vline n ulong to ulong
+q = ulong 0
+while lt q sub n 2 bound 4194305
+if eq get fb q 10
+if eq get fb add q 1 86
+if eq get fb add q 2 9
+ret add q 1
+end
+end
+end
+q = add q 1
+end
+ret n
+end
+
+note ispub: does fb hold "public" at o
+fn ispub o ulong to bool
+for j ulong 6
+if ne get fb add o j get tpub j
+ret false
+end
+end
+ret true
+end
+
+note shift1: move fb[e, n) one byte to the right
+fn shift1 n ulong e ulong to void
+m = sub n e
+for j ulong m
+k = sub sub n 1 j
+put fb add k 1 get fb k
+end
+end
+
+note fbfind: where t first starts in fb [s, e), or e
+fn fbfind s ulong e ulong t view uchar * to ulong
+n = len t
+if lt sub e s n
+ret e
+end
+for i ulong add sub sub e s n 1
+if fbat add s i t
+ret add s i
+end
+end
+ret e
+end
+
+note fbat: does fb hold the text t at o
+fn fbat o ulong t view uchar * to bool
+for j ulong len t
+if ne get fb add o j get t j
+ret false
+end
+end
+ret true
+end
+
+note stale: in fb[0, n), README.md, move the first digit of the first head of the project table on
+note (any digit to 0, 0 to 1); false when the table is not found
+fn stale n ulong to bool
+a = fbfind 0 n tibeg
+if eq a n
+ret false
+end
+b = fbfind a n tgitc
+if eq b n
+ret false
+end
+c = fbfind add b len tgitc n tixc
+if eq c n
+ret false
+end
+h = add c len tixc
+y = uchar 48
+if eq get fb h 48
+y = uchar 49
+end
+put fb h y
+ret true
+end
+
+note stalecase: case 35 (v 50), a README.md left with a stale generated head must regenerate to the
+note committed README.md and repos.tsv
+fn stalecase to void
+r = runsi 50
+if eq r 514
+bad tstl
+say fstale
+say tnl
+ret
+end
+if ne r 0
+bad tstl
+say frc
+sayn r
+say tsep
+showerr 50
+ret
+end
+if not and same 50 xreadme trd same 50 xrepos trepos
+bad tstl
+say fdiff
+say tnl
+ret
+end
+ok tstl
+say fstok
 end
 
 note shafile: sha256 of the file named by pb into hx; false when it cannot be read
@@ -974,6 +1160,47 @@ say fsame
 say tnl
 ret
 end
+refrun v t m
+end
+
+note refusedst: case 34 (v 49), its Radicle state must differ from the committed one and be refused
+note with message m
+fn refusedst v ulong t view uchar * m view uchar * to void
+if not sdiffers
+bad t
+say fsame
+say tnl
+ret
+end
+refrun v t m
+end
+
+note sdiffers: the committed state's sha256 into hy, WORK/priv.tsv's into hx; do they differ
+fn sdiffers to bool
+pclr
+padd tsta
+if not shafile
+ret false
+end
+for i ulong 64
+put hy i get hx i
+end
+pwd
+padd tpriv
+if not shafile
+ret false
+end
+for i ulong 64
+if ne get hx i get hy i
+ret true
+end
+end
+ret false
+end
+
+note refrun: run si on case v; it must exit 1 with message m, the README copy unchanged and no
+note repos.tsv written
+fn refrun v ulong t view uchar * m view uchar * to void
 r = runsi v
 if ne r 1
 bad t
@@ -1096,7 +1323,7 @@ pcase v xtree
 end
 aadd
 pclr
-padd tvet
+padd tsta
 i = opr
 pcase v xout
 o = opw
@@ -1583,6 +1810,14 @@ say fio
 say tnl
 end
 refused 3 tom mhead
+if mstate
+refusedst 49 tpv mpriv
+else
+bad tpv
+say fio
+say tnl
+end
+stalecase
 lcur
 lref 5 tlrid mlrid
 lref 6 tlcry mlcry

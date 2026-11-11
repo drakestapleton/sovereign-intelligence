@@ -4,26 +4,31 @@ note
 note Build with the pinned seeded compiler (compiler/README.md names the pin):
 note   omc < compiler/si.om > si && chmod +x si
 note Run:
-note   si INVENTORY ORDER VETTED README REPOS SISH
-note   INVENTORY  read: one project per line, name TAB rid TAB visibility TAB head TAB description,
-note              exported from my Radicle node by the one command in compiler/README.md
-note   VETTED     read: the vetted public table, Markdown rows "| name | rid | branch | head |",
-note              one row per RID on the project's default branch: compiler/vetted.md, the
-note              public rows of RadPublish's RIDS.md. Other lines (headings, prose, rows
-note              whose RID or head is not well formed) are ignored; a RID on two rows refuses
-note   ORDER      read: "core TAB name" lines give the core projects in order,
+note   si INVENTORY ORDER STATE README REPOS SISH
+note   INVENTORY  read, typed by a person: one project per line, name TAB rid TAB description:
+note              which projects the front door lists and how each is described. A line with
+note              more than three fields (a typed head, branch or visibility) is refused
+note   ORDER      read, typed: "core TAB name" lines give the core projects in order,
 note              "deny TAB name" lines name projects that are never listed,
 note              one optional "lead TAB name" line names the project the README leads with
-note   README     read and rewritten in place between the si:lead markers, then the si:index markers
+note   STATE      read, generated from Radicle by tools/si-state.sh, never typed: one T line,
+note              the time it was read, then per RID "D rid branch" (the default branch its
+note              signed identity names), "V rid visibility", "H rid branch head" (the
+note              canonical refs/heads/branch) and "P rid head file" (a landing receipt whose
+note              first line names that head)
+note   README     read and rewritten in place between the si:lead markers, the si:agent
+note              markers and the si:index markers
 note   REPOS      written: the public manifest, one project per line, as TSV
 note   SISH       written: the POSIX sh bootstrap served at https://www.aienos.com/si
-note Only projects whose name and RID are both on a VETTED row are listed: anything else on
-note the node, and every private or denied project, is never emitted. Core projects come
-note first, in ORDER's order; the rest follow in inventory order. A missing, unvetted or
-note non-public core project, a duplicate name or RID, a malformed field, or an inventory row
-note whose RID has no VETTED row or whose head is not that row's head makes si refuse
-note with exit 1 and write nothing. The output depends only on the input bytes: no clock,
-note no environment.
+note Every inventory project that ORDER does not deny is listed, with the branch, head and
+note receipt count STATE gives for its RID. A receipt counts only when its file is named
+note NAME-HEAD12.txt (the project's name and the first 12 digits of that head), the landing
+note receipts' convention. Core projects come first, in ORDER's order; the rest follow in
+note inventory order. A listed project that STATE does not show as public with one default
+note branch and one head of it, a missing or denied core project, a duplicate name or RID, a
+note typed head, branch or visibility, or a malformed field or STATE line makes si refuse
+note with exit 1 and write nothing; the refusal names the row. The output depends only on
+note the input bytes: no clock (the time is STATE's T line), no environment.
 
 note input bytes (all four inputs, one after another) and output bytes
 global src uchar 4194304
@@ -33,9 +38,11 @@ global obn ulong 1
 note the path named by the current argument
 global pb uchar 4096
 global pbn ulong 1
-note project records, 12 cells each: offset and length of name, rid, visibility, head,
-note description (cells 0..9), kind (cell 10: 0 rest, 1 core, 2 never listed), core rank (11)
-global rec ulong 12288
+note project records, 16 cells each: offset and length of name, rid, visibility, head,
+note description (cells 0..9), kind (cell 10: 0 rest, 1 core, 2 never listed), core rank (11),
+note offset and length of the default branch (12, 13) and the head's receipts (14); 15 is unused.
+note Visibility, head, branch and receipts come from STATE, never from the inventory
+global rec ulong 16384
 global nrec ulong 1
 note core and deny names from ORDER: offset, length pairs
 global cor ulong 128
@@ -45,16 +52,22 @@ global nden ulong 1
 note the lead project's name from ORDER: offset, length; nled is 0 or 1
 global led ulong 2
 global nled ulong 1
-note vetted rows from VETTED, 8 cells each: offset and length of name, rid, branch, head
-global vet ulong 8192
-global nvet ulong 1
+note STATE lines, 8 cells each: the kind byte, offset and length of up to three fields, and
+note the field count (cell 7)
+global stl ulong 65536
+global nstl ulong 1
+note the T line's time, offset and length; ntim counts T lines
+global tim ulong 2
+global ntim ulong 1
+note how many lines the last stfind matched (nhit)
+global nhit ulong 1
 note emission order: record numbers
 global seq ulong 1024
 global nseq ulong 1
 
 text tsi "si: "
 text tnl "\n"
-text tusage "usage: si INVENTORY ORDER VETTED README REPOS SISH\n"
+text tusage "usage: si INVENTORY ORDER STATE README REPOS SISH\n"
 text toverf "output is over the 4 MiB buffer"
 text targ "cannot read a command-line argument"
 text topen "cannot open "
@@ -62,22 +75,27 @@ text tread "cannot read "
 text tbig "input over the 4 MiB buffer: "
 text twrite "cannot write "
 text tmany "more than 1024 projects at: "
-text tcols "inventory line needs 5 tab-separated fields: "
+text tcols "inventory line needs 3 tab-separated fields (name, rid, description): "
 text tbname "bad project name (letters, digits, . _ - only): "
 text tbrid "bad RID (rad:z then letters and digits): "
-text tbhead "head is not a 40-digit lowercase hex commit: "
-text tbvis "visibility is not public or private: "
 text tbdesc "description has control bytes or is over 512 bytes: "
 text tbord "order line must be core, deny or lead TAB name: "
 text tmore "more than 64 core or deny names, or a second lead, at: "
 text tdupn "duplicate project name: "
 text tdupr "duplicate RID: "
 text tcmiss "core project is not in the inventory: "
-text tcpriv "core project is private, denied, not vetted or listed twice: "
-text tmvet "more than 1024 vetted rows at: "
-text tfrid "inventory RID has no vetted row: "
-text tfhead "inventory head is not the vetted head: "
-text tdupv "RID on two vetted rows: "
+text ttyped "inventory carries a typed head, branch or visibility; those come from Radicle (tools/si-state.sh): "
+text tcpriv "core project is denied or listed twice: "
+text tmst "more than 8192 Radicle state lines at: "
+text tbst "Radicle state line is not T, D, V, H or P with its well-formed fields: "
+text tnot "Radicle state needs exactly one T line, the time it was read"
+text tnod "no default branch from a Radicle identity for: "
+text tnov "no Radicle visibility for: "
+text tdupd "two Radicle default branches or visibilities for: "
+text tpriv "listed project is not public on Radicle: "
+text tnoh "no canonical head on Radicle of the default branch of: "
+text tduph "two Radicle heads of the default branch of: "
+text ttxt ".txt"
 text tnomark "README lacks <!-- si:lead:begin -->, <!-- si:lead:end -->, <!-- si:agent:begin -->, <!-- si:agent:end -->, <!-- si:index:begin --> and <!-- si:index:end -->, in that order"
 text tdot "."
 text tdotdot ".."
@@ -110,7 +128,8 @@ text ag3 "`'s agent prompt link appears here as soon as it is on Radicle.\n"
 text tsec "## "
 text ix1 "**"
 text ix2 " public projects**, "
-text ix3 " of them core, listed by `compiler/si.om` from my Radicle node's inventory. Each project's home is its own Radicle repository; this table only links to them. Clone one peer-to-peer with `rad clone`, or read-only with `git clone` from its mirror on my own seed. A plain `git clone` of the mirror gets the project's Radicle default branch. Every other branch and tag, including those carried over from GitHub, is served at the mirror URL with my node ID appended. That URL has no default branch, so give `--branch` a short branch or tag name, not `refs/heads/...`:\n\n```sh\ngit clone --branch <branch-or-tag> https://www.aienos.com/rad/<RID>.git/z6MkfZDue1TbaNFi3ZzcD9uiTeduPLC52ucdFVuLKZwexxhK/ <dir>\n```\n\nFull commit ids are in [`repos.tsv`](repos.tsv).\n\n| # | Project | Radicle ID | Get it | Head | About |\n|---:|---|---|---|---|---|\n"
+text ix3 " of them core. `compiler/si.om` lists them from Radicle as of "
+text ix3b ". For each project, *Branch* is the default branch its signed Radicle identity names and *Head* is that branch's commit on my node at that time; nobody types either. *Receipts* counts the landing receipts recorded for exactly that commit: each says the project's own checks passed on a fresh copy before it landed, and 0 means none is recorded. A head is the latest commit, not a review. Each project's home is its own Radicle repository; this table only links to them. Clone one peer-to-peer with `rad clone`, or read-only with `git clone` from its mirror on my own seed. A plain `git clone` of the mirror gets the project's Radicle default branch. Every other branch and tag, including those carried over from GitHub, is served at the mirror URL with my node ID appended. That URL has no default branch, so give `--branch` a short branch or tag name, not `refs/heads/...`:\n\n```sh\ngit clone --branch <branch-or-tag> https://www.aienos.com/rad/<RID>.git/z6MkfZDue1TbaNFi3ZzcD9uiTeduPLC52ucdFVuLKZwexxhK/ <dir>\n```\n\nFull commit ids are in [`repos.tsv`](repos.tsv).\n\n| # | Project | Radicle ID | Get it | Branch | Head | Receipts | About |\n|---:|---|---|---|---|---|---:|---|\n"
 text ix4 "| "
 text ix5 " | **"
 text ix6 "**"
@@ -119,6 +138,8 @@ text ix8 " | `"
 text ix9 "` | `rad clone --timeout 5min "
 text ixa "`, [git mirror](https://www.aienos.com/rad/"
 text ixb ".git) | `"
+text ixc "` | `"
+text ixd " | "
 text ix10 "` | "
 text ix11 " |\n"
 text rphdr "name\trid\thead\ttier\tdescription\n"
@@ -127,7 +148,8 @@ text shr2 "' '"
 text shr3 "'\n"
 
 note the bootstrap script, paragraph by paragraph; shd3 ends where the project lines go
-text sha0 "#!/bin/sh\n# sovereign-intelligence bootstrap: fetch every public project of my sovereign AI stack.\n# Generated by compiler/si.om (Omega) from my Radicle node's inventory; do not edit by hand.\n# Served at https://www.aienos.com/si\n# Front door: https://github.com/drakestapleton/sovereign-intelligence\n#\n#   curl -fsSL https://www.aienos.com/si | sh\n#\n# Settings (environment):\n#   SI_DIR=path       the one directory it creates (default ./sovereign-intelligence)\n#   SI_ONLY=core      fetch only the core projects (default all)\n#   SI_HTTP=url       first git-over-HTTPS seed (default https://www.aienos.com/rad, my own)\n#   SI_HTTP2=url      second git-over-HTTPS seed (default https://rosa.radicle.network, public)\n#   SI_INSTALL_RAD=1  run the official Radicle installer when a project cannot be fetched\n#   SI_RAD_TIMEOUT=t  per-project rad clone timeout (default 5min)\n# No sudo. It refuses to run as root. It touches nothing outside SI_DIR,\n# except that SI_INSTALL_RAD=1 runs Radicle's own installer as you.\n# Exit status: 0 all OK, 2 a checkout does not match the manifest, 3 a project could not be fetched.\nset -eu\numask 022\n\n"
+text sha0 "#!/bin/sh\n# sovereign-intelligence bootstrap: fetch every public project of my sovereign AI stack.\n# Generated by compiler/si.om (Omega) from Radicle state read at "
+text sha0b ": each project's\n# commit is the head of the default branch its signed Radicle identity names, at that time:\n# the latest commit, not a review. Do not edit by hand.\n# Served at https://www.aienos.com/si\n# Front door: https://interplane.io/drakestapleton/sovereign-intelligence\n#\n#   curl -fsSL https://www.aienos.com/si | sh\n#\n# Settings (environment):\n#   SI_DIR=path       the one directory it creates (default ./sovereign-intelligence)\n#   SI_ONLY=core      fetch only the core projects (default all)\n#   SI_HTTP=url       first git-over-HTTPS seed (default https://www.aienos.com/rad, my own)\n#   SI_HTTP2=url      second git-over-HTTPS seed (default https://rosa.radicle.network, public)\n#   SI_INSTALL_RAD=1  run the official Radicle installer when a project cannot be fetched\n#   SI_RAD_TIMEOUT=t  per-project rad clone timeout (default 5min)\n# No sudo. It refuses to run as root. It touches nothing outside SI_DIR,\n# except that SI_INSTALL_RAD=1 runs Radicle's own installer as you.\n# Exit status: 0 all OK, 2 a checkout does not match the manifest, 3 a project could not be fetched.\nset -eu\numask 022\n\n"
 text sha1 "SI_DIR=\"${SI_DIR:-./sovereign-intelligence}\"\nSI_ONLY=\"${SI_ONLY:-all}\"\nSI_HTTP=\"${SI_HTTP:-https://www.aienos.com/rad}\"\nSI_HTTP2=\"${SI_HTTP2:-https://rosa.radicle.network}\"\nSI_INSTALL_RAD=\"${SI_INSTALL_RAD:-0}\"\nSI_RAD_TIMEOUT=\"${SI_RAD_TIMEOUT:-5min}\"\n\n"
 text sha2 "si_say() { printf '%s\\n' \"$*\"; }\nsi_die() { printf 'si: %s\\n' \"$*\" >&2; exit 1; }\n\n"
 text sha3 "if [ \"$(id -u)\" = \"0\" ]; then si_die \"refusing to run as root; run it as your own user\"; fi\ncase \"$SI_ONLY\" in all|core) ;; *) si_die \"SI_ONLY must be all or core\" ;; esac\ncommand -v git >/dev/null 2>&1 || si_die \"git is required: https://git-scm.com\"\nsi_rad=0\nif command -v rad >/dev/null 2>&1; then si_rad=1; fi\n\n"
@@ -402,24 +424,25 @@ end
 
 note fldo, fldn: offset and length of field k of record r
 fn fldo r ulong k ulong to ulong
-ret get rec add mul r 12 mul k 2
+ret get rec add mul r 16 mul k 2
 end
 
 fn fldn r ulong k ulong to ulong
-ret get rec add add mul r 12 mul k 2 1
+ret get rec add add mul r 16 mul k 2 1
 end
 
 fn kindof r ulong to ulong
-ret get rec add mul r 12 10
+ret get rec add mul r 16 10
 end
 
-note inventory_row: split one inventory line [p, q) into its five fields and check them
+note inventory_row: split one inventory line [p, q) into its three fields and check them; a
+note fourth field is a typed head, branch or visibility, which only STATE may give
 fn inventory_row p ulong q ulong to void
 r = get nrec 0
 if ge r 1024
 die tmany p sub q p
 end
-b = mul r 12
+b = mul r 16
 k = ulong 0
 st = p
 i = p
@@ -429,17 +452,22 @@ if lt i q
 c = get src i
 end
 if or eq c 9 eq c 10
-if ge k 5
-die tcols p sub q p
+if ge k 3
+die ttyped p sub q p
 end
+if eq k 2
+put rec add b 8 st
+put rec add b 9 sub i st
+else
 put rec add b mul k 2 st
 put rec add add b mul k 2 1 sub i st
+end
 k = add k 1
 st = add i 1
 end
 i = add i 1
 end
-if ne k 5
+if ne k 3
 die tcols p sub q p
 end
 if not okname get rec b get rec add b 1
@@ -448,17 +476,15 @@ end
 if not okrid get rec add b 2 get rec add b 3
 die tbrid p sub q p
 end
-if not or eqt get rec add b 4 get rec add b 5 tpublic eqt get rec add b 4 get rec add b 5 tprivat
-die tbvis p sub q p
-end
-if not okhex get rec add b 6 get rec add b 7
-die tbhead p sub q p
-end
 if not okdesc get rec add b 8 get rec add b 9
 die tbdesc p sub q p
 end
-put rec add b 10 0
-put rec add b 11 0
+for j ulong 4
+put rec add add b 4 j 0
+end
+for m ulong 6
+put rec add add b 10 m 0
+end
 put nrec 0 add r 1
 end
 
@@ -532,151 +558,238 @@ p = add q 1
 end
 end
 
-note vetdup: is RID [ro, ro+rn) already on a kept VETTED row
-fn vetdup ro ulong rn ulong to bool
-nv = get nvet 0
-for j ulong nv
-vo = get vet add mul j 8 2
-vn = get vet add mul j 8 3
-if eqs ro rn vo vn
+note okbranch: 1..255 bytes of letters, digits, dot, dash, underscore and slash, not starting
+note with a dash or a slash
+fn okbranch o ulong n ulong to bool
+if or eq n 0 gt n 255
+ret false
+end
+c = get src o
+if or eq c 45 eq c 47
+ret false
+end
+for i ulong n
+c = get src add o i
+if not or isaln c or eq c 46 or eq c 45 or eq c 95 eq c 47
+ret false
+end
+end
 ret true
 end
+
+note st_ok: has STATE line k its kind's fields, each well formed; a T line is also counted
+fn st_ok k ulong to bool
+b = mul k 8
+kd = get stl b
+nf = get stl add b 7
+o1 = get stl add b 1
+n1 = get stl add b 2
+o2 = get stl add b 3
+n2 = get stl add b 4
+o3 = get stl add b 5
+n3 = get stl add b 6
+if eq kd 84
+put tim 0 o1
+put tim 1 n1
+put ntim 0 add get ntim 0 1
+ret and eq nf 1 and gt n1 0 and le n1 64 okdesc o1 n1
+end
+if not and ge nf 2 okrid o1 n1
+ret false
+end
+if eq kd 68
+ret and eq nf 2 okbranch o2 n2
+end
+if eq kd 86
+ret and eq nf 2 okname o2 n2
+end
+if eq kd 72
+ret and eq nf 3 and okbranch o2 n2 okhex o3 n3
+end
+if eq kd 80
+ret and eq nf 3 and okhex o2 n2 okname o3 n3
 end
 ret false
 end
 
-note vet_row: one VETTED line [p, q); "| name | rid | branch | head |" with a good name,
-note RID and 40-digit head is kept with its branch, any other line is ignored; a RID already
-note kept refuses, so each RID has one vetted head
-fn vet_row p ulong q ulong to void
-if lt sub q p 8
-ret
+note st_row: one STATE line [p, q): a kind byte, a TAB, then one to three TAB-separated fields
+fn st_row p ulong q ulong to void
+if ge get nstl 0 8192
+die tmst p sub q p
 end
-if ne get src p 124
-ret
+if or lt sub q p 3 ne get src add p 1 9
+die tbst p sub q p
 end
-a = add p 2
-b = find a q tbar
-if eq b q
-ret
+b = mul get nstl 0 8
+put stl b ulong get src p
+nf = ulong 0
+st = add p 2
+i = st
+while le i q bound 4194305
+c = uchar 10
+if lt i q
+c = get src i
 end
-c = add b 3
-d = find c q tbar
-if eq d q
-ret
+if or eq c 9 eq c 10
+if ge nf 3
+die tbst p sub q p
 end
-f = find add d 3 q tbar
-if eq f q
-ret
+x = add b add 1 mul nf 2
+put stl x st
+put stl add x 1 sub i st
+nf = add nf 1
+st = add i 1
 end
-g = add f 3
-h = find g q tbare
-if eq h q
-ret
+i = add i 1
 end
-if not okname a sub b a
-ret
+put stl add b 7 nf
+k = get nstl 0
+put nstl 0 add k 1
+if not st_ok k
+die tbst p sub q p
 end
-if not okrid c sub d c
-ret
-end
-if not okhex g sub h g
-ret
-end
-k = get nvet 0
-if ge k 1024
-die tmvet p sub q p
-end
-if vetdup c sub d c
-die tdupv p sub q p
-end
-put nvet 0 add k 1
-k = mul k 8
-put vet k a
-put vet add k 1 sub b a
-put vet add k 2 c
-put vet add k 3 sub d c
-a = add d 3
-put vet add k 4 a
-put vet add k 5 sub f a
-put vet add k 6 g
-put vet add k 7 sub h g
 end
 
-note parse_vetted: the vetted rows are those before the first "## " section line,
-note so WITHDRAWN, Extra branches and any later section are never vetted
-fn parse_vetted s ulong e ulong to void
+note parse_state: every line of [s, e) that is not empty is a STATE line; exactly one is T
+fn parse_state s ulong e ulong to void
 p = s
 while lt p e bound 4194305
 q = eol p e
-if ge sub q p 3
-if eq find p add p 3 tsec p
-ret
+if lt p q
+st_row p q
 end
-end
-vet_row p q
 p = add q 1
 end
+if ne get ntim 0 1
+die tnot 0 0
+end
 end
 
-note vetted: are record r's name and RID both on one VETTED row
-fn vetted r ulong to bool
-nmo = fldo r 0
-nmn = fldn r 0
-ro = fldo r 1
-rn = fldn r 1
-nv = get nvet 0
-for j ulong nv
-vo = get vet mul j 8
-vn = get vet add mul j 8 1
-if eqs nmo nmn vo vn
-vo = get vet add mul j 8 2
-vn = get vet add mul j 8 3
-if eqs ro rn vo vn
-ret true
+note stfind: the last STATE line of kind kd whose first field is record r's RID and, when bn is
+note not 0, whose second field is [bo, bo+bn); nhit counts the matches (none: the result is nstl)
+fn stfind kd ulong r ulong bo ulong bn ulong to ulong
+ns = get nstl 0
+h = ns
+c = ulong 0
+for j ulong ns
+if stm j kd r bo bn
+h = j
+c = add c 1
 end
 end
+put nhit 0 c
+ret h
 end
+
+note stm: is STATE line j of kind kd, with record r's RID as its first field and, when bn is not
+note 0, [bo, bo+bn) as its second
+fn stm j ulong kd ulong r ulong bo ulong bn ulong to bool
+b = mul j 8
+if ne get stl b kd
 ret false
 end
+if not eqs fldo r 1 fldn r 1 get stl add b 1 get stl add b 2
+ret false
+end
+if eq bn 0
+ret true
+end
+ret eqs bo bn get stl add b 3 get stl add b 4
+end
 
-note freshness: 0 when no VETTED row has RID [ro, ro+rn), 1 when its row has another head, 2 when
-note its row has head [ho, ho+hn)
-fn freshness ro ulong rn ulong ho ulong hn ulong to ulong
-v = ulong 0
-nv = get nvet 0
-for j ulong nv
+note rcpname: is [fo, fo+fl) the receipt file name NAME-HEAD12.txt for the name [no, no+nn)
+note and the head at ho
+fn rcpname fo ulong fl ulong no ulong nn ulong ho ulong to bool
+if ne fl add nn 17
+ret false
+end
+if not eqs fo nn no nn
+ret false
+end
+if ne get src add fo nn 45
+ret false
+end
+if not eqs add add fo nn 1 12 ho 12
+ret false
+end
+ret eqt add add fo nn 13 4 ttxt
+end
+
+note receipts: how many P lines name record r's RID and head with a file of the receipts'
+note naming convention
+fn receipts r ulong to ulong
+ns = get nstl 0
+c = ulong 0
+for j ulong ns
+if rcpm j r
+c = add c 1
+end
+end
+ret c
+end
+
+note rcpm: is STATE line j a P line of record r's RID and head, with a conventional file name
+fn rcpm j ulong r ulong to bool
 b = mul j 8
-vo = get vet add b 2
-vn = get vet add b 3
-if eqs ro rn vo vn
-if eq v 0
-v = 1
+if ne get stl b 80
+ret false
 end
-vo = get vet add b 6
-vn = get vet add b 7
-if eqs ho hn vo vn
-v = 2
+if not eqs fldo r 1 fldn r 1 get stl add b 1 get stl add b 2
+ret false
 end
+if not eqs fldo r 3 40 get stl add b 3 get stl add b 4
+ret false
 end
-end
-ret v
+ret rcpname get stl add b 5 get stl add b 6 fldo r 0 fldn r 0 fldo r 3
 end
 
-note check_fresh: every inventory row's RID must have a VETTED row and its head must be
-note that row's head, so a stale or unvetted inventory is refused, never rendered; the refusal
-note names the row (name, rid, visibility, head)
-fn check_fresh to void
+note resolve1: record r takes its default branch, visibility, head and receipt count from STATE;
+note a project Radicle does not show as public, with one default branch and one head of it, is
+note refused by name (name and RID)
+fn resolve1 r ulong to void
+o = fldo r 0
+n = sub add fldo r 1 fldn r 1 o
+b = mul r 16
+d = stfind 68 r 0 0
+one o n tnod tdupd
+put rec add b 12 stf d 3
+put rec add b 13 stf d 4
+v = stfind 86 r 0 0
+one o n tnov tdupd
+if not eqt stf v 3 stf v 4 tpublic
+die tpriv o n
+end
+put rec add b 4 stf v 3
+put rec add b 5 stf v 4
+h = stfind 72 r fldo r 6 fldn r 6
+one o n tnoh tduph
+put rec add b 6 stf h 5
+put rec add b 7 stf h 6
+put rec add b 14 receipts r
+end
+
+note stf: cell c of STATE line j
+fn stf j ulong c ulong to ulong
+ret get stl add mul j 8 c
+end
+
+note one: the last stfind must have matched exactly one line; none dies with m0, more with m2,
+note naming [o, o+n)
+fn one o ulong n ulong m0 view uchar * m2 view uchar * to void
+if eq get nhit 0 0
+die m0 o n
+end
+if gt get nhit 0 1
+die m2 o n
+end
+end
+
+note resolve: every project ORDER does not deny is resolved against STATE
+fn resolve to void
 nr = get nrec 0
 for r ulong nr
-v = freshness fldo r 1 fldn r 1 fldo r 3 fldn r 3
-o = fldo r 0
-n = sub add fldo r 3 fldn r 3 o
-if eq v 0
-die tfrid o n
-end
-if eq v 1
-die tfhead o n
+if not denied r
+resolve1 r
 end
 end
 end
@@ -720,21 +833,16 @@ end
 ret false
 end
 
-note mark_hidden: private, denied and unvetted projects get kind 2 and are never listed
+note mark_hidden: denied projects get kind 2 and are never listed; resolve has already refused
+note every other project that is not public
 fn mark_hidden to void
 nr = get nrec 0
 for r ulong nr
 kd = ulong 0
-if not eqt fldo r 2 fldn r 2 tpublic
-kd = 2
-end
 if denied r
 kd = 2
 end
-if not vetted r
-kd = 2
-end
-put rec add mul r 12 10 kd
+put rec add mul r 16 10 kd
 end
 end
 
@@ -757,8 +865,8 @@ end
 if ne kindof hit 0
 die tcpriv co cn
 end
-put rec add mul hit 12 10 1
-put rec add mul hit 12 11 j
+put rec add mul hit 16 10 1
+put rec add mul hit 16 11 j
 put seq j hit
 end
 put nseq 0 nc
@@ -798,6 +906,8 @@ emu n
 em ix2
 emu get ncor 0
 em ix3
+ems get tim 0 get tim 1
+em ix3b
 for i ulong n
 r = get seq i
 em ix4
@@ -815,8 +925,12 @@ ems fldo r 1 fldn r 1
 em ixa
 ems add fldo r 1 4 sub fldn r 1 4
 em ixb
+ems fldo r 6 fldn r 6
+em ixc
 ems fldo r 3 7
 em ix10
+emu get rec add mul r 16 14
+em ixd
 emit_desc r
 em ix11
 end
@@ -935,6 +1049,8 @@ end
 note gen_sh: the bootstrap script, one si_repo line per listed project
 fn gen_sh to void
 em sha0
+ems get tim 0 get tim 1
+em sha0b
 em sha1
 em sha2
 em sha3
@@ -984,9 +1100,9 @@ rs = load 4
 re = get srcn 0
 parse_inventory ins ine
 parse_order ors ore
-parse_vetted vs ve
-check_fresh
+parse_state vs ve
 check_unique
+resolve
 mark_hidden
 order_core
 order_rest
