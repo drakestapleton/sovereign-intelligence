@@ -1,3 +1,7 @@
+<!-- languages -->
+[English](README.md) · **简体中文**
+<!-- /languages -->
+
 > ## 我按 GitHub 的方式做了，GitHub 说不行。
 >
 > 我想守规矩，照他们的方式来：一切公开，放在 GitHub 上，开放进行。`aien-dev` 组织里有 109 个仓库。2026 年 11 月 7 日，GitHub 的回答是不行。它标记了这个组织，隐藏了所有仓库，并封停了我的机器账号。
@@ -202,6 +206,8 @@ rad clone --timeout 5min rad:z4RxD8vXigmWg61nM8miQ8DVPAXEP   # CUDApp (CUDA++)
 rad clone --timeout 5min rad:z6do9WDBhuSnvopDkgFdFr1yWA62    # omega-mv, the Omega compiler
 rad clone --timeout 5min rad:z2JJz4RDfZZxKGBLn6UhmW5p9VJQj   # sovereign-intelligence: the seed-grown compiler and this front door
 ```
+
+请保留 `--timeout 5min`。`rad clone` 默认等待种子节点 9 秒，而我较大的项目需要更长时间才能传完：在我 2026 年 11 月 10 日的测试中，CUDApp 约 200 MB，用了 79 秒。不加这个参数时，它会在报出 `fetch: timed out reading from control socket` 后停止，而你的节点仍在后台继续获取，所以过一两分钟再运行同样的 `rad clone` 也能成功。
 
 <a id="projects"></a>
 ## 项目
