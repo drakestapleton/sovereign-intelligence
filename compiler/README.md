@@ -111,7 +111,7 @@ The table's commands were read from each project's Radicle source documentation 
 
 The train and site rows retrieve their own documented historical compiler pins from the fetched omega-mv Git history, never repin them to the newest compiler. Runtime and CUDApp commands still use their documented Rust/C build dependencies; this orchestrator does not claim those layers are all Omega. The fetched projects' own compiler/referee provenance is unchanged.
 
-No layer lacks a documented command in that source snapshot. The current SI inventory does not include `interplane-forge` or `hop`; their rows therefore report `NOT_RUN not in repos.tsv`. This change intentionally adds neither project to the inventory.
+No layer lacks a documented command in that source snapshot. The current SI inventory does not include `interplane-forge` or `hop`. Forge reports `NOT_RUN not in repos.tsv`; Hop reports its platform requirement first, `NOT_RUN macOS only`, with no manifest commit. This change intentionally adds neither project to the inventory.
 
 For a shared host, `SI_REBUILD_WRAP` (or standalone `wrap=WORDS`) prefixes **each row separately**, so each heavy command can acquire one CPU-pool ticket. Words split at spaces, so use paths without spaces. Example, with the operator's chosen lock and cores:
 

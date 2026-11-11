@@ -1233,13 +1233,13 @@ put hsa 0 0
 put hrc 0 0
 put cmn 0 0
 has = commit b
-if not has
-result b 2 rlist
-ret
-end
 k = get row add b 3
 if eq k 3
 result b 2 rmac
+ret
+end
+if not has
+result b 2 rlist
 ret
 end
 if eq k 2
