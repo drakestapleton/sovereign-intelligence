@@ -1,0 +1,17 @@
+fn h2f h ushort to f32
+v = uint h
+s = shl and shr v 15 1 31
+e = and shr v 10 31
+m = and v 1023
+if eq e 0
+z = mul f32 m 0.000000059604644775390625f32
+if eq s 0
+ret z
+end
+ret neg z
+end
+if eq e 31
+ret bitcast f32 or or s 2139095040 shl m 13
+end
+ret bitcast f32 or or s shl add e 112 23 shl m 13
+end

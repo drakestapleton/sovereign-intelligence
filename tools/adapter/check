@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+set -euo pipefail
+[[ $# == 2 ]] || { echo 'usage: check QWEN.gguf STORIES.gguf' >&2; exit 2; }
+base=$(cd -- "$(dirname -- "$0")" && pwd)
+tmp=$(mktemp -d)
+trap 'rm -rf -- "$tmp"' EXIT
+export SI_ADAPTER_CACHE=$tmp/cache
+run() { "$base/qualify" "$1" | tee "$tmp/log"; }
+reject() {
+    local reason=$1
+    shift
+    if "$@" > "$tmp/log" 2>&1; then echo "unexpected success: $reason" >&2; exit 1; fi
+    grep -Fx "REFUSED $reason" "$tmp/log"
+}
+run "$1"
+grep -q 'architecture=qwen2 .*cache=generated' "$tmp/log"
+qkey=$(sed -n 's/^ROW_PASS .* key=\([^ ]*\) kernel=.*/\1/p' "$tmp/log")
+run "$2"
+grep -q 'architecture=llama .*cache=generated' "$tmp/log"
+lkey=$(sed -n 's/^ROW_PASS .* key=\([^ ]*\) kernel=.*/\1/p' "$tmp/log")
+[[ -n $qkey && -n $lkey && $qkey != "$lkey" ]]
+run "$2"
+grep -q 'cache=reused' "$tmp/log"
+# Change only the reported kernel release, keeping the real CPU/runtime.
+mkdir "$tmp/bin"
+cat > "$tmp/bin/uname" <<'PROBE'
+#!/bin/sh
+if [ "$1" = -smr ]; then echo 'Linux CONTROL aarch64'; else exec /usr/bin/uname "$@"; fi
+PROBE
+chmod +x "$tmp/bin/uname"
+PATH="$tmp/bin:$PATH" run "$2"
+grep -q 'cache=generated' "$tmp/log"
+other=$(sed -n 's/^ROW_PASS .* key=\([^ ]*\) kernel=.*/\1/p' "$tmp/log")
+[[ -n $other && $other != "$lkey" ]]
+echo HARDWARE_KEY_CONTROL_PASS
+echo truncated > "$tmp/bad"
+reject unsupported_size "$base/qualify" "$tmp/bad"
+truncate -s "$(stat -c %s "$2")" "$tmp/bad"
+reject model_digest "$base/qualify" "$tmp/bad"
+cp "$tmp/cache/$qkey" "$tmp/cache/$lkey"
+reject kernel_digest "$base/qualify" "$2"
+rm "$tmp/cache/$lkey"
+reject compiler_digest env OMC=/bin/true "$base/qualify" "$2"
+mkdir "$tmp/mutant"
+cp "$base"/{qualify,models.tsv,half.om,dq8.om.in,row.om.in} "$tmp/mutant/"
+sed -i 's/3223118742/3223118743/' "$tmp/mutant/models.tsv"
+reject parity "$tmp/mutant/qualify" "$2"
+[[ ! -e $tmp/cache/$lkey ]]
+echo CHECK_PASS

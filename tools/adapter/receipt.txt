@@ -1,0 +1,41 @@
+qwen2 gpt2 7 896 310111584 952 675710816 4333ed22b9b49f43c24d512229e4dd281f2793691f078b325419c28b2532874e 3158785920
+llama llama 7 288 20312288 306 26671328 57436cf592b35857e212c0ddb28f0c0d836c3788daa6c0ad8b7b4ea18b3fcba8 3223118742
+Linux 7.0.0-1019-nvidia aarch64
+0x00000000410fd851
+0x00000000410fd871
+MemTotal:       127598752 kB
+display 000f:01:00.0 0x10de 0x2e12 0x030000
+nvidia
+NVRM version: NVIDIA UNIX Open Kernel Module for aarch64  580.173.02  Release Build  (dvs-builder@U22-A24-5-4)  Tue Jun 23 08:34:19 UTC 2026
+ROW_PASS format=GGUFv3 quant=Q8_0 architecture=qwen2 tokenizer=gpt2 model=ca59ca7f13d0e15a8cfa77bd17e65d24f6844b554a7b6c12e07a5f89ff76844e width=896 bits=3158785920 device=cpu cache=generated key=c647286c9facbcb45d16df40e787c6c714691dd78bfb5212772f815453348980 kernel=72ab06a7e1d9e5f9decb391a9f994ad99d1e33e6fef33b73f8592753d0049176
+Linux 7.0.0-1019-nvidia aarch64
+0x00000000410fd851
+0x00000000410fd871
+MemTotal:       127598752 kB
+display 000f:01:00.0 0x10de 0x2e12 0x030000
+nvidia
+NVRM version: NVIDIA UNIX Open Kernel Module for aarch64  580.173.02  Release Build  (dvs-builder@U22-A24-5-4)  Tue Jun 23 08:34:19 UTC 2026
+ROW_PASS format=GGUFv3 quant=Q8_0 architecture=llama tokenizer=llama model=2eda49203f2f044f3dddf29a7dd7cc861ef5a0340f518a19613d73ba6d9c06b6 width=288 bits=3223118742 device=cpu cache=generated key=249b31d6c672014af20ba52b1bf43a4e435f3f1c0b80c069a82e5cf8fac5366a kernel=6fd0c7b07974b99229cb8a080471b5d0610ac844a37fdbf2ae26f43be91345f7
+Linux 7.0.0-1019-nvidia aarch64
+0x00000000410fd851
+0x00000000410fd871
+MemTotal:       127598752 kB
+display 000f:01:00.0 0x10de 0x2e12 0x030000
+nvidia
+NVRM version: NVIDIA UNIX Open Kernel Module for aarch64  580.173.02  Release Build  (dvs-builder@U22-A24-5-4)  Tue Jun 23 08:34:19 UTC 2026
+ROW_PASS format=GGUFv3 quant=Q8_0 architecture=llama tokenizer=llama model=2eda49203f2f044f3dddf29a7dd7cc861ef5a0340f518a19613d73ba6d9c06b6 width=288 bits=3223118742 device=cpu cache=reused key=249b31d6c672014af20ba52b1bf43a4e435f3f1c0b80c069a82e5cf8fac5366a kernel=6fd0c7b07974b99229cb8a080471b5d0610ac844a37fdbf2ae26f43be91345f7
+Linux CONTROL aarch64
+0x00000000410fd851
+0x00000000410fd871
+MemTotal:       127598752 kB
+display 000f:01:00.0 0x10de 0x2e12 0x030000
+nvidia
+NVRM version: NVIDIA UNIX Open Kernel Module for aarch64  580.173.02  Release Build  (dvs-builder@U22-A24-5-4)  Tue Jun 23 08:34:19 UTC 2026
+ROW_PASS format=GGUFv3 quant=Q8_0 architecture=llama tokenizer=llama model=2eda49203f2f044f3dddf29a7dd7cc861ef5a0340f518a19613d73ba6d9c06b6 width=288 bits=3223118742 device=cpu cache=generated key=4f6cb45f28b37bf3ff75fa7e1f6229985eee21160741fec8d661f4a3ba6edc53 kernel=6fd0c7b07974b99229cb8a080471b5d0610ac844a37fdbf2ae26f43be91345f7
+HARDWARE_KEY_CONTROL_PASS
+REFUSED unsupported_size
+REFUSED model_digest
+REFUSED kernel_digest
+REFUSED compiler_digest
+REFUSED parity
+CHECK_PASS

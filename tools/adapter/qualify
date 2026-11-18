@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+# Qualify one pinned Q8_0 attention row on a Linux AArch64 host.
+set -euo pipefail
+export LC_ALL=C
+umask 077
+refuse() { printf 'REFUSED %s\n' "$1" >&2; exit 1; }
+digest() { sha256sum < "$1" | cut -d' ' -f1; }
+[[ $# == 1 ]] || refuse 'usage: qualify MODEL.gguf'
+base=$(cd -- "$(dirname -- "$0")" && pwd)
+[[ -f $1 ]] || refuse model_file
+exec 3< "$1"
+model=/proc/self/fd/3
+[[ -f $model ]] || refuse model_type
+size=$(stat -Lc %s "$model")
+awk -v size="$size" '$1 == size {found=1} END {exit !found}' "$base/models.tsv" || refuse unsupported_size
+hash=$(digest "$model")
+spec=$(awk -v s="$size" -v h="$hash" '$1 == s && $2 == h {print}' "$base/models.tsv")
+[[ -n $spec ]] || refuse model_digest
+read -r _ _ arch tokenizer width offset row_sha reference binary_sha <<< "$spec"
+[[ $(uname -s)/$(uname -m) == Linux/aarch64 ]] || refuse unsupported_host
+tmp=$(mktemp -d)
+trap 'rm -rf -- "$tmp"' EXIT
+blocks=$((width / 32))
+length=$((34 * blocks))
+dd if="$model" of="$tmp/row" iflag=skip_bytes,count_bytes skip="$offset" count="$length" status=none
+[[ $(digest "$tmp/row") == "$row_sha" ]] || refuse row_digest
+
+{
+    uname -smr
+    # Include all reported core types on heterogeneous hosts.
+    cat /sys/devices/system/cpu/cpu*/regs/identification/midr_el1 | sort -u
+    awk '/^MemTotal:/ {print}' /proc/meminfo
+    for pci in /sys/bus/pci/devices/*; do
+        [[ -r $pci/class ]] || continue
+        class=$(cat "$pci/class")
+        [[ $class == 0x03* ]] || continue
+        printf 'display %s %s %s %s\n' "${pci##*/}" "$(cat "$pci/vendor")" "$(cat "$pci/device")" "$class"
+        if [[ -L $pci/driver ]]; then basename "$(readlink "$pci/driver")"; fi
+    done
+    if [[ -r /proc/driver/nvidia/version ]]; then head -1 /proc/driver/nvidia/version; fi
+} > "$tmp/hardware"
+cat "$tmp/hardware"
+compiler_sha=45442c7d517fd605507bda5d1ec52493ff182661301cda69a95fc4f77dc6080d
+sed -e "s/@W@/$length/g;s/@X@/$width/g;s/@B@/$blocks/g" \
+    "$base/half.om" "$base/dq8.om.in" "$base/row.om.in" > "$tmp/source"
+key=$(printf '%s\n' "$hash" "$(digest "$tmp/hardware")" "$compiler_sha" "$(digest "$tmp/source")" "$binary_sha" | sha256sum | cut -d' ' -f1)
+cache=${SI_ADAPTER_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/si-adapter}
+mkdir -p -- "$cache"
+if [[ -e $cache/$key ]]; then
+    cp -- "$cache/$key" "$tmp/kernel"
+    state=reused
+else
+    omc=${OMC:-$base/../../out/omc}
+    [[ -f $omc ]] || refuse compiler_missing
+    cp -- "$omc" "$tmp/compiler"
+    [[ $(digest "$tmp/compiler") == "$compiler_sha" ]] || refuse compiler_digest
+    chmod 700 "$tmp/compiler"
+    "$tmp/compiler" < "$tmp/source" > "$tmp/kernel"
+    state=generated
+fi
+[[ $(digest "$tmp/kernel") == "$binary_sha" ]] || refuse kernel_digest
+chmod 700 "$tmp/kernel"
+"$tmp/kernel" < "$tmp/row" > "$tmp/bits"
+[[ $(stat -c %s "$tmp/bits") == 4 ]] || refuse result_length
+bits=$(od -An -tu4 "$tmp/bits" | tr -d ' ')
+[[ $bits == "$reference" ]] || refuse parity
+if [[ $state == generated ]]; then
+    publish=$(mktemp -- "$cache/.kernel.XXXXXXXX")
+    trap 'rm -rf -- "$tmp"; rm -f -- "$publish"' EXIT
+    cp -- "$tmp/kernel" "$publish"
+    mv -fT -- "$publish" "$cache/$key"
+fi
+printf 'ROW_PASS format=GGUFv3 quant=Q8_0 architecture=%s tokenizer=%s model=%s width=%s bits=%s device=cpu cache=%s key=%s kernel=%s\n' \
+    "$arch" "$tokenizer" "$hash" "$width" "$bits" "$state" "$key" "$binary_sha"

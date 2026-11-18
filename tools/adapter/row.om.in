@@ -1,0 +1,20 @@
+global result uchar 4
+fn main to int
+row = new uchar @W@ 0
+act = new f32 @X@ 0.0
+n = read 0 row 0 @W@
+if ne n @W@
+ret 2
+end
+for i ulong @X@
+put act i f32 sub long rem i 7 3
+end
+bits = dq8_@B@ 0 view row view act 1
+for i ulong 4
+put result i uchar and shr bits mul i 8 255
+end
+if ne write 1 result 0 4 4
+ret 3
+end
+ret 0
+end
