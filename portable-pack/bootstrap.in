@@ -1,0 +1,19 @@
+#!/bin/sh
+# All operations are inside main. An interrupted pipe before the final call installs nothing.
+main() (
+    set -eu
+    umask 077
+    if [ "$(uname -s)/$(uname -m)" != Linux/aarch64 ] || ! command -v nvidia-smi >/dev/null 2>&1; then
+        echo 'This Sovereign Intelligence preview requires an NVIDIA DGX Spark running ARM64 Linux.' >&2
+        exit 2
+    fi
+    [ "$(nvidia-smi --query-gpu=name --format=csv,noheader)" = 'NVIDIA GB10' ] || { echo 'This preview requires one NVIDIA GB10.' >&2; exit 2; }
+    tmp=$(mktemp -d)
+    trap 'rm -rf -- "$tmp"' EXIT
+    cd "$tmp"
+    curl --proto '=https' --proto-redir '=https' -fLsS --retry 3 '@ARCHIVE_URL@' -o pack.tar.gz
+    printf '%s  pack.tar.gz\n' '@ARCHIVE_SHA256@' | sha256sum -c -
+    tar -xzf pack.tar.gz
+    sh sovereign-intelligence/install
+)
+main "$@"

@@ -1,0 +1,30 @@
+#!/bin/sh
+set -eu
+# Resolve the installed command even when invoked through ~/.local/bin.
+program=$(readlink -f -- "$0")
+root=$(dirname -- "$program")
+case "${1:-help}" in
+  demo) shift; exec "$root/round40/demo" "$@" ;;
+  model) shift; exec "$root/round40/model" "$@" ;;
+  verify) (cd "$root" && sha256sum --quiet -c PACK.sha256); exec "$HOME/.local/bin/interplane" verify ;;
+  qualify) shift; OMC="$root/adapter-omc" exec "$root/adapter/qualify" "$@" ;;
+  attach)
+    [ "$#" -eq 2 ] || { echo 'Usage: si-pack attach /path/to/model.gguf' >&2; exit 2; }
+    [ -f "$2" ] && [ -r "$2" ] || { echo 'A readable local GGUF file is required.' >&2; exit 2; }
+    model=$(realpath -- "$2")
+    bytes=$(stat -c %s -- "$model")
+    if awk -v n="$bytes" '$1 == n {known=1} END {exit !known}' "$root/adapter/models.tsv"; then
+        hash=$(sha256sum < "$model" | cut -d' ' -f1)
+        if awk -v h="$hash" '$2 == h {known=1} END {exit !known}' "$root/adapter/models.tsv"; then
+            OMC="$root/adapter-omc" "$root/adapter/qualify" "$model"
+        fi
+    fi
+    # Existing GGUF interoperability backend. Stay offline and on loopback.
+    export LD_LIBRARY_PATH="$root/chat-runtime"
+    export CUDA_VISIBLE_DEVICES=-1
+    exec "$root/chat-runtime/llama-server" --offline -m "$model" --device none -ngl 0 \
+      --host 127.0.0.1 --port "${SI_PACK_PORT:-8091}" -t 2 -c 512 --no-webui
+    ;;
+  help|--help|-h) echo 'si-pack demo | model | attach FILE.gguf | qualify FILE.gguf | verify' ;;
+  *) echo "Unknown command: $1" >&2; exit 2 ;;
+esac

@@ -1,0 +1,38 @@
+#!/bin/sh
+set -eu
+umask 077
+root=$(CDPATH='' cd -P "$(dirname "$0")" && pwd)
+[ "$(uname -s)/$(uname -m)" = Linux/aarch64 ] || { echo 'This preview requires ARM64 Linux.' >&2; exit 2; }
+(cd "$root" && sha256sum --quiet -c PACK.sha256)
+"$root/round40/model" --help >/dev/null
+parent=$HOME/.local/share/sovereign-intelligence
+bin=$HOME/.local/bin
+mkdir -p "$parent" "$bin"
+exec 9>"$parent/install.lock"
+flock -x 9
+id=$(sha256sum "$root/PACK.sha256" | cut -d' ' -f1)
+dest=$parent/$id
+if [ -e "$bin/si-pack" ] || [ -L "$bin/si-pack" ]; then
+    [ "$(readlink "$bin/si-pack")" = "$parent/current/si-pack" ] || { echo 'An existing si-pack command belongs to another installation.' >&2; exit 1; }
+fi
+if [ -e "$parent/current" ] && [ ! -L "$parent/current" ]; then
+    echo 'The current path is already in use.' >&2; exit 1
+fi
+stage=$(mktemp -d "$parent/.staging.XXXXXXXX")
+trap 'rm -rf -- "$stage"' EXIT
+if [ -d "$dest" ]; then
+    cmp "$root/PACK.sha256" "$dest/PACK.sha256"
+    (cd "$dest" && sha256sum --quiet -c PACK.sha256)
+else
+    cp -a -- "$root/." "$stage/payload"
+    (cd "$stage/payload" && sha256sum --quiet -c PACK.sha256)
+fi
+git clone --quiet "$root/foundation.bundle" "$stage/foundation"
+git -C "$stage/foundation" checkout --quiet --detach 8be4c26c3b89bfbe72157344c0e3c76884f55e9e
+sh "$stage/foundation/install.sh"
+if [ ! -d "$dest" ]; then mv -T "$stage/payload" "$dest"; fi
+ln -s "$id" "$stage/current"
+mv -Tf "$stage/current" "$parent/current"
+if [ ! -L "$bin/si-pack" ]; then ln -s "$parent/current/si-pack" "$bin/si-pack"; fi
+"$bin/si-pack" verify
+printf 'Installed %s\nRun %s/demo using: %s demo\n' "$id" "$dest/round40" "$bin/si-pack"

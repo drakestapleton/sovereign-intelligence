@@ -1,0 +1,38 @@
+#!/bin/bash
+set -euo pipefail
+if [[ $# != 6 ]]; then
+  echo 'Usage: build ROUND40.tar.gz INSTALLER-GIT ADAPTER-GIT ADAPTER-OMC LLAMA-RUNTIME NEW-OUT.tar.gz' >&2
+  exit 2
+fi
+base=$(cd "$(dirname "$0")" && pwd)
+out=$(realpath -m -- "$6")
+tmp=$(mktemp -d)
+trap 'rm -rf -- "$tmp"' EXIT
+p=$tmp/sovereign-intelligence
+mkdir -p "$p/chat-runtime"
+cp -- "$1" "$tmp/model.tar.gz"
+echo "1d7bc1c1b076de048ce5e026ca908edeb9e071b6679ba980cb6b6ba1237e5a7c  $tmp/model.tar.gz" | sha256sum -c -
+tar -xzf "$tmp/model.tar.gz" -C "$p"
+mv "$p/omega-round40-gb10" "$p/round40"
+installer=8be4c26c3b89bfbe72157344c0e3c76884f55e9e
+adapter=54617926168301fc3d1def943cfa2ef1b79c161f
+git init -qb main "$tmp/foundation"
+git -C "$tmp/foundation" fetch -q "$(realpath -- "$2")" "$installer"
+git -C "$tmp/foundation" update-ref refs/heads/main "$installer"
+git -C "$tmp/foundation" bundle create "$p/foundation.bundle" main
+git -C "$3" archive "$adapter" tools/adapter | tar -x -C "$p"
+mv "$p/tools/adapter" "$p/adapter"
+rmdir "$p/tools"
+cp -- "$4" "$p/adapter-omc"
+echo "45442c7d517fd605507bda5d1ec52493ff182661301cda69a95fc4f77dc6080d  $p/adapter-omc" | sha256sum -c -
+while read -r sum name; do cp -L -- "$5/$name" "$p/chat-runtime/$name"; done < "$base/runtime.sha256"
+(cd "$p/chat-runtime" && sha256sum -c "$base/runtime.sha256")
+cp "$base"/{LICENSE.llama,install,si-pack,README.md} "$p/"
+cp "$base/../seed/NOTICE" "$p/NOTICE.omega"
+cp "$base/../LICENSE" "$p/LICENSE.omega"
+chmod +x "$p"/{install,si-pack,adapter-omc}
+(cd "$p" && find . -type f ! -name PACK.sha256 -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > PACK.sha256)
+stage=$(mktemp "$(dirname "$out")/.si-pack.XXXXXXXX")
+trap 'rm -rf -- "$tmp"; rm -f -- "$stage"' EXIT
+tar --format=ustar --sort=name --mtime=@0 --mode='u+rwX,go+rX,go-w' --owner=0 --group=0 --numeric-owner -C "$tmp" -cf - sovereign-intelligence | gzip -n -1 > "$stage"
+ln -T -- "$stage" "$out"
