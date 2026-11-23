@@ -1,0 +1,2752 @@
+om2
+note tools/forge.om: the Omega forge's page generator, in pure seeded Omega.
+note
+note Radicle already holds the repositories, issues and patches, signed by their authors and copied
+note peer to peer. This program turns what one seed node knows about them, and the pulls the seed
+note served, into a static web site: one index of every project ranked by pulls, one page per
+note project, one per issue and one per patch, and stats.tsv for programs. The pages have no
+note script, no cookie and no outside request; the forms post to the seed's own intake
+note (tools/intake.om). Build with the seed-born compiler:
+note   omc < tools/forge.om > forge && chmod +x forge
+note   { printf 'target x86linux\n'; cat tools/forge.om; } | omc-x86 > forge   (native x86-64)
+note Run:
+note   forge FACTS LEDGER DAY OUT
+note   FACTS   read: what the seed node knows, written by tools/forge-cycle.sh. The first line is
+note           exactly "forge-facts 1"; then one record per line, TAB-separated, in any order:
+note             seed TAB URL           exactly once: the base of the seed's git over HTTPS, so
+note                                    that URL ZID ".git" clones a project; 1..200 bytes of
+note                                    A-Z a-z 0-9 : / . _ - ~
+note             project TAB RID TAB HEAD TAB JSON
+note                                    a project: its RID, its default-branch head (40 lowercase
+note                                    hex) and the JSON of `rad inspect --payload RID` on one line
+note             seeder TAB RID TAB NID one node that seeds the project (`rad node routing`)
+note             issue TAB RID TAB ID TAB JSON
+note             patch TAB RID TAB ID TAB JSON
+note                                    an issue or patch of a project: its id (40 lowercase hex)
+note                                    and the JSON of `rad cob show` for it, on one line
+note           RID is "rad:" then a ZID; a ZID or a NID is "z" then 20..60 base58 digits. A project
+note           appears once, a (RID, NID) or a (RID, ID) pair once; every RID a seeder, issue or
+note           patch names is a project's. Every JSON value is an object, structurally checked
+note           (strings, escapes, bracket nesting at most 64 deep). At most 16777136 bytes, 1024
+note           projects, 16384 issues and patches, 16384 seeders. Every line ends in a newline: an
+note           empty file, a blank line, a CR anywhere or a last line without its newline is
+note           refused.
+note   LEDGER  read: the pull ledger of tools/tally.om. Header exactly
+note             rid TAB day TAB https TAB hosts TAB rad TAB peers
+note           then rows RID TAB DAY TAB four decimal counts, strictly ascending by (RID, DAY), with
+note           hosts <= https and peers <= rad. Rows for a RID that is not a project are skipped.
+note           Read in 64 KiB pieces, so it may be of any size; a line is at most 65535 bytes.
+note   DAY     today, YYYY-MM-DD (UTC). "14 days" means DAY and the 13 days before it.
+note   OUT     an existing empty directory. Written: index.html, stats.tsv and for every project
+note           ZID/index.html, ZID/issue-ID.html and ZID/patch-ID.html. Files and directories are
+note           created new (O_EXCL), never overwritten.
+note Every text byte that comes from FACTS goes through one escape (the model proved in
+note tests/forge/Forge.lean): & < > " ' become &amp; &lt; &gt; &quot; &#39;, a control byte
+note other than LF and TAB becomes &#xFFFD;, every other byte is copied. JSON strings are decoded
+note first (\uXXXX and surrogate pairs to UTF-8, a lone surrogate to U+FFFD).
+note Ranking on the index: pulls in 14 days, then pulls of all time, both descending, then RID.
+note On a project page issues and patches are listed open first, newest first, then by id.
+note A patch revision's gate verdict is the last comment on it that starts "flow gate pass " or
+note "flow gate fail " (posted by tools/flow.om's queue).
+note Exit 0 when every page is written; 2 for the wrong number of arguments, with the usage line on
+note stderr; 1 for a refusal, with one stderr line "forge: ..." naming the argument or the file
+note and its line. FACTS and LEDGER are checked before the first page is written; a later failure
+note (a page over 8 MiB, a write error) can leave OUT partly written, so tools/forge-cycle.sh
+note always generates into a fresh directory and publishes it only after exit 0. The output depends
+note only on the arguments and the input bytes: no clock, no environment.
+
+const FMX ulong 16777136
+const OMX ulong 8388608
+const SMX ulong 4194300
+
+note FACTS, whole
+global fb uchar 16777216
+global fbn ulong 1
+note one piece of LEDGER, the bytes carried to the next piece, and the previous row's key
+global lb uchar 65536
+global lk uchar 128
+global lkn ulong 1
+note the page being built, the decoded JSON string, the path of the current argument, the path
+note of the page being written and the length of OUT in it
+global ob uchar 8388608
+global obn ulong 1
+global sb uchar 4194304
+global sbn ulong 1
+global pb uchar 4096
+global pbn ulong 1
+global pth uchar 4608
+global ptn ulong 1
+global outn ulong 1
+note a 10-byte day being parsed, and the bracket stack of the JSON skipper
+global db uchar 16
+global jst uchar 64
+note the current line of FACTS (for messages) and the TAB-separated fields of it: offset, length
+global curln ulong 1
+global fld ulong 10
+note the seed URL in fb
+global seedo ulong 1
+global seedn ulong 1
+note DAY as a day number, and the first day of the 14-day window
+global dnow ulong 1
+global dfst ulong 1
+
+note projects: RID offset and length in fb, head offset, payload JSON offset, its line, seeders,
+note pulls in 14 days and of all time, issues open and total, patches open and total, first index
+note and count in the sorted list of issues and patches; per day of the window (p * 14 + k):
+note https pulls, hosts, radicle pulls, peers
+global prid ulong 1024
+global prn ulong 1024
+global phd ulong 1024
+global pjs ulong 1024
+global pln ulong 1024
+global pse ulong 1024
+global p14 ulong 1024
+global pal ulong 1024
+global pio ulong 1024
+global pit ulong 1024
+global ppo ulong 1024
+global ppt ulong 1024
+global pcs ulong 1024
+global pcc ulong 1024
+global pdh ulong 14336
+global pdo ulong 14336
+global pdr ulong 14336
+global pdp ulong 14336
+global np ulong 1
+note issues and patches: kind (1 issue, 2 patch), project, id offset, JSON offset, line, state
+note (0 open, 1 draft, 2 closed, 3 merged, 4 archived, 5 other), opened (ms since 1970)
+global ckd ulong 16384
+global cpj ulong 16384
+global cid ulong 16384
+global cjs ulong 16384
+global cln ulong 16384
+global cst ulong 16384
+global cts ulong 16384
+global nc ulong 1
+global nsd ulong 1
+note sorting: the order being built, its scratch, the project order
+global srt ulong 16384
+global stm ulong 16384
+global pso ulong 1024
+note one open-addressing table over byte ranges of fb (FNV-1a 64, linear probing, never more than
+note half full), in three regions: projects by RID at 0 (2048 slots), issues and patches by RID
+note TAB ID at 2048 (32768), seeders by RID TAB NID at 34816 (32768). Slot: key offset + 1 (0 is
+note empty), key length, value.
+global hk ulong 67584
+global hn ulong 67584
+global hv ulong 67584
+note totals for the index: pulls in 14 days, of all time
+global tot ulong 2
+note the gate verdict pgate found: verdict, comment body offset, timestamp
+global gv ulong 1
+global gvb ulong 1
+global gvt ulong 1
+
+
+note JSON keys
+
+note output paths
+
+note ---------------------------------------------------------------------------------------------
+note refusals
+
+text tpre "forge: "
+text tnl "\n"
+text tusage "usage: forge FACTS LEDGER DAY OUT\n"
+text targ "cannot read a command-line argument"
+text tday "DAY is not a date YYYY-MM-DD"
+text topen "cannot open "
+text tread "cannot read "
+text tbig "file over 16777136 bytes: "
+text twrite "cannot write "
+text tmkd "cannot create the directory "
+text toverf "a page over 8 MiB"
+text tline ": line "
+text tcol ": "
+text tempty "empty file: "
+text tnonl "no newline at the end of the line"
+text tblank "blank line"
+text tcr "carriage return in the line"
+text tfhdr "forge-facts 1"
+text tbfh "first line is not forge-facts 1"
+text tkind "unknown record kind"
+text tcols "wrong number of TAB-separated fields"
+text tseed "seed is not 1..200 bytes of URL characters"
+text tseed2 "seed given twice"
+text tnoseed "no seed record"
+text tbrid "RID is not rad: then z and 20..60 base58 digits"
+text tbhex "not 40 lowercase hex digits"
+text tbnid "NID is not z and 20..60 base58 digits"
+text tdupp "project given twice"
+text tunk "RID is not a project"
+text tdupc "issue or patch given twice"
+text tdups "seeder given twice"
+text tmanyp "more than 1024 projects"
+text tmanyc "more than 16384 issues and patches"
+text tmanys "more than 16384 seeders"
+text tjson "malformed JSON"
+text tjobj "JSON is not an object"
+text tjdeep "JSON nested more than 64 deep"
+text tjstr "JSON string over 4 MiB"
+text tlhdr "rid\tday\thttps\thosts\trad\tpeers"
+text tblh "header line is not rid TAB day TAB https TAB hosts TAB rad TAB peers"
+text tlong "line over 65535 bytes"
+text tlrow "row is not RID TAB DAY TAB four decimal counts"
+text tlord "rows are not strictly ascending by RID and day"
+text tlinv "hosts over https or peers over rad"
+text tfacts "FACTS"
+text ktitle "title"
+text kstate "state"
+text kstatus "status"
+text kthread "thread"
+text kcomms "comments"
+text ktimel "timeline"
+text kauthor "author"
+text kbody "body"
+text kedits "edits"
+text ktime "timestamp"
+text klabels "labels"
+text kid "id"
+text krevs "revisions"
+text kdesc "description"
+text kbase "base"
+text koid "oid"
+text kdisc "discussion"
+text kmerges "merges"
+text krev "revision"
+text kcommit "commit"
+text kproj "xyz.radicle.project"
+text kname "name"
+text kdefb "defaultBranch"
+text sopen "open"
+text sdraft "draft"
+text sclosed "closed"
+text smerged "merged"
+text sarch "archived"
+text sdid "did:key:"
+text gpass "flow gate pass "
+text gfail "flow gate fail "
+text findex "/index.html"
+text fstats "/stats.tsv"
+text fissue "/issue-"
+text fpatch "/patch-"
+text fhtml ".html"
+text tseedw "seed"
+text tprojw "project"
+text tseedrw "seeder"
+text tissuew "issue"
+text tpatchw "patch"
+text eamp "&amp;"
+text elt "&lt;"
+text egt "&gt;"
+text equot "&quot;"
+text eapos "&#39;"
+text erepl "&#xFFFD;"
+text tspt "<span title=\""
+text tspm "\">"
+text tspe "</span>"
+text tell "…"
+text tslash "/"
+text hd1 "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<meta name=\"generator\" content=\"tools/forge.om\">\n<title>"
+text hd2 " · Omega Forge</title>\n<style>\n:root{color-scheme:light dark;--bg:#fff;--fg:#1b1f24;--mu:#59636e;--ln:#d1d9e0;--ac:#0b62d6;--ok:#1a7f37;--bad:#cf222e;--mg:#8250df;--cd:#f6f8fa}\n@media (prefers-color-scheme:dark){:root{--bg:#0d1117;--fg:#e6edf3;--mu:#9198a1;--ln:#3d444d;--ac:#4493f8;--ok:#3fb950;--bad:#f85149;--mg:#ab7df8;--cd:#151b23}}\n*{box-sizing:border-box}\nbody{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,\"Segoe UI\",sans-serif}\nheader,main,footer{max-width:980px;margin:0 auto;padding:12px 16px}\nheader{border-bottom:1px solid var(--ln)}\nheader a{font-weight:600;color:var(--fg);text-decoration:none}\nfooter{color:var(--mu);font-size:13px;border-top:1px solid var(--ln);margin-top:32px}\na{color:var(--ac)}\nh1{font-size:24px;margin:16px 0 4px;overflow-wrap:anywhere}\nh2{font-size:18px;margin:28px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--ln)}\n.mu{color:var(--mu)}\n.tw{overflow-x:auto}\ntable{width:100%;border-collapse:collapse}\nth,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--ln);vertical-align:top}\nth{font-size:13px;color:var(--mu);font-weight:600}\n.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}\ncode,pre{font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--cd);border-radius:6px}\ncode{padding:1px 4px;overflow-wrap:anywhere}\npre{padding:10px 12px;overflow-x:auto}\n.b{display:inline-block;padding:0 8px;border-radius:10px;font-size:12px;border:1px solid var(--ln);color:var(--mu)}\n.s0,.pass{color:var(--ok);border-color:var(--ok)}\n.s2,.fail{color:var(--bad);border-color:var(--bad)}\n.s3{color:var(--mg);border-color:var(--mg)}\n.c{border:1px solid var(--ln);border-radius:6px;margin:12px 0}\n.c>p{margin:0;padding:6px 12px;background:var(--cd);border-bottom:1px solid var(--ln);font-size:13px;color:var(--mu)}\n.c>div{padding:10px 12px;white-space:pre-wrap;overflow-wrap:anywhere}\n.bar{display:inline-block;height:10px;background:var(--ac);border-radius:2px;vertical-align:middle}\nform{display:grid;gap:8px;max-width:680px}\nlabel{font-size:13px;color:var(--mu)}\ninput[type=text],textarea{display:block;width:100%;margin-top:2px;padding:6px 8px;font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--ln);border-radius:6px}\ntextarea{min-height:160px}\nbutton{justify-self:start;padding:6px 16px;font:inherit;font-weight:600;color:#fff;background:var(--ok);border:0;border-radius:6px;cursor:pointer}\n.hp{position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden}\n</style>\n</head>\n<body>\n<header><a href=\""
+text hd3 "\">Omega Forge</a> <span class=\"mu\">· every AIEN project, on Radicle, served from my own hardware</span></header>\n<main>\n"
+text ft1 "</main>\n<footer>Generated by <code>tools/forge.om</code>, seeded Omega, from what this seed node holds on "
+text ft2 ". Issues and patches are Radicle collaborative objects, signed by the people who wrote them and copied peer to peer; this page only shows them. No script, no cookie, no tracker.</footer>\n</body>\n</html>\n"
+text tup0 "./"
+text tup1 "../"
+text ix1 "Projects"
+text ix2 "<h1>Projects</h1>\n<p class=\"mu\">"
+text ix3 " projects · "
+text ix4 " pulls in the last 14 days · "
+text ix5 " pulls since counting began</p>\n<div class=\"tw\"><table>\n<thead><tr><th>Project</th><th class=\"n\">Pulls, 14 days</th><th class=\"n\">All time</th><th class=\"n\">Seeding nodes</th><th class=\"n\">Open issues</th><th class=\"n\">Open patches</th></tr></thead>\n<tbody>\n"
+text ix6 "<tr><td><a href=\""
+text ix7 "/\">"
+text ix8 "</a><br><span class=\"mu\">"
+text ix9 "</span></td><td class=\"n\">"
+text ixa "</td><td class=\"n\">"
+text ixb "</td></tr>\n"
+text ixc "</tbody>\n</table></div>\n<h2>How the counts work</h2>\n<p>A pull is one fetch this seed served: a <code>git clone</code> or <code>git fetch</code> over HTTPS, counted from the web server's log, or a <code>rad clone</code> or <code>rad sync</code> over the Radicle network, counted from the node's log. Each project page shows the last 14 days, with distinct hosts and distinct Radicle peers per day. Only counts are kept: <code>tools/tally.om</code> reads the logs on this machine and writes numbers, never an address. Seeding nodes are the Radicle nodes this seed knows to be copying the project, itself included. Machine-readable: <a href=\"stats.tsv\">stats.tsv</a>.</p>\n"
+text st1 "rid\tpulls14\thttps14\trad14\tpulls\tseeders\tissues_open\tissues\tpatches_open\tpatches\n"
+text pp1 "<p><a href=\"../\">All projects</a></p>\n<h1>"
+text pp2 "</h1>\n<p>"
+text pp3 "</p>\n<p class=\"mu\"><code>"
+text pp4 "</code> · default branch <code>"
+text pp5 "</code> at <code>"
+text pp6 "</code> · "
+text pp7 " seeding nodes</p>\n<h2>Get it</h2>\n<pre>rad clone "
+text pp8 "\n# or, without Radicle, read-only from this seed:\ngit clone "
+text pp9 ".git "
+text ppa "</pre>\n<h2>Pulls</h2>\n<p>"
+text ppb " in the last 14 days, "
+text ppc " since counting began.</p>\n<div class=\"tw\"><table>\n<thead><tr><th>Day</th><th class=\"n\">HTTPS pulls</th><th class=\"n\">Hosts</th><th class=\"n\">Radicle pulls</th><th class=\"n\">Peers</th><th></th></tr></thead>\n<tbody>\n"
+text ppd "<tr><td>"
+text ppe "</td><td class=\"n\">"
+text ppf "</td><td><span class=\"bar\" style=\"width:"
+text ppg "px\"></span></td></tr>\n"
+text pph "</tbody>\n</table></div>\n"
+text li1 "<h2>Issues</h2>\n"
+text li2 "<h2>Patches</h2>\n"
+text li3 "<p class=\"mu\">None yet.</p>\n"
+text li4 "<div class=\"tw\"><table>\n<thead><tr><th>State</th><th>Title</th><th>By</th><th>Opened</th><th class=\"n\">Comments</th></tr></thead>\n<tbody>\n"
+text li4p "<div class=\"tw\"><table>\n<thead><tr><th>State</th><th>Title</th><th>By</th><th>Opened</th><th class=\"n\">Revisions</th><th>Gate</th></tr></thead>\n<tbody>\n"
+text li5 "<tr><td>"
+text li6 "</td><td><a href=\""
+text li7 ".html\">"
+text li8 "</a>"
+text li9 "</td><td>"
+text lia "</td><td class=\"n\">"
+text lib "</td></tr>\n"
+text lic "</tbody>\n</table></div>\n"
+text tiss "issue-"
+text tpat "patch-"
+text tbg1 "<span class=\"b s"
+text tbg2 "\">"
+text tbg3 "</span>"
+text tlb1 " <span class=\"b\">"
+text tvn "<span class=\"b\">not gated</span>"
+text tvp "<span class=\"b pass\">pass</span>"
+text tvf "<span class=\"b fail\">fail</span>"
+text ni1 "<h3>Open an issue</h3>\n<p>With Radicle, from a clone: <code>rad issue open</code>. Or here, without an account: the seed's node publishes it as a Radicle issue, labelled <code>web</code>, on its next cycle.</p>\n<form method=\"post\" action=\"/forge/intake\">\n<input type=\"hidden\" name=\"repo\" value=\""
+text ni2 "\">\n<input type=\"hidden\" name=\"kind\" value=\"issue\">\n<label>Title<input type=\"text\" name=\"title\" required maxlength=\"200\"></label>\n<label>What happened, or what you would like<textarea name=\"body\" maxlength=\"60000\"></textarea></label>\n<p class=\"hp\"><label>Leave this empty<input type=\"text\" name=\"website\" tabindex=\"-1\" autocomplete=\"off\"></label></p>\n<button type=\"submit\">Open issue</button>\n</form>\n"
+text np1 "<h3>Send a patch</h3>\n<p>A patch is a branch pushed to Radicle; the Omega merge queue gates it with the default branch's <code>build.sh</code> and posts the verdict on it.</p>\n<pre>rad clone "
+text np2 "\ncd "
+text np3 "\ngit checkout -b my-change\n# edit, commit\ngit push rad HEAD:refs/patches</pre>\n<p class=\"mu\">No Radicle yet? Install it from <a href=\"https://radicle.xyz\">radicle.xyz</a>, or open an issue that links to your branch.</p>\n"
+text is1 "<p><a href=\"./\">"
+text is2 "</a> · <a href=\"../\">All projects</a></p>\n<h1>"
+text is3 "</h1>\n<p>"
+text is4 " opened by "
+text is5 " on "
+text is6 " · <code>"
+text is7 "</code></p>\n"
+text cm1 "<div class=\"c\"><p>"
+text cm2 " · "
+text cm3 "</p><div>"
+text cm4 "</div></div>\n"
+text ir1 "<h2>Reply</h2>\n<p>With Radicle: <code>rad issue comment "
+text ir2 "</code>. Or here; it is published on the seed's next cycle.</p>\n<form method=\"post\" action=\"/forge/intake\">\n<input type=\"hidden\" name=\"repo\" value=\""
+text ir3 "\">\n<input type=\"hidden\" name=\"kind\" value=\"comment\">\n<input type=\"hidden\" name=\"target\" value=\""
+text ir4 "\">\n<label>Comment<textarea name=\"body\" required maxlength=\"60000\"></textarea></label>\n<p class=\"hp\"><label>Leave this empty<input type=\"text\" name=\"website\" tabindex=\"-1\" autocomplete=\"off\"></label></p>\n<button type=\"submit\">Comment</button>\n</form>\n"
+text pa4 " by "
+text pr1 "<h2>Revision "
+text pr2 "</h2>\n<p class=\"mu\">"
+text pr3 " · base <code>"
+text pr4 "</code> · head <code>"
+text pg1 "<p>Gate: "
+text pg2 " · "
+text pg3 " · <code>"
+text pg4 "</p>\n"
+text tcodee "</code>"
+text pr6 "</code></p>\n"
+text prc "<h2>Review it</h2>\n<pre>rad patch checkout "
+text prd "\nrad patch review "
+text pre "</pre>\n"
+text pm1 "<p>Merged at <code>"
+text pm2 "</code>.</p>\n"
+
+note wdec: write v in decimal to stderr
+fn wdec v ulong to void
+d = new uchar 20 0
+x = v
+k = ulong 20
+while true bound 20
+k = sub k 1
+put d k uchar add rem x 10 48
+x = div x 10
+if eq x 0
+break
+end
+end
+w = write 2 d k sub 20 k
+end
+
+note diem: refuse with m alone
+fn diem m view uchar * to void
+w = write 2 tpre 0 len tpre
+w = write 2 m 0 len m
+w = write 2 tnl 0 len tnl
+exit 1
+end
+
+note dief: refuse with m and the current path
+fn dief m view uchar * to void
+w = write 2 tpre 0 len tpre
+w = write 2 m 0 len m
+w = write 2 pb 0 get pbn 0
+w = write 2 tnl 0 len tnl
+exit 1
+end
+
+note diel: refuse line ln of the current file (path in pb) with m
+fn diel m view uchar * ln ulong to void
+w = write 2 tpre 0 len tpre
+w = write 2 pb 0 get pbn 0
+w = write 2 tline 0 len tline
+wdec ln
+w = write 2 tcol 0 len tcol
+w = write 2 m 0 len m
+w = write 2 tnl 0 len tnl
+exit 1
+end
+
+note diefl: refuse FACTS line curln with m (used once pb names another file)
+fn diefl m view uchar * to void
+w = write 2 tpre 0 len tpre
+w = write 2 tfacts 0 len tfacts
+w = write 2 tline 0 len tline
+wdec get curln 0
+w = write 2 tcol 0 len tcol
+w = write 2 m 0 len m
+w = write 2 tnl 0 len tnl
+exit 1
+end
+
+note jbad: refuse the JSON of FACTS line curln
+fn jbad to void
+diefl tjson
+end
+
+note setpath: copy command-line argument ai into pb
+fn setpath ai ulong to void
+n = argread ai pb 0 4096
+if le n 0
+diem targ
+end
+put pbn 0 ulong n
+end
+
+note ---------------------------------------------------------------------------------------------
+note input
+
+note loadf: read FACTS (argument 1) into fb
+fn loadf to void
+setpath 1
+fd = fopen pb 0 get pbn 0 0 0
+if lt fd 0
+dief topen
+end
+p = ulong 0
+note every pass but the last reads at least one byte of the FMX + 1 bytes looked at
+while le p FMX bound 16777217
+k = read int fd fb p sub add FMX 1 p
+if lt k 0
+dief tread
+end
+if eq k 0
+break
+end
+p = add p ulong k
+end
+c = fclose int fd
+if gt p FMX
+dief tbig
+end
+if eq p 0
+dief tempty
+end
+put fbn 0 p
+end
+
+note lend: the newline that ends the line of fb starting at p; refuse a blank line, a CR and a last
+note line without its newline
+fn lend p ulong to ulong
+e = get fbn 0
+q = p
+while lt q e bound 16777216
+c = get fb q
+if eq c 10
+if eq q p
+diefl tblank
+end
+ret q
+end
+if eq c 13
+diefl tcr
+end
+q = add q 1
+end
+diefl tnonl
+ret e
+end
+
+note split: fields of the line [p, q) at the first k - 1 TABs (the last field keeps any further
+note TAB), k at most 5; return the number of fields found
+fn split p ulong q ulong k ulong to ulong
+f = ulong 0
+s = p
+i = p
+while lt i q bound 16777216
+if eq get fb i 9
+if lt add f 1 k
+put fld mul f 2 s
+put fld add mul f 2 1 sub i s
+f = add f 1
+s = add i 1
+end
+end
+i = add i 1
+end
+put fld mul f 2 s
+put fld add mul f 2 1 sub q s
+ret add f 1
+end
+
+fn fo k ulong to ulong
+ret get fld mul k 2
+end
+
+fn fl k ulong to ulong
+ret get fld add mul k 2 1
+end
+
+note eqt: do the n bytes of fb at o equal the text t
+fn eqt o ulong n ulong t view uchar * to bool
+if ne n len t
+ret false
+end
+for i ulong n bound 4194304
+if ne get fb add o i get t i
+ret false
+end
+end
+ret true
+end
+
+note eqf: do the n bytes of fb at a equal the n bytes at b
+fn eqf a ulong b ulong n ulong to bool
+for i ulong n bound 16777216
+if ne get fb add a i get fb add b i
+ret false
+end
+end
+ret true
+end
+
+fn ishex c uchar to bool
+ret or and ge c 48 le c 57 and ge c 97 le c 102
+end
+
+note b58: is c a base58 digit (no 0, O, I or l)
+fn b58 c uchar to bool
+if and ge c 49 le c 57
+ret true
+end
+if and ge c 65 le c 90
+ret and ne c 73 ne c 79
+end
+if and ge c 97 le c 122
+ret ne c 108
+end
+ret false
+end
+
+note vhex: is fb[o, o+n) 40 lowercase hex digits
+fn vhex o ulong n ulong to bool
+if ne n 40
+ret false
+end
+for i ulong 40
+if not ishex get fb add o i
+ret false
+end
+end
+ret true
+end
+
+note vz: is fb[o, o+n) z and then 20..60 base58 digits
+fn vz o ulong n ulong to bool
+if or lt n 21 gt n 61
+ret false
+end
+if ne get fb o 122
+ret false
+end
+for i ulong n bound 61
+if not b58 get fb add o i
+ret false
+end
+end
+ret true
+end
+
+note vrid: is fb[o, o+n) rad: and a ZID
+fn vrid o ulong n ulong to bool
+if lt n 4
+ret false
+end
+if ne get fb o 114
+ret false
+end
+if ne get fb add o 1 97
+ret false
+end
+if ne get fb add o 2 100
+ret false
+end
+if ne get fb add o 3 58
+ret false
+end
+ret vz add o 4 sub n 4
+end
+
+note urlc: may c appear in the seed URL
+fn urlc c uchar to bool
+if and ge c 48 le c 57
+ret true
+end
+if and ge c 65 le c 90
+ret true
+end
+if and ge c 97 le c 122
+ret true
+end
+ret or or or eq c 58 eq c 47 or eq c 46 eq c 95 or eq c 45 eq c 126
+end
+
+note ---------------------------------------------------------------------------------------------
+note the table
+
+note hfb: FNV-1a 64 of fb[o, o+n), high half folded into the low
+fn hfb o ulong n ulong to ulong
+x = ulong 14695981039346656037
+for i ulong n bound 16777216
+x = mul xor x ulong get fb add o i 1099511628211
+end
+ret xor x shr x 32
+end
+
+note hslot: the slot of the region at b with m slots (a power of two) that holds fb[o, o+n), or
+note the empty slot where it goes; the region is never more than half full
+fn hslot b ulong m ulong o ulong n ulong to ulong
+s = and hfb o n sub m 1
+while true bound 32769
+j = add b s
+k = get hk j
+if eq k 0
+ret j
+end
+if eq get hn j n
+if eqf sub k 1 o n
+ret j
+end
+end
+s = and add s 1 sub m 1
+end
+ret 0
+end
+
+note hput: fill the empty slot j with fb[o, o+n) and value v
+fn hput j ulong o ulong n ulong v ulong to void
+put hk j add o 1
+put hn j n
+put hv j v
+end
+
+note proj: the project whose RID is fb[o, o+n), or 1024 when there is none
+fn proj o ulong n ulong to ulong
+j = hslot 0 2048 o n
+if eq get hk j 0
+ret 1024
+end
+ret get hv j
+end
+
+note ---------------------------------------------------------------------------------------------
+note JSON, structurally: every value of FACTS is checked by jval before anything reads it
+
+fn ws p ulong to ulong
+q = p
+while true bound 16777216
+c = get fb q
+if not or or eq c 32 eq c 9 eq c 13
+ret q
+end
+q = add q 1
+end
+ret q
+end
+
+note sskip: p at a quote; the offset after the closing quote. Refuses a control byte (so the line
+note end too), an unknown escape and a \u without 4 hex digits.
+fn sskip p ulong to ulong
+if ne get fb p 34
+jbad
+end
+i = add p 1
+while true bound 16777216
+c = get fb i
+if eq c 34
+ret add i 1
+end
+if lt c 32
+jbad
+end
+if eq c 92
+e = get fb add i 1
+if eq e 117
+for k ulong 4
+h = get fb add add i 2 k
+if not or ishex h and ge h 65 le h 70
+jbad
+end
+end
+i = add i 6
+else
+if not escok e
+jbad
+end
+i = add i 2
+end
+else
+i = add i 1
+end
+end
+ret i
+end
+
+note escok: is c a one-letter JSON escape (" \\ / b f n r t)
+fn escok c uchar to bool
+if or eq c 34 eq c 92
+ret true
+end
+if or eq c 47 eq c 98
+ret true
+end
+if or eq c 102 eq c 110
+ret true
+end
+ret or eq c 114 eq c 116
+end
+
+note scal: may c be part of a number or a literal (true, false, null)
+fn scal c uchar to bool
+if and ge c 48 le c 57
+ret true
+end
+if and ge c 97 le c 122
+ret true
+end
+ret or or eq c 45 eq c 43 or eq c 46 eq c 69
+end
+
+note vskip: the offset after the value at p (after white space)
+fn vskip p ulong to ulong
+q = ws p
+c = get fb q
+if eq c 34
+ret sskip q
+end
+if not or eq c 123 eq c 91
+s = q
+while scal get fb q bound 16777216
+q = add q 1
+end
+if eq q s
+jbad
+end
+ret q
+end
+d = ulong 0
+while true bound 16777216
+c = get fb q
+if eq c 34
+q = sskip q
+continue
+end
+if lt c 32
+if ne c 9
+jbad
+end
+end
+if or eq c 123 eq c 91
+if ge d 64
+diefl tjdeep
+end
+put jst d c
+d = add d 1
+q = add q 1
+continue
+end
+if or eq c 125 eq c 93
+if eq d 0
+jbad
+end
+d = sub d 1
+o = get jst d
+if eq c 125
+if ne o 123
+jbad
+end
+else
+if ne o 91
+jbad
+end
+end
+q = add q 1
+if eq d 0
+ret q
+end
+continue
+end
+q = add q 1
+end
+ret q
+end
+
+note jval: fb[o, e) must be exactly one JSON object
+fn jval o ulong e ulong to void
+if ne get fb o 123
+diefl tjobj
+end
+q = vskip o
+if ne ws q e
+jbad
+end
+end
+
+note keqr: do the raw bytes of the key string at k (quote to quote) equal fb[o, o+n)
+fn keqr k ulong ke ulong o ulong n ulong to bool
+if ne sub sub ke k 2 n
+ret false
+end
+ret eqf add k 1 o n
+end
+
+note keqt: do the raw bytes of the key string at [k, ke) equal the text t
+fn keqt k ulong ke ulong t view uchar * to bool
+ret eqt add k 1 sub sub ke k 2 t
+end
+
+note mval: m at a member's key; the offset of its value
+fn mval m ulong to ulong
+p = ws sskip m
+if ne get fb p 58
+jbad
+end
+ret ws add p 1
+end
+
+note mnext: m at a member's key; the next member's key, or 0 after the last
+fn mnext m ulong to ulong
+p = ws vskip mval m
+c = get fb p
+if eq c 125
+ret 0
+end
+if ne c 44
+jbad
+end
+ret ws add p 1
+end
+
+note obj1: o at an object; its first member's key, or 0 when it is empty or not an object
+fn obj1 o ulong to ulong
+if eq o 0
+ret 0
+end
+if ne get fb o 123
+ret 0
+end
+p = ws add o 1
+if eq get fb p 125
+ret 0
+end
+ret p
+end
+
+note objt: the value of key t in the object at o, or 0
+fn objt o ulong t view uchar * to ulong
+m = obj1 o
+while ne m 0 bound 16777216
+if keqt m sskip m t
+ret mval m
+end
+m = mnext m
+end
+ret 0
+end
+
+note objr: the value of the key fb[ko, ko+kn) in the object at o, or 0
+fn objr o ulong ko ulong kn ulong to ulong
+m = obj1 o
+while ne m 0 bound 16777216
+if keqr m sskip m ko kn
+ret mval m
+end
+m = mnext m
+end
+ret 0
+end
+
+note arr1: a at an array; its first element, or 0 when it is empty or not an array
+fn arr1 a ulong to ulong
+if eq a 0
+ret 0
+end
+if ne get fb a 91
+ret 0
+end
+p = ws add a 1
+if eq get fb p 93
+ret 0
+end
+ret p
+end
+
+note anext: e at an element; the next element, or 0 after the last
+fn anext e ulong to ulong
+p = ws vskip e
+c = get fb p
+if eq c 93
+ret 0
+end
+if ne c 44
+jbad
+end
+ret ws add p 1
+end
+
+note alast: the last element of the array at a, or 0
+fn alast a ulong to ulong
+e = arr1 a
+l = ulong 0
+while ne e 0 bound 16777216
+l = e
+e = anext e
+end
+ret l
+end
+
+note acnt: the number of elements of the array at a
+fn acnt a ulong to ulong
+e = arr1 a
+n = ulong 0
+while ne e 0 bound 16777216
+n = add n 1
+e = anext e
+end
+ret n
+end
+
+note isstr: is there a string at p
+fn isstr p ulong to bool
+if eq p 0
+ret false
+end
+ret eq get fb p 34
+end
+
+note jeq: is the value at p the string t, byte for byte as written
+fn jeq p ulong t view uchar * to bool
+if not isstr p
+ret false
+end
+ret keqt p sskip p t
+end
+
+note jnum: the unsigned integer at p (at most 19 digits), or 0 when there is none
+fn jnum p ulong to ulong
+if eq p 0
+ret 0
+end
+v = ulong 0
+for i ulong 19
+c = get fb add p i
+if or lt c 48 gt c 57
+ret v
+end
+v = add mul v 10 ulong sub c 48
+end
+ret v
+end
+
+note hexv: the value of the 4 hex digits at p
+fn hexv p ulong to ulong
+v = ulong 0
+for i ulong 4
+c = ulong get fb add p i
+d = sub c 48
+if ge c 97
+d = sub c 87
+else
+if ge c 65
+d = sub c 55
+end
+end
+v = add shl v 4 d
+end
+ret v
+end
+
+note sbput: append code point u to sb as UTF-8
+fn sbput u ulong to void
+n = get sbn 0
+if gt n SMX
+diefl tjstr
+end
+if lt u 128
+put sb n uchar u
+put sbn 0 add n 1
+ret
+end
+if lt u 2048
+put sb n uchar or 192 shr u 6
+put sb add n 1 uchar or 128 and u 63
+put sbn 0 add n 2
+ret
+end
+if lt u 65536
+put sb n uchar or 224 shr u 12
+put sb add n 1 uchar or 128 and shr u 6 63
+put sb add n 2 uchar or 128 and u 63
+put sbn 0 add n 3
+ret
+end
+put sb n uchar or 240 shr u 18
+put sb add n 1 uchar or 128 and shr u 12 63
+put sb add n 2 uchar or 128 and shr u 6 63
+put sb add n 3 uchar or 128 and u 63
+put sbn 0 add n 4
+end
+
+note jesc: decode the escape at i (a backslash) into sb; the offset after it
+fn jesc i ulong to ulong
+e = get fb add i 1
+if eq e 117
+ret jescu i
+end
+c = ulong e
+if eq e 98
+c = ulong 8
+end
+if eq e 102
+c = ulong 12
+end
+if eq e 110
+c = ulong 10
+end
+if eq e 114
+c = ulong 13
+end
+if eq e 116
+c = ulong 9
+end
+sbput c
+ret add i 2
+end
+
+note jescu: a \uXXXX escape at i, with its low surrogate when it starts a pair; a lone surrogate
+note decodes to U+FFFD
+fn jescu i ulong to ulong
+u = hexv add i 2
+j = add i 6
+if or lt u 55296 gt u 57343
+sbput u
+ret j
+end
+if ge u 56320
+sbput 65533
+ret j
+end
+if ne get fb j 92
+sbput 65533
+ret j
+end
+if ne get fb add j 1 117
+sbput 65533
+ret j
+end
+lo = hexv add j 2
+if or lt lo 56320 gt lo 57343
+sbput 65533
+ret j
+end
+hi = shl sub u 55296 10
+sbput add 65536 add hi sub lo 56320
+ret add j 6
+end
+
+note jdec: decode the string at p into sb (sbn holds its length); an absent value decodes empty
+fn jdec p ulong to void
+put sbn 0 0
+if not isstr p
+ret
+end
+i = add p 1
+while true bound 16777216
+c = get fb i
+if eq c 34
+ret
+end
+if eq c 92
+i = jesc i
+else
+n = get sbn 0
+if gt n SMX
+diefl tjstr
+end
+put sb n c
+put sbn 0 add n 1
+i = add i 1
+end
+end
+end
+
+note sbpre: does sb start with t
+fn sbpre t view uchar * to bool
+if lt get sbn 0 len t
+ret false
+end
+for i ulong len t bound 64
+if ne get sb i get t i
+ret false
+end
+end
+ret true
+end
+
+note ---------------------------------------------------------------------------------------------
+note days: the number of days since 1970-01-01 of a civil date and back (H. Hinnant's algorithms,
+note years 1970..9999, so every value is nonnegative)
+
+fn dfc y ulong m ulong d ulong to ulong
+yy = y
+if le m 2
+yy = sub y 1
+end
+era = div yy 400
+yoe = sub yy mul era 400
+mp = add m 9
+if gt m 2
+mp = sub m 3
+end
+doy = mul 153 mp
+doy = div add doy 2 5
+doy = add doy sub d 1
+doe = mul yoe 365
+doe = add doe div yoe 4
+doe = sub doe div yoe 100
+doe = add doe doy
+x = mul era 146097
+x = add x doe
+ret sub x 719468
+end
+
+note cfd: the date of day z as y * 10000 + m * 100 + d
+fn cfd z ulong to ulong
+x = add z 719468
+era = div x 146097
+doe = sub x mul era 146097
+t = sub doe div doe 1460
+t = add t div doe 36524
+t = sub t div doe 146096
+yoe = div t 365
+c = mul 365 yoe
+c = add c div yoe 4
+c = sub c div yoe 100
+doy = sub doe c
+mp = mul 5 doy
+mp = div add mp 2 153
+d = mul 153 mp
+d = div add d 2 5
+d = add sub doy d 1
+m = add mp 3
+if ge mp 10
+m = sub mp 9
+end
+y = add yoe mul era 400
+if le m 2
+y = add y 1
+end
+v = mul y 10000
+v = add v mul m 100
+ret add v d
+end
+
+fn dig c uchar to bool
+ret and ge c 48 le c 57
+end
+
+note dnum: the n digits of db at o as a number
+fn dnum o ulong n ulong to ulong
+v = ulong 0
+for i ulong n bound 4
+v = add mul v 10 ulong sub get db add o i 48
+end
+ret v
+end
+
+note dparse: the day number of the date in db[0, 10), or 0 for no date (1970-01-01 itself is
+note refused: no Radicle data predates it)
+fn dparse to ulong
+for i ulong 10
+c = get db i
+if or eq i 4 eq i 7
+if ne c 45
+ret 0
+end
+else
+if not dig c
+ret 0
+end
+end
+end
+y = dnum 0 4
+m = dnum 5 2
+d = dnum 8 2
+if or lt y 1970 or or lt m 1 gt m 12 or lt d 1 gt d 31
+ret 0
+end
+z = dfc y m d
+if ne cfd z add add mul y 10000 mul m 100 d
+ret 0
+end
+ret z
+end
+
+note ---------------------------------------------------------------------------------------------
+note FACTS
+
+note kind: the kind of line [p, q) (1 seed, 2 project, 3 seeder, 4 issue, 5 patch), its fields
+note split into fld; a JSON field, always the last, keeps any further TAB (JSON white space, or a
+note raw control byte in a string, which the JSON check refuses); refuse an unknown kind and a
+note wrong number of fields
+fn kind p ulong q ulong to ulong
+n = split p q 2
+o = fo 0
+k = fl 0
+v = ulong 0
+w = ulong 0
+if eqt o k tseedw
+v = ulong 1
+w = ulong 2
+end
+if eqt o k tprojw
+v = ulong 2
+w = ulong 4
+end
+if eqt o k tseedrw
+v = ulong 3
+w = ulong 3
+end
+if eqt o k tissuew
+v = ulong 4
+w = ulong 4
+end
+if eqt o k tpatchw
+v = ulong 5
+w = ulong 4
+end
+if eq v 0
+diefl tkind
+end
+note a seed or seeder line has no JSON: every TAB counts there
+k = w
+if lt w 4
+k = ulong 5
+end
+if ne split p q k w
+diefl tcols
+end
+ret v
+end
+
+note rec1: the first pass over line [p, q): the seed and the projects
+fn rec1 p ulong q ulong to void
+v = kind p q
+if eq v 1
+seed0
+end
+if eq v 2
+proj1
+end
+end
+
+fn seed0 to void
+if ne get seedn 0 0
+diefl tseed2
+end
+u = fo 1
+w = fl 1
+if or eq w 0 gt w 200
+diefl tseed
+end
+for i ulong w bound 200
+if not urlc get fb add u i
+diefl tseed
+end
+end
+put seedo 0 u
+put seedn 0 w
+end
+
+note proj1: a project record (fields in fld)
+fn proj1 to void
+if not vrid fo 1 fl 1
+diefl tbrid
+end
+if not vhex fo 2 fl 2
+diefl tbhex
+end
+jval fo 3 add fo 3 fl 3
+i = get np 0
+if ge i 1024
+diefl tmanyp
+end
+j = hslot 0 2048 fo 1 fl 1
+if ne get hk j 0
+diefl tdupp
+end
+hput j fo 1 fl 1 i
+put prid i fo 1
+put prn i fl 1
+put phd i fo 2
+put pjs i fo 3
+put pln i get curln 0
+put np 0 add i 1
+end
+
+note rec2: the second pass over line [p, q): seeders, issues and patches
+fn rec2 p ulong q ulong to void
+v = kind p q
+if eq v 3
+seed1
+end
+if eq v 4
+cob1 1
+end
+if eq v 5
+cob1 2
+end
+end
+
+fn seed1 to void
+if not vrid fo 1 fl 1
+diefl tbrid
+end
+if not vz fo 2 fl 2
+diefl tbnid
+end
+pj = proj fo 1 fl 1
+if eq pj 1024
+diefl tunk
+end
+s = get nsd 0
+if ge s 16384
+diefl tmanys
+end
+kl = sub add fo 2 fl 2 fo 1
+j = hslot 34816 32768 fo 1 kl
+if ne get hk j 0
+diefl tdups
+end
+hput j fo 1 kl pj
+put nsd 0 add s 1
+put pse pj add get pse pj 1
+end
+
+note cob1: an issue (kd 1) or patch (kd 2) record
+fn cob1 kd ulong to void
+if not vrid fo 1 fl 1
+diefl tbrid
+end
+if not vhex fo 2 fl 2
+diefl tbhex
+end
+pj = proj fo 1 fl 1
+if eq pj 1024
+diefl tunk
+end
+jval fo 3 add fo 3 fl 3
+c = get nc 0
+if ge c 16384
+diefl tmanyc
+end
+kl = sub add fo 2 fl 2 fo 1
+j = hslot 2048 32768 fo 1 kl
+if ne get hk j 0
+diefl tdupc
+end
+hput j fo 1 kl c
+put ckd c kd
+put cpj c pj
+put cid c fo 2
+put cjs c fo 3
+put cln c get curln 0
+put nc 0 add c 1
+end
+
+note facts: both passes over FACTS
+fn facts to void
+e = get fbn 0
+put curln 0 1
+q = lend 0
+if not eqt 0 q tfhdr
+diefl tbfh
+end
+for ps ulong 2
+p = add q 1
+put curln 0 1
+while lt p e bound 16777216
+put curln 0 add get curln 0 1
+r = lend p
+if eq ps 0
+rec1 p r
+else
+rec2 p r
+end
+p = add r 1
+end
+end
+if eq get seedn 0 0
+diefl tnoseed
+end
+end
+
+note ---------------------------------------------------------------------------------------------
+note what each issue and patch says
+
+note istate: state and opened time of issue c
+fn istate c ulong to void
+j = get cjs c
+s = objt objt j kstate kstatus
+v = ulong 5
+if jeq s sopen
+v = ulong 0
+end
+if jeq s sclosed
+v = ulong 2
+end
+put cst c v
+put cts c jnum ibegin j
+end
+
+note ibegin: the timestamp of the first edit of an issue's first comment, or 0
+fn ibegin j ulong to ulong
+th = objt j kthread
+f = arr1 objt th ktimel
+if not isstr f
+ret 0
+end
+cm = objr objt th kcomms add f 1 sub sub sskip f f 2
+ret objt arr1 objt cm kedits ktime
+end
+
+note pstate: state and opened time of patch c
+fn pstate c ulong to void
+j = get cjs c
+s = objt objt j kstate kstatus
+v = ulong 5
+if jeq s sopen
+v = ulong 0
+end
+if jeq s sdraft
+v = ulong 1
+end
+if jeq s smerged
+v = ulong 3
+end
+if jeq s sarch
+v = ulong 4
+end
+put cst c v
+f = arr1 objt j ktimel
+t = ulong 0
+if isstr f
+r = objr objt j krevs add f 1 sub sub sskip f f 2
+t = jnum objt r ktime
+end
+put cts c t
+end
+
+note ---------------------------------------------------------------------------------------------
+note LEDGER
+
+note lread: read up to 65536 - h bytes of LEDGER (fd) into lb after the h carried bytes; return the
+note new fill
+fn lread fd int h ulong to ulong
+p = h
+while lt p 65536 bound 65537
+k = read fd lb p sub 65536 p
+if lt k 0
+dief tread
+end
+if eq k 0
+ret p
+end
+p = add p ulong k
+end
+ret p
+end
+
+note ldec: the decimal at lb[o, o+n) (1..19 digits, no leading zero but 0), or 2^64 - 1 for none
+fn ldec o ulong n ulong to ulong
+if or eq n 0 gt n 19
+ret 18446744073709551615
+end
+if and gt n 1 eq get lb o 48
+ret 18446744073709551615
+end
+v = ulong 0
+for i ulong n bound 19
+c = get lb add o i
+if or lt c 48 gt c 57
+ret 18446744073709551615
+end
+v = add mul v 10 ulong sub c 48
+end
+ret v
+end
+
+note lfield: the end of the field of lb starting at s (a TAB or e)
+fn lfield s ulong e ulong to ulong
+i = s
+while lt i e bound 65536
+if eq get lb i 9
+ret i
+end
+i = add i 1
+end
+ret e
+end
+
+note lrow: one LEDGER row, lb[s, e), line ln
+fn lrow s ulong e ulong ln ulong to void
+a = lfield s e
+rn = sub a s
+if or ge a e gt rn 65
+diel tlrow ln
+end
+note the RID, checked through fb's validator by way of a copy in lk (which then holds the key)
+b = add a 1
+if gt add b 10 e
+diel tlrow ln
+end
+if ne lfield b e add b 10
+diel tlrow ln
+end
+lkey s add rn 11 ln
+for i ulong 10
+put db i get lb add b i
+end
+dn = dparse
+if eq dn 0
+diel tlrow ln
+end
+lcnt add b 11 e dn ln
+end
+
+note lkey: lb[s, s+n) (RID TAB DAY) must be greater than the previous row's key in lk; then it is
+note the key
+fn lkey s ulong n ulong ln ulong to void
+m = get lkn 0
+c = ulong 0
+k = n
+if lt m n
+k = m
+end
+for i ulong k bound 128
+x = get lb add s i
+y = get lk i
+if ne x y
+if lt x y
+c = ulong 1
+else
+c = ulong 2
+end
+break
+end
+end
+if eq c 0
+if le n m
+diel tlord ln
+end
+end
+if eq c 1
+diel tlord ln
+end
+for i ulong n bound 128
+put lk i get lb add s i
+end
+put lkn 0 n
+end
+
+note lcnt: the four counts of a row, lb[s, e), and add them to its project
+fn lcnt s ulong e ulong dn ulong ln ulong to void
+c = new ulong 4 0
+p = s
+for k ulong 4
+q = lfield p e
+v = ldec p sub q p
+if eq v 18446744073709551615
+diel tlrow ln
+end
+put c k v
+if lt k 3
+if ge q e
+diel tlrow ln
+end
+p = add q 1
+else
+if ne q e
+diel tlrow ln
+end
+end
+end
+if or gt get c 1 get c 0 gt get c 3 get c 2
+diel tlinv ln
+end
+pj = lproj ln
+if eq pj 1024
+ret
+end
+t = add get c 0 get c 2
+put pal pj add get pal pj t
+if or gt dn get dnow 0 lt dn get dfst 0
+ret
+end
+put p14 pj add get p14 pj t
+x = add mul pj 14 sub dn get dfst 0
+put pdh x get c 0
+put pdo x get c 1
+put pdr x get c 2
+put pdp x get c 3
+end
+
+note lproj: the project of the RID in lk (validated), or 1024. The RID is copied into the slack at
+note the end of fb (FACTS is at most FMX bytes, so the last 80 bytes stay free) so that the FACTS
+note validator and table apply to it.
+fn lproj ln ulong to ulong
+n = sub get lkn 0 11
+o = ulong 16777144
+for i ulong n bound 72
+put fb add o i get lk i
+end
+if not vrid o n
+diel tlrow ln
+end
+ret proj o n
+end
+
+note ledger: read LEDGER (argument 2) in pieces, a row at a time
+fn ledger to void
+setpath 2
+fd = fopen pb 0 get pbn 0 0 0
+if lt fd 0
+dief topen
+end
+h = ulong 0
+ln = ulong 0
+first = true
+while true bound 4611686018427387904
+n = lread int fd h
+if eq n 0
+break
+end
+s = ulong 0
+while true bound 65537
+e = lfeed s n add ln 1
+if eq e n
+break
+end
+ln = add ln 1
+if eq e s
+diel tblank ln
+end
+if first
+if not lhdr s e
+diel tblh ln
+end
+first = false
+else
+lrow s e ln
+end
+s = add e 1
+end
+if and eq s 0 eq n 65536
+diel tlong add ln 1
+end
+note carry the unfinished line to the front
+h = sub n s
+for i ulong h bound 65536
+put lb i get lb add s i
+end
+if lt n 65536
+if ne h 0
+diel tnonl add ln 1
+end
+break
+end
+end
+c = fclose int fd
+if first
+dief tempty
+end
+end
+
+note lfeed: the newline ending the line of lb starting at s, or n when it is not in lb[s, n);
+note refuse a CR
+fn lfeed s ulong n ulong ln ulong to ulong
+i = s
+while lt i n bound 65537
+c = get lb i
+if eq c 10
+ret i
+end
+if eq c 13
+diel tcr ln
+end
+i = add i 1
+end
+ret n
+end
+
+fn lhdr s ulong e ulong to bool
+if ne sub e s len tlhdr
+ret false
+end
+for i ulong len tlhdr bound 64
+if ne get lb add s i get tlhdr i
+ret false
+end
+end
+ret true
+end
+
+note ---------------------------------------------------------------------------------------------
+note ordering
+
+note pless: does project a rank above project b on the index
+fn pless a ulong b ulong to bool
+x = get p14 a
+y = get p14 b
+if ne x y
+ret gt x y
+end
+x = get pal a
+y = get pal b
+if ne x y
+ret gt x y
+end
+ret fless get prid a get prn a get prid b get prn b
+end
+
+note fless: is fb[a, a+m) bytewise before fb[b, b+n)
+fn fless a ulong m ulong b ulong n ulong to bool
+k = m
+if lt n m
+k = n
+end
+for i ulong k bound 16777216
+x = get fb add a i
+y = get fb add b i
+if ne x y
+ret lt x y
+end
+end
+ret lt m n
+end
+
+note cless: does issue or patch a come before b: project, kind, open (and draft) first, newest
+note first, then id
+fn cless a ulong b ulong to bool
+x = get cpj a
+y = get cpj b
+if ne x y
+ret lt x y
+end
+x = get ckd a
+y = get ckd b
+if ne x y
+ret lt x y
+end
+u = gt get cst a 1
+v = gt get cst b 1
+if ne u v
+ret v
+end
+x = get cts a
+y = get cts b
+if ne x y
+ret gt x y
+end
+ret fless get cid a 40 get cid b 40
+end
+
+fn less w ulong a ulong b ulong to bool
+if eq w 0
+ret pless a b
+end
+ret cless a b
+end
+
+note msort: sort srt[0, n) stably by less w, bottom-up merging through stm
+fn msort w ulong n ulong to void
+wd = ulong 1
+while lt wd n bound 64
+lo = ulong 0
+while lt lo n bound 16384
+mid = add lo wd
+if gt mid n
+mid = n
+end
+hi = add mid wd
+if gt hi n
+hi = n
+end
+merge w lo mid hi
+lo = hi
+end
+for i ulong n bound 16384
+put srt i get stm i
+end
+wd = mul wd 2
+end
+end
+
+fn merge w ulong lo ulong mid ulong hi ulong to void
+i = lo
+j = mid
+k = lo
+while lt k hi bound 16384
+t = false
+if lt i mid
+t = true
+if lt j hi
+if less w get srt j get srt i
+t = false
+end
+end
+end
+if t
+put stm k get srt i
+i = add i 1
+else
+put stm k get srt j
+j = add j 1
+end
+k = add k 1
+end
+end
+
+note order: the project order in pso and the issue and patch order in srt, with each project's
+note slice of it
+fn order to void
+n = get np 0
+for i ulong n bound 1024
+put srt i i
+end
+msort 0 n
+for i ulong n bound 1024
+put pso i get srt i
+end
+m = get nc 0
+for i ulong m bound 16384
+put srt i i
+end
+msort 1 m
+for i ulong m bound 16384
+c = get srt i
+pj = get cpj c
+if eq get pcc pj 0
+put pcs pj i
+end
+put pcc pj add get pcc pj 1
+open1 c pj
+end
+end
+
+note open1: count issue or patch c in its project's totals
+fn open1 c ulong pj ulong to void
+o = le get cst c 1
+if eq get ckd c 1
+put pit pj add get pit pj 1
+if o
+put pio pj add get pio pj 1
+end
+else
+put ppt pj add get ppt pj 1
+if o
+put ppo pj add get ppo pj 1
+end
+end
+end
+
+note ---------------------------------------------------------------------------------------------
+note emitting
+
+fn em t view uchar * to void
+p = get obn 0
+n = len t
+if gt n sub OMX p
+diem toverf
+end
+for i ulong n bound 8388608
+put ob add p i get t i
+end
+put obn 0 add p n
+end
+
+fn emb c uchar to void
+p = get obn 0
+if ge p OMX
+diem toverf
+end
+put ob p c
+put obn 0 add p 1
+end
+
+note emr: fb[o, o+n) unescaped (only for bytes already validated as hex, base58, RID or URL)
+fn emr o ulong n ulong to void
+p = get obn 0
+if gt n sub OMX p
+diem toverf
+end
+for i ulong n bound 16777216
+put ob add p i get fb add o i
+end
+put obn 0 add p n
+end
+
+fn emu v ulong to void
+d = new uchar 20 0
+x = v
+put d 0 uchar add rem x 10 48
+k = ulong 1
+x = div x 10
+while gt x 0 bound 20
+put d k uchar add rem x 10 48
+k = add k 1
+x = div x 10
+end
+while gt k 0 bound 20
+k = sub k 1
+emb get d k
+end
+end
+
+
+note esc1: one byte, escaped
+fn esc1 c uchar to void
+if eq c 38
+em eamp
+ret
+end
+if eq c 60
+em elt
+ret
+end
+if eq c 62
+em egt
+ret
+end
+if eq c 34
+em equot
+ret
+end
+if eq c 39
+em eapos
+ret
+end
+if or and lt c 32 and ne c 10 ne c 9 eq c 127
+em erepl
+ret
+end
+emb c
+end
+
+note emsb: sb[from, n) escaped
+fn emsb from ulong to void
+n = get sbn 0
+i = from
+while lt i n bound 4194304
+esc1 get sb i
+i = add i 1
+end
+end
+
+note ems: the string at p, decoded and escaped
+fn ems p ulong to void
+jdec p
+emsb 0
+end
+
+note emnid: the node id in the string at p (with or without did:key:), shortened to 8 digits, an
+note ellipsis and the last 4, the whole id in a title
+fn emnid p ulong to void
+jdec p
+f = ulong 0
+if sbpre sdid
+f = len sdid
+end
+n = get sbn 0
+em tspt
+emsb f
+em tspm
+if le sub n f 14
+emsb f
+else
+for i ulong 8
+esc1 get sb add f i
+end
+em tell
+i = sub n 4
+emsb i
+end
+em tspe
+end
+
+
+note emday: the date of day z, YYYY-MM-DD
+fn emday z ulong to void
+v = cfd z
+y = div v 10000
+emb uchar add div y 1000 48
+emb uchar add rem div y 100 10 48
+emb uchar add rem div y 10 10 48
+emb uchar add rem y 10 48
+emb 45
+m = rem div v 100 100
+emb uchar add div m 10 48
+emb uchar add rem m 10 48
+emb 45
+d = rem v 100
+emb uchar add div d 10 48
+emb uchar add rem d 10 48
+end
+
+note emts: the date of a timestamp in milliseconds, or a dash for none
+fn emts t ulong to void
+if eq t 0
+emb 45
+ret
+end
+emday div t 86400000
+end
+
+note ---------------------------------------------------------------------------------------------
+note files
+
+note opath: pth := OUT (argument 4)
+fn opath to void
+n = argread 4 pth 0 4096
+if le n 0
+diem targ
+end
+put ptn 0 ulong n
+put outn 0 ulong n
+end
+
+note padd: append t to pth
+fn padd t view uchar * to void
+p = get ptn 0
+for i ulong len t bound 64
+put pth add p i get t i
+end
+put ptn 0 add p len t
+end
+
+note paddz: append the ZID of project pj (its RID without rad:) to pth
+fn paddz pj ulong to void
+p = get ptn 0
+o = add get prid pj 4
+n = sub get prn pj 4
+for i ulong n bound 64
+put pth add p i get fb add o i
+end
+put ptn 0 add p n
+end
+
+note paddh: append the 40 hex digits at o to pth
+fn paddh o ulong to void
+p = get ptn 0
+for i ulong 40
+put pth add p i get fb add o i
+end
+put ptn 0 add p 40
+end
+
+note pdie: refuse with m and pth
+fn pdie m view uchar * to void
+w = write 2 tpre 0 len tpre
+w = write 2 m 0 len m
+w = write 2 pth 0 get ptn 0
+w = write 2 tnl 0 len tnl
+exit 1
+end
+
+note wpage: write ob to the new file pth, then empty ob and cut pth back to OUT
+fn wpage to void
+fd = fopen pth 0 get ptn 0 193 420
+if lt fd 0
+pdie topen
+end
+n = get obn 0
+p = ulong 0
+while lt p n bound 8388609
+k = write int fd ob p sub n p
+if le k 0
+pdie twrite
+end
+p = add p ulong k
+end
+c = fclose int fd
+if ne c 0
+pdie twrite
+end
+put obn 0 0
+put ptn 0 get outn 0
+end
+
+note pdir: create OUT/ZID for project pj
+fn pdir pj ulong to void
+put ptn 0 get outn 0
+padd tslash
+paddz pj
+r = makedir pth 0 get ptn 0 493
+if lt r 0
+pdie tmkd
+end
+put ptn 0 get outn 0
+end
+
+
+note ---------------------------------------------------------------------------------------------
+note the pages
+
+
+note pgh: the page head; up is the way to the index ("" or "../"), the title comes from tf
+fn pgh up view uchar * to void
+em hd1
+end
+
+fn pgm up view uchar * to void
+em hd2
+em up
+em hd3
+end
+
+fn pgf to void
+em ft1
+emday get dnow 0
+em ft2
+end
+
+
+note ---- the index
+
+
+fn index to void
+pgh tup0
+em ix1
+pgm tup0
+em ix2
+emu get np 0
+em ix3
+emu get tot 0
+em ix4
+emu get tot 1
+em ix5
+n = get np 0
+for i ulong n bound 1024
+ixrow get pso i
+end
+em ixc
+pgf
+padd findex
+wpage
+end
+
+note pname: the project's name, escaped (the RID when the payload has none)
+fn pname pj ulong to void
+v = objt objt get pjs pj kproj kname
+if isstr v
+ems v
+else
+emr get prid pj get prn pj
+end
+end
+
+fn pdesc pj ulong to void
+ems objt objt get pjs pj kproj kdesc
+end
+
+fn ixrow pj ulong to void
+em ix6
+emr add get prid pj 4 sub get prn pj 4
+em ix7
+pname pj
+em ix8
+pdesc pj
+em ix9
+emu get p14 pj
+em ixa
+emu get pal pj
+em ixa
+emu get pse pj
+em ixa
+emu get pio pj
+em ixa
+emu get ppo pj
+em ixb
+end
+
+note ---- stats.tsv
+
+
+fn stats to void
+em st1
+n = get np 0
+for i ulong n bound 1024
+strow get pso i
+end
+padd fstats
+wpage
+end
+
+fn strow pj ulong to void
+emr get prid pj get prn pj
+emb 9
+emu get p14 pj
+emb 9
+h = ulong 0
+r = ulong 0
+for k ulong 14
+x = add mul pj 14 k
+h = add h get pdh x
+r = add r get pdr x
+end
+emu h
+emb 9
+emu r
+emb 9
+emu get pal pj
+emb 9
+emu get pse pj
+emb 9
+emu get pio pj
+emb 9
+emu get pit pj
+emb 9
+emu get ppo pj
+emb 9
+emu get ppt pj
+emb 10
+end
+
+note ---- a project page
+
+
+fn ppage pj ulong to void
+pgh tup1
+pname pj
+pgm tup1
+em pp1
+pname pj
+em pp2
+pdesc pj
+em pp3
+emr get prid pj get prn pj
+em pp4
+ems objt objt get pjs pj kproj kdefb
+em pp5
+emr get phd pj 40
+em pp6
+emu get pse pj
+em pp7
+emr get prid pj get prn pj
+em pp8
+emr get seedo 0 get seedn 0
+emr add get prid pj 4 sub get prn pj 4
+em pp9
+pname pj
+em ppa
+emu get p14 pj
+em ppb
+emu get pal pj
+em ppc
+pulls pj
+em pph
+plist pj 1
+plist pj 2
+pgf
+padd tslash
+paddz pj
+padd findex
+wpage
+end
+
+note pulls: the 14 rows of the window, newest first, with a bar scaled to the busiest day
+fn pulls pj ulong to void
+mx = ulong 1
+for k ulong 14
+x = add mul pj 14 k
+t = add get pdh x get pdr x
+if gt t mx
+mx = t
+end
+end
+for i ulong 14
+k = sub 13 i
+x = add mul pj 14 k
+em ppd
+emday add get dfst 0 k
+em ppe
+emu get pdh x
+em ppe
+emu get pdo x
+em ppe
+emu get pdr x
+em ppe
+emu get pdp x
+em ppf
+emu div mul add get pdh x get pdr x 160 mx
+em ppg
+end
+end
+
+
+note plist: the issues (kd 1) or patches (kd 2) of project pj, then how to add one
+fn plist pj ulong kd ulong to void
+if eq kd 1
+em li1
+else
+em li2
+end
+s = get pcs pj
+n = get pcc pj
+k = ulong 0
+for i ulong n bound 16384
+c = get srt add s i
+if eq get ckd c kd
+if eq k 0
+if eq kd 1
+em li4
+else
+em li4p
+end
+end
+k = add k 1
+lrowc c
+end
+end
+if eq k 0
+em li3
+else
+em lic
+end
+if eq kd 1
+newiss pj
+else
+newpat pj
+end
+end
+
+note badge: the state of c as a badge
+fn badge c ulong to void
+em tbg1
+emu get cst c
+em tbg2
+s = objt objt get cjs c kstate kstatus
+ems s
+em tbg3
+end
+
+
+note lrowc: one row of a list
+fn lrowc c ulong to void
+em li5
+badge c
+em li6
+if eq get ckd c 1
+em tiss
+else
+em tpat
+end
+emr get cid c 40
+em li7
+ems objt get cjs c ktitle
+em li8
+labels objt get cjs c klabels
+em li9
+cauth c
+em li9
+emts get cts c
+em lia
+j = get cjs c
+if eq get ckd c 1
+n = acnt objt objt j kthread ktimel
+if gt n 0
+n = sub n 1
+end
+emu n
+em lib
+else
+emu ocnt objt j krevs
+em li9
+pgate j
+vbadge
+em lib
+end
+end
+
+note labels: the labels of an issue or patch, as badges after its title
+fn labels a ulong to void
+e = arr1 a
+while ne e 0 bound 16777216
+em tlb1
+ems e
+em tbg3
+e = anext e
+end
+end
+
+
+note cauth: who opened c: an issue's first comment's author, a patch's author
+fn cauth c ulong to void
+j = get cjs c
+if eq get ckd c 2
+emnid objt objt j kauthor kid
+ret
+end
+th = objt j kthread
+f = arr1 objt th ktimel
+if isstr f
+cm = objr objt th kcomms add f 1 sub sub sskip f f 2
+emnid objt cm kauthor
+end
+end
+
+note pgate: the patch's gate verdict: of every comment on any of its revisions that starts
+note "flow gate pass " or "flow gate fail ", the one with the latest timestamp (the last of equal
+note ones in revision, then discussion order). Sets gv (0 none, 1 pass, 2 fail), gvb (the offset of
+note that comment's body) and gvt (its timestamp).
+fn pgate j ulong to void
+put gv 0 0
+put gvb 0 0
+put gvt 0 0
+m = obj1 objt j krevs
+while ne m 0 bound 16777216
+rgate mval m
+m = mnext m
+end
+end
+
+fn rgate r ulong to void
+d = objt r kdisc
+cs = objt d kcomms
+e = arr1 objt d ktimel
+while ne e 0 bound 16777216
+if isstr e
+cgate objr cs add e 1 sub sub sskip e e 2
+end
+e = anext e
+end
+end
+
+fn cgate cm ulong to void
+if eq cm 0
+ret
+end
+b = objt cm kbody
+jdec b
+v = ulong 0
+if sbpre gpass
+v = ulong 1
+end
+if sbpre gfail
+v = ulong 2
+end
+if eq v 0
+ret
+end
+t = jnum objt arr1 objt cm kedits ktime
+if lt t get gvt 0
+ret
+end
+put gv 0 v
+put gvb 0 b
+put gvt 0 t
+end
+
+note vbadge: gv as a badge
+fn vbadge to void
+v = get gv 0
+if eq v 0
+em tvn
+end
+if eq v 1
+em tvp
+end
+if eq v 2
+em tvf
+end
+end
+
+note ocnt: the number of members of the object at o
+fn ocnt o ulong to ulong
+m = obj1 o
+n = ulong 0
+while ne m 0 bound 16777216
+n = add n 1
+m = mnext m
+end
+ret n
+end
+
+
+
+fn newiss pj ulong to void
+em ni1
+emr get prid pj get prn pj
+em ni2
+end
+
+
+fn newpat pj ulong to void
+em np1
+emr get prid pj get prn pj
+em np2
+pname pj
+em np3
+end
+
+note ---- an issue page
+
+
+fn ipage c ulong to void
+j = get cjs c
+pj = get cpj c
+pgh tup0
+ems objt j ktitle
+pgm tup1
+em is1
+pname pj
+em is2
+ems objt j ktitle
+labels objt j klabels
+em is3
+badge c
+em is4
+cauth c
+em is5
+emts get cts c
+em is6
+emr get cid c 40
+em is7
+th = objt j kthread
+cs = objt th kcomms
+e = arr1 objt th ktimel
+while ne e 0 bound 16777216
+if isstr e
+comm objr cs add e 1 sub sub sskip e e 2
+end
+e = anext e
+end
+em ir1
+emr get cid c 40
+em ir2
+emr get prid pj get prn pj
+em ir3
+emr get cid c 40
+em ir4
+pgf
+padd tslash
+paddz pj
+padd fissue
+paddh get cid c
+padd fhtml
+wpage
+end
+
+note comm: one comment: who, when, the body as last edited
+fn comm cm ulong to void
+if eq cm 0
+ret
+end
+em cm1
+emnid objt cm kauthor
+em cm2
+emts jnum objt arr1 objt cm kedits ktime
+em cm3
+ems objt cm kbody
+em cm4
+end
+
+note ---- a patch page
+
+
+fn apage c ulong to void
+j = get cjs c
+pj = get cpj c
+pgh tup0
+ems objt j ktitle
+pgm tup1
+em is1
+pname pj
+em is2
+ems objt j ktitle
+labels objt j klabels
+em is3
+badge c
+em pa4
+cauth c
+em is5
+emts get cts c
+em is6
+emr get cid c 40
+em is7
+pgate j
+em pg1
+vbadge
+if ne get gv 0 0
+em pg2
+emts get gvt 0
+em pg3
+jdec get gvb 0
+emline
+em tcodee
+end
+em pg4
+merges objt j kmerges
+revs j
+em prc
+emr get cid c 40
+em prd
+emr get cid c 40
+em pre
+pgf
+padd tslash
+paddz pj
+padd fpatch
+paddh get cid c
+padd fhtml
+wpage
+end
+
+note merges: the commit each merge recorded
+fn merges o ulong to void
+m = obj1 o
+while ne m 0 bound 16777216
+em pm1
+ems objt mval m kcommit
+em pm2
+m = mnext m
+end
+end
+
+note revs: the revisions of the patch at j, in the order of its timeline (which also names its
+note comments, reviews and merges: only the ids that are revisions are taken)
+fn revs j ulong to void
+rs = objt j krevs
+e = arr1 objt j ktimel
+k = ulong 0
+while ne e 0 bound 16777216
+if isstr e
+r = objr rs add e 1 sub sub sskip e e 2
+if ne r 0
+k = add k 1
+revn r k
+end
+end
+e = anext e
+end
+end
+
+note emline: sb up to its first newline, escaped
+fn emline to void
+n = get sbn 0
+for i ulong n bound 4194304
+c = get sb i
+if eq c 10
+ret
+end
+esc1 c
+end
+end
+
+note revn: revision k of a patch: when, base, head, its description and discussion
+fn revn r ulong k ulong to void
+if eq r 0
+ret
+end
+em pr1
+emu k
+em pr2
+emts jnum objt r ktime
+em pr3
+ems objt r kbase
+em pr4
+ems objt r koid
+em pr6
+dl = alast objt r kdesc
+jdec objt dl kbody
+if gt get sbn 0 0
+em cm1
+emnid objt objt r kauthor kid
+em cm2
+emts jnum objt dl ktime
+em cm3
+ems objt dl kbody
+em cm4
+end
+d = objt r kdisc
+cs = objt d kcomms
+e = arr1 objt d ktimel
+while ne e 0 bound 16777216
+if isstr e
+comm objr cs add e 1 sub sub sskip e e 2
+end
+e = anext e
+end
+end
+
+note ---------------------------------------------------------------------------------------------
+
+fn main to int
+if ne argcnt 5
+w = write 2 tusage 0 len tusage
+ret 2
+end
+n = argread 3 db 0 16
+if ne n 10
+diem tday
+end
+z = dparse
+if or eq z 0 lt z 13
+diem tday
+end
+put dnow 0 z
+put dfst 0 sub z 13
+loadf
+facts
+m = get nc 0
+for c ulong m bound 16384
+if eq get ckd c 1
+istate c
+else
+pstate c
+end
+end
+ledger
+n2 = get np 0
+for i ulong n2 bound 1024
+put tot 0 add get tot 0 get p14 i
+put tot 1 add get tot 1 get pal i
+end
+order
+opath
+index
+stats
+for j ulong n2 bound 1024
+pdir j
+ppage j
+end
+for c2 ulong m bound 16384
+if eq get ckd c2 1
+ipage c2
+else
+apage c2
+end
+end
+ret 0
+end

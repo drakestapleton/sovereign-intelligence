@@ -1,0 +1,1419 @@
+om2
+note tools/tally.om: the pull counter of the Omega forge, in pure seeded Omega.
+note
+note Every time someone pulls a repository from my seed it leaves one line in a log: nginx writes
+note one for a fetch over HTTPS, radicle-node one for a fetch over the Radicle protocol. This
+note program reads those lines and keeps, per repository and per UTC day, how many pulls there
+note were and from how many distinct hosts or peers. It stores counts only: no address, no node
+note id and no other byte of a log line is ever written. Build with the seed-born compiler:
+note   omc < tools/tally.om > tally && chmod +x tally
+note   { printf 'target x86linux\n'; cat tools/tally.om; } | omc-x86 > tally   (native x86-64)
+note Run:
+note   tally LEDGER OUT < LOGS
+note   LEDGER  read: the ledger so far. The header line is exactly
+note             rid TAB day TAB https TAB hosts TAB rad TAB peers
+note           then one row per (repository, day), exactly 6 TAB-separated fields:
+note             rid    rad:z followed by 20 to 60 base58 characters
+note             day    YYYY-MM-DD, a real date from 1970 to 9999
+note             https  pulls over HTTPS that day          hosts  distinct hosts among them
+note             rad    pulls over the Radicle protocol    peers  distinct node ids among them
+note           counts in decimal, no leading zero except 0 itself, at most 19 digits; hosts is at
+note           most https and peers at most rad. Rows are in ascending bytewise (rid, day) order and
+note           each (rid, day) appears once. Every line ends in a newline: an empty file, a blank
+note           line, a CR anywhere or a last line without its newline is refused. The header alone is
+note           valid. At most 262144 rows and 16 MiB.
+note   LOGS    standard input: any mix of lines of the two logs, in any order, read as a stream. A
+note           line that matches neither pattern is ignored, never refused: logs carry bytes that
+note           strangers chose. A line over 16384 bytes is ignored. Bytes after the last newline
+note           count as a last line.
+note             HTTPS, nginx combined format:
+note               HOST SP X SP X SP [DD/Mon/YYYY:HH:MM:SS SP +HHMM] SP
+note               "GET SP /rad/ZID.git/info/refs?service=git-upload-pack SP HTTP/D.D" SP 200 SP ...
+note             HOST is 1 to 64 bytes without a space; the two X fields are nonempty and without a
+note             space; the offset is +HHMM or -HHMM; D is one digit (HTTP/1.0, 1.1, 2.0, 3.0). The
+note             day is the UTC day of the logged time once the offset is taken away.
+note             RAD, radicle-node:
+note               YYYY-MM-DDTHH:MM:SS(.f)Z SP+ INFO SP+ wire SP+ Peer SP NID SP fetched SP RID SP
+note               from SP us SP successfully, then the end of the line
+note             with 1 to 9 digits of fraction, or none. The day is the first 10 bytes.
+note           ZID is RID without "rad:"; NID is z and 20 to 60 base58 characters.
+note   OUT     written: the new ledger, in LEDGER's format. For every (rid, day) that LOGS mention,
+note           the counts from LOGS, replacing the LEDGER row; every other LEDGER row unchanged.
+note           So tally is idempotent: the same logs again give the same ledger. OUT may name the
+note           same file as LEDGER, which is read whole first. OUT is written once, at the end;
+note           write it to a new name and rename it when a crash must not leave half a ledger.
+note Counting: https and rad count matching lines; hosts and peers count distinct HOST and NID
+note byte strings per (rid, day), compared byte for byte (FNV-1a 64 only finds candidates).
+note Exit 0 when OUT is written, with one stderr line
+note   tally: lines L https H rad R ignored I days D rows N
+note (D the (rid, day) pairs the logs mention, N the rows of OUT); 2 for the wrong number of
+note arguments, with the usage line on stderr; 1 for any refusal, with one stderr line
+note "tally: ..." and OUT not opened. Refused: a malformed LEDGER (naming the file and its line),
+note an unreadable input, more than 4096 (rid, day) pairs or 262144 distinct hosts and peers in
+note one run, and an OUT over 262144 rows or 16 MiB. The output depends only on the arguments and
+note the input bytes: no clock, no environment.
+
+note LEDGER bytes; one byte to see that a file does not end at 16 MiB
+global lb uchar 16777216
+global lb1 uchar 1
+note OUT bytes
+global ob uchar 16777216
+global obn ulong 1
+note the window over standard input: complete lines are handled where they lie, the partial
+note last line moves to the front before the next read
+global sb uchar 4194304
+note the path named by the current argument
+global pb uchar 4096
+global pbn ulong 1
+note LEDGER rows: offset of the line, offset of its newline, length of its rid; the row count
+global lo ulong 262144
+global lq ulong 262144
+global lr ulong 262144
+global nl ulong 1
+note the fields of the current LEDGER line: offset and length of each of 6
+global fld ulong 12
+note (rid, day) cells the logs mention: ZID bytes (64 per cell), ZID length, day bytes (16 per
+note cell), counts (https hosts rad peers per cell), the cell count, a hash table of cell + 1
+global cz uchar 262144
+global czn ulong 4096
+global cd uchar 65536
+global cn ulong 16384
+global nc ulong 1
+global hc ulong 8192
+note distinct hosts and node ids: bytes (64 per key), length, cell * 2 + kind (0 host, 1 node);
+note the key count; a hash table of key + 1, never more than half full
+global kn uchar 16777216
+global kl ulong 262144
+global kc ulong 262144
+global nk ulong 1
+global hk ulong 524288
+note the cells in (rid, day) order
+global so ulong 4096
+note the current log line: its UTC day as YYYY-MM-DD; year, month and day; the fields found
+note (name offset, name length, ZID offset, ZID length)
+global dy uchar 16
+global ymd ulong 3
+global pf ulong 4
+note counters: lines, https lines, rad lines; rows of OUT
+global st ulong 3
+global nout ulong 1
+
+text tpre "tally: "
+text tnl "\n"
+text tusage "usage: tally LEDGER OUT < LOGS\n"
+text targ "cannot read a command-line argument"
+text topen "cannot open "
+text tread "cannot read "
+text tbig "file over 16 MiB: "
+text twrite "cannot write "
+text tstdin "cannot read standard input"
+text tline ": line "
+text tcol ": "
+text tempty ": empty file"
+text tnonl "no newline at the end of the line"
+text tblank "blank line"
+text tcr "carriage return in the line"
+text thdr "rid\tday\thttps\thosts\trad\tpeers"
+text tbhd "header line is not rid TAB day TAB https TAB hosts TAB rad TAB peers"
+text tcols "row needs exactly 6 TAB-separated fields"
+text tbrid "rid is not rad:z and 20 to 60 base58 characters"
+text tbday "day is not a date YYYY-MM-DD from 1970 to 9999"
+text tbnum "a count is not a decimal number of at most 19 digits without a leading zero"
+text thost "hosts is more than https"
+text tpeer "peers is more than rad"
+text tdup "repeats the (rid, day) of line "
+text tord "is not after line "
+text tord2 " in (rid, day) order"
+text tmanyl "more than 262144 rows"
+text tmanyc "more than 4096 (rid, day) pairs in the logs"
+text tmanyk "more than 262144 distinct hosts and peers in the logs"
+text tmanyo "OUT over 262144 rows"
+text toverf "OUT over 16 MiB"
+text tsum1 "lines "
+text tsum2 " https "
+text tsum3 " rad "
+text tsum4 " ignored "
+text tsum5 " days "
+text tsum6 " rows "
+text trad "rad:"
+text tmon "JanFebMarAprMayJunJulAugSepOctNovDec"
+text tget "\"GET /rad/"
+text tref ".git/info/refs?service=git-upload-pack HTTP/"
+text tinfo "INFO"
+text twire "wire"
+text tpeerw "Peer "
+text tfet " fetched rad:"
+text tfrom " from us successfully"
+
+note wdec: write v in decimal to stderr
+fn wdec v ulong to void
+d = new uchar 20 0
+x = v
+k = ulong 20
+note a ulong has at most 20 digits
+while true bound 20
+k = sub k 1
+put d k uchar add rem x 10 48
+x = div x 10
+if eq x 0
+break
+end
+end
+w = write 2 d k sub 20 k
+end
+
+note diem: refuse with m alone, then exit 1
+fn diem m view uchar * to void
+w = write 2 tpre 0 len tpre
+w = write 2 m 0 len m
+w = write 2 tnl 0 len tnl
+exit 1
+end
+
+note dief: refuse with m and the current path, then exit 1
+fn dief m view uchar * to void
+w = write 2 tpre 0 len tpre
+w = write 2 m 0 len m
+w = write 2 pb 0 get pbn 0
+w = write 2 tnl 0 len tnl
+exit 1
+end
+
+note diel: refuse line ln of LEDGER with m, then the line number j when j is not 0; exit 1
+fn diel m view uchar * ln ulong j ulong to void
+w = write 2 tpre 0 len tpre
+w = write 2 pb 0 get pbn 0
+w = write 2 tline 0 len tline
+wdec ln
+w = write 2 tcol 0 len tcol
+w = write 2 m 0 len m
+if ne j 0
+wdec j
+end
+w = write 2 tnl 0 len tnl
+exit 1
+end
+
+note dord: refuse line ln of LEDGER, which does not come after line j in (rid, day) order
+fn dord ln ulong j ulong to void
+w = write 2 tpre 0 len tpre
+w = write 2 pb 0 get pbn 0
+w = write 2 tline 0 len tline
+wdec ln
+w = write 2 tcol 0 len tcol
+w = write 2 tord 0 len tord
+wdec j
+w = write 2 tord2 0 len tord2
+w = write 2 tnl 0 len tnl
+exit 1
+end
+
+note chk: refuse line ln with m when ok is false
+fn chk ok bool m view uchar * ln ulong to void
+if not ok
+diel m ln 0
+end
+end
+
+note setpath: copy command-line argument ai into pb
+fn setpath ai ulong to void
+n = argread ai pb 0 4096
+if le n 0
+diem targ
+end
+put pbn 0 ulong n
+end
+
+note loadl: read the file named by argument ai into lb; return its length
+fn loadl ai ulong to ulong
+setpath ai
+fd = fopen pb 0 get pbn 0 0 0
+if lt fd 0
+dief topen
+end
+p = ulong 0
+note every pass but the last reads at least one byte of the 16777216-byte buffer
+while lt p 16777216 bound 16777217
+k = read int fd lb p sub 16777216 p
+if lt k 0
+dief tread
+end
+if eq k 0
+break
+end
+p = add p ulong k
+end
+if eq p 16777216
+k = read int fd lb1 0 1
+if ne k 0
+dief tbig
+end
+end
+c = fclose int fd
+ret p
+end
+
+note wout: write ob to the file named by argument ai (created or truncated, mode 0644)
+fn wout ai ulong to void
+setpath ai
+fd = fopen pb 0 get pbn 0 577 420
+if lt fd 0
+dief topen
+end
+n = get obn 0
+p = ulong 0
+while lt p n bound 16777217
+k = write int fd ob p sub n p
+if le k 0
+dief twrite
+end
+p = add p ulong k
+end
+c = fclose int fd
+if ne c 0
+dief twrite
+end
+end
+
+note emb: append one byte to ob
+fn emb c uchar to void
+p = get obn 0
+if ge p 16777216
+diem toverf
+end
+put ob p c
+put obn 0 add p 1
+end
+
+note emt: append a text to ob
+fn emt t view uchar * to void
+for i ulong len t bound 64
+emb get t i
+end
+end
+
+note emu: append v in decimal to ob
+fn emu v ulong to void
+d = new uchar 20 0
+x = v
+put d 0 uchar add rem x 10 48
+k = ulong 1
+x = div x 10
+while gt x 0 bound 20
+put d k uchar add rem x 10 48
+k = add k 1
+x = div x 10
+end
+while gt k 0 bound 20
+k = sub k 1
+emb get d k
+end
+end
+
+note gb: byte i of lb (w 0) or of sb (w 1)
+fn gb w ulong i ulong to uchar
+if eq w 0
+ret get lb i
+end
+ret get sb i
+end
+
+note dg: the value of the digit at byte i of buffer w, or 10 for any other byte
+fn dg w ulong i ulong to ulong
+c = gb w i
+if and ge c 48 le c 57
+ret ulong sub c 48
+end
+ret 10
+end
+
+note d2: the two digits at byte i of buffer w as a number, or 100 when either is not a digit
+fn d2 w ulong i ulong to ulong
+a = dg w i
+b = dg w add i 1
+if or gt a 9 gt b 9
+ret 100
+end
+ret add mul a 10 b
+end
+
+fn isleap y ulong to bool
+if ne rem y 4 0
+ret false
+end
+if ne rem y 100 0
+ret true
+end
+ret eq rem y 400 0
+end
+
+note mdays: the days of month m (1..12) of year y
+fn mdays y ulong m ulong to ulong
+if eq m 2
+if isleap y
+ret 29
+end
+ret 28
+end
+if or or eq m 4 eq m 6 or eq m 9 eq m 11
+ret 30
+end
+ret 31
+end
+
+note vday: are the 10 bytes of buffer w at o a date YYYY-MM-DD from 1970 to 9999
+fn vday w ulong o ulong to bool
+a = d2 w o
+b = d2 w add o 2
+if or gt a 99 gt b 99
+ret false
+end
+y = add mul a 100 b
+if or lt y 1970 gt y 9999
+ret false
+end
+if or ne gb w add o 4 45 ne gb w add o 7 45
+ret false
+end
+m = d2 w add o 5
+if or lt m 1 gt m 12
+ret false
+end
+d = d2 w add o 8
+if or lt d 1 gt d mdays y m
+ret false
+end
+ret true
+end
+
+fn isb58 c uchar to bool
+if and ge c 49 le c 57
+ret true
+end
+if and ge c 65 le c 90
+ret and ne c 73 ne c 79
+end
+if and ge c 97 le c 122
+ret ne c 108
+end
+ret false
+end
+
+note vrid: is lb[o, o+n) rad:z followed by 20 to 60 base58 characters
+fn vrid o ulong n ulong to bool
+if or lt n 25 gt n 65
+ret false
+end
+for i ulong 4
+if ne get lb add o i get trad i
+ret false
+end
+end
+if ne get lb add o 4 122
+ret false
+end
+for i ulong sub n 4 bound 61
+if not isb58 get lb add add o 4 i
+ret false
+end
+end
+ret true
+end
+
+note vnum: the decimal count lb[o, o+n) of line ln; refuse anything else
+fn vnum o ulong n ulong ln ulong to ulong
+chk and ge n 1 le n 19 tbnum ln
+if gt n 1
+chk ne get lb o 48 tbnum ln
+end
+x = ulong 0
+for i ulong n bound 19
+v = dg 0 add o i
+chk lt v 10 tbnum ln
+x = add mul x 10 v
+end
+ret x
+end
+
+note lend: the newline that ends LEDGER line ln, which starts at p (e is the end of the file);
+note refuse a blank line, a CR and a last line without its newline
+fn lend p ulong e ulong ln ulong to ulong
+q = p
+note every pass looks at one byte of the file
+while lt q e bound 16777217
+c = get lb q
+if eq c 10
+if eq q p
+diel tblank ln 0
+end
+ret q
+end
+if eq c 13
+diel tcr ln 0
+end
+q = add q 1
+end
+diel tnonl ln 0
+ret e
+end
+
+note split6: store the 6 TAB-separated fields of LEDGER line ln, [p, q), in fld; refuse another
+note count
+fn split6 p ulong q ulong ln ulong to void
+k = ulong 0
+s = p
+t = p
+while lt t q bound 16777217
+if eq get lb t 9
+if ge k 5
+diel tcols ln 0
+end
+put fld mul k 2 s
+put fld add mul k 2 1 sub t s
+k = add k 1
+s = add t 1
+end
+t = add t 1
+end
+if ne k 5
+diel tcols ln 0
+end
+put fld 10 s
+put fld 11 sub q s
+end
+
+fn fo k ulong to ulong
+ret get fld mul k 2
+end
+
+fn fl k ulong to ulong
+ret get fld add mul k 2 1
+end
+
+note lexlb: compare lb[a, a+n) with lb[b, b+m) bytewise: -1, 0 or 1
+fn lexlb a ulong n ulong b ulong m ulong to long
+k = n
+if lt m k
+k = m
+end
+for i ulong k bound 16777216
+x = get lb add a i
+y = get lb add b i
+if lt x y
+ret -1
+end
+if gt x y
+ret 1
+end
+end
+if lt n m
+ret -1
+end
+if gt n m
+ret 1
+end
+ret 0
+end
+
+note cmpll: compare the (rid, day) of LEDGER row r - 1 with that of row r: -1 when it comes
+note first, as it must
+fn cmpll r ulong to long
+a = get lo sub r 1
+b = get lo r
+c = lexlb a get lr sub r 1 b get lr r
+if ne c 0
+ret c
+end
+ret lexlb add add a get lr sub r 1 1 10 add add b get lr r 1 10
+end
+
+note lrow: check LEDGER row r, the line [p, q), and record it
+fn lrow r ulong p ulong q ulong to void
+ln = add r 2
+split6 p q ln
+chk vrid fo 0 fl 0 tbrid ln
+chk eq fl 1 10 tbday ln
+chk vday 0 fo 1 tbday ln
+a = vnum fo 2 fl 2 ln
+b = vnum fo 3 fl 3 ln
+chk le b a thost ln
+a = vnum fo 4 fl 4 ln
+b = vnum fo 5 fl 5 ln
+chk le b a tpeer ln
+put lo r p
+put lq r q
+put lr r fl 0
+if gt r 0
+c = cmpll r
+if eq c 0
+diel tdup ln add r 1
+end
+if gt c 0
+dord ln add r 1
+end
+end
+end
+
+note eqhdr: is the line [0, q) of lb the header
+fn eqhdr q ulong to bool
+if ne q len thdr
+ret false
+end
+for i ulong q bound 64
+if ne get lb i get thdr i
+ret false
+end
+end
+ret true
+end
+
+note pled: check the LEDGER bytes [0, e): the header, then every row
+fn pled e ulong to void
+if eq e 0
+w = write 2 tpre 0 len tpre
+w = write 2 pb 0 get pbn 0
+w = write 2 tempty 0 len tempty
+w = write 2 tnl 0 len tnl
+exit 1
+end
+q = lend 0 e 1
+chk eqhdr q tbhd 1
+p = add q 1
+r = ulong 0
+note every pass checks one row; the row before the 262145th refuses
+while lt p e bound 262146
+if ge r 262144
+diel tmanyl add r 2 0
+end
+q = lend p e add r 2
+lrow r p q
+r = add r 1
+p = add q 1
+end
+put nl 0 r
+end
+
+note isc: is p before q and sb[p] the byte c
+fn isc p ulong q ulong c uchar to bool
+if ge p q
+ret false
+end
+ret eq get sb p c
+end
+
+note eqt: do the bytes of sb from p, all before q, equal the text t
+fn eqt p ulong q ulong t view uchar * to bool
+n = len t
+if gt add p n q
+ret false
+end
+for i ulong n bound 64
+if ne get sb add p i get t i
+ret false
+end
+end
+ret true
+end
+
+note tok: the first space in sb[p, q), or q
+fn tok p ulong q ulong to ulong
+t = p
+note a handled line is at most 16384 bytes
+while lt t q bound 16385
+if eq get sb t 32
+ret t
+end
+t = add t 1
+end
+ret q
+end
+
+note zrun: the length of the run of base58 bytes of sb from p, before q, when it is z followed by
+note 20 to 60 of them; 0 otherwise
+fn zrun p ulong q ulong to ulong
+if not isc p q 122
+ret 0
+end
+t = p
+note a run longer than 61 is refused, so at most 62 bytes are looked at
+while lt t q bound 63
+if ge sub t p 62
+break
+end
+if not isb58 get sb t
+break
+end
+t = add t 1
+end
+n = sub t p
+if or lt n 21 gt n 61
+ret 0
+end
+ret n
+end
+
+note sps: past the run of spaces of sb at p, before q; 0 when there is none
+fn sps p ulong q ulong to ulong
+if not isc p q 32
+ret 0
+end
+t = p
+while lt t q bound 16385
+if ne get sb t 32
+break
+end
+t = add t 1
+end
+ret t
+end
+
+note dput: write ymd into dy as YYYY-MM-DD; false when the year is outside 1970..9999
+fn dput to bool
+y = get ymd 0
+if or lt y 1970 gt y 9999
+ret false
+end
+put dy 0 uchar add div y 1000 48
+put dy 1 uchar add rem div y 100 10 48
+put dy 2 uchar add rem div y 10 10 48
+put dy 3 uchar add rem y 10 48
+put dy 4 45
+m = get ymd 1
+put dy 5 uchar add div m 10 48
+put dy 6 uchar add rem m 10 48
+put dy 7 45
+d = get ymd 2
+put dy 8 uchar add div d 10 48
+put dy 9 uchar add rem d 10 48
+ret true
+end
+
+note dprev / dnext: move ymd one day back or forward
+fn dprev to void
+d = get ymd 2
+if gt d 1
+put ymd 2 sub d 1
+ret
+end
+m = get ymd 1
+y = get ymd 0
+if gt m 1
+put ymd 1 sub m 1
+put ymd 2 mdays y sub m 1
+ret
+end
+put ymd 0 sub y 1
+put ymd 1 12
+put ymd 2 31
+end
+
+fn dnext to void
+d = get ymd 2
+m = get ymd 1
+y = get ymd 0
+if lt d mdays y m
+put ymd 2 add d 1
+ret
+end
+put ymd 2 1
+if lt m 12
+put ymd 1 add m 1
+ret
+end
+put ymd 1 1
+put ymd 0 add y 1
+end
+
+note pmon: the month 1..12 named by the 3 bytes of sb at p, or 0
+fn pmon p ulong to ulong
+for m ulong 12
+b = mul m 3
+if eq get sb p get tmon b
+if eq get sb add p 1 get tmon add b 1
+if eq get sb add p 2 get tmon add b 2
+ret add m 1
+end
+end
+end
+end
+ret 0
+end
+
+note pdmy: the [DD/Mon/YYYY part of an nginx time at p (28 bytes are there) into ymd
+fn pdmy p ulong to bool
+if or ne get sb p 91 ne get sb add p 3 47
+ret false
+end
+if or ne get sb add p 7 47 ne get sb add p 12 58
+ret false
+end
+m = pmon add p 4
+if eq m 0
+ret false
+end
+a = d2 1 add p 8
+b = d2 1 add p 10
+if or gt a 99 gt b 99
+ret false
+end
+y = add mul a 100 b
+d = d2 1 add p 1
+if or lt d 1 gt d mdays y m
+ret false
+end
+put ymd 0 y
+put ymd 1 m
+put ymd 2 d
+ret true
+end
+
+note putm: the UTC minute of the day of the HH:MM:SS +HHMM] part of an nginx time at p, which can
+note fall before 0 or after 1439; 100000 when the bytes are not a time and an offset
+fn putm p ulong to long
+h = d2 1 add p 13
+m = d2 1 add p 16
+s = d2 1 add p 19
+if or or gt h 23 gt m 59 gt s 59
+ret 100000
+end
+if or ne get sb add p 15 58 ne get sb add p 18 58
+ret 100000
+end
+if or ne get sb add p 21 32 ne get sb add p 27 93
+ret 100000
+end
+oh = d2 1 add p 23
+om = d2 1 add p 25
+if or gt oh 23 gt om 59
+ret 100000
+end
+u = long add mul h 60 m
+o = long add mul oh 60 om
+g = get sb add p 22
+if eq g 43
+ret sub u o
+end
+if eq g 45
+ret add u o
+end
+ret 100000
+end
+
+note pdate: the bracketed nginx time at p (28 bytes are there) as its UTC day in dy
+fn pdate p ulong to bool
+if not pdmy p
+ret false
+end
+u = putm p
+if eq u 100000
+ret false
+end
+if lt u 0
+dprev
+end
+if ge u 1440
+dnext
+end
+ret dput
+end
+
+note phttp: is sb[s, q) an nginx line of an HTTPS pull; then pf holds the host and the ZID and
+note dy the day
+fn phttp s ulong q ulong to bool
+h = tok s q
+if or eq h s gt sub h s 64
+ret false
+end
+if ge h q
+ret false
+end
+put pf 0 s
+put pf 1 sub h s
+p = add h 1
+t = tok p q
+if or eq t p ge t q
+ret false
+end
+p = add t 1
+t = tok p q
+if or eq t p ge t q
+ret false
+end
+p = add t 1
+if gt add p 29 q
+ret false
+end
+if not pdate p
+ret false
+end
+p = add p 28
+if not isc p q 32
+ret false
+end
+p = add p 1
+if not eqt p q tget
+ret false
+end
+p = add p len tget
+z = zrun p q
+if eq z 0
+ret false
+end
+put pf 2 p
+put pf 3 z
+p = add p z
+if not eqt p q tref
+ret false
+end
+ret ptail add p len tref q
+end
+
+note ptail: are the bytes of sb at p, before q, D.D" 200 and a space
+fn ptail p ulong q ulong to bool
+if gt add p 9 q
+ret false
+end
+if or gt dg 1 p 9 ne get sb add p 1 46
+ret false
+end
+if or gt dg 1 add p 2 9 ne get sb add p 3 34
+ret false
+end
+if or ne get sb add p 4 32 ne get sb add p 5 50
+ret false
+end
+if or ne get sb add p 6 48 ne get sb add p 7 48
+ret false
+end
+ret eq get sb add p 8 32
+end
+
+note rtime: past the THH:MM:SS(.f)Z of a radicle-node line starting at s, before q; 0 when the
+note bytes are not that (the first 10 bytes are a checked date and q - s is at least 20)
+fn rtime s ulong q ulong to ulong
+if or ne get sb add s 10 84 ne get sb add s 13 58
+ret 0
+end
+if ne get sb add s 16 58
+ret 0
+end
+h = d2 1 add s 11
+m = d2 1 add s 14
+x = d2 1 add s 17
+if or or gt h 23 gt m 59 gt x 59
+ret 0
+end
+p = add s 19
+if isc p q 46
+p = add p 1
+t = p
+note at most 10 digits are looked at; more than 9 is refused
+while lt t q bound 11
+if ge sub t p 10
+break
+end
+if gt dg 1 t 9
+break
+end
+t = add t 1
+end
+if or eq t p gt sub t p 9
+ret 0
+end
+p = t
+end
+if not isc p q 90
+ret 0
+end
+ret add p 1
+end
+
+note prad: is sb[s, q) a radicle-node line of a Radicle pull; then pf holds the node id and the
+note ZID and dy the day
+fn prad s ulong q ulong to bool
+if lt sub q s 20
+ret false
+end
+if not vday 1 s
+ret false
+end
+p = rtime s q
+if eq p 0
+ret false
+end
+p = sps p q
+if eq p 0
+ret false
+end
+if not eqt p q tinfo
+ret false
+end
+p = sps add p 4 q
+if eq p 0
+ret false
+end
+if not eqt p q twire
+ret false
+end
+p = sps add p 4 q
+if eq p 0
+ret false
+end
+if not eqt p q tpeerw
+ret false
+end
+p = add p len tpeerw
+n = zrun p q
+if eq n 0
+ret false
+end
+put pf 0 p
+put pf 1 n
+p = add p n
+if not eqt p q tfet
+ret false
+end
+p = add p len tfet
+z = zrun p q
+if eq z 0
+ret false
+end
+put pf 2 p
+put pf 3 z
+p = add p z
+if not eqt p q tfrom
+ret false
+end
+if ne add p len tfrom q
+ret false
+end
+for i ulong 10
+put dy i get sb add s i
+end
+ret true
+end
+
+note ceq: does cell c hold the ZID sb[zo, zo+zl) and the day dy
+fn ceq c ulong zo ulong zl ulong to bool
+if ne get czn c zl
+ret false
+end
+b = mul c 64
+for i ulong zl bound 64
+if ne get cz add b i get sb add zo i
+ret false
+end
+end
+b = mul c 16
+for k ulong 10
+if ne get cd add b k get dy k
+ret false
+end
+end
+ret true
+end
+
+note cslot: the first slot of hc for the ZID sb[zo, zo+zl) and the day dy
+fn cslot zo ulong zl ulong to ulong
+x = ulong 14695981039346656037
+for i ulong zl bound 64
+x = mul xor x ulong get sb add zo i 1099511628211
+end
+for k ulong 10
+x = mul xor x ulong get dy k 1099511628211
+end
+ret and xor x shr x 32 8191
+end
+
+note cput: store the ZID sb[zo, zo+zl) and the day dy as cell n
+fn cput n ulong zo ulong zl ulong to void
+b = mul n 64
+for t ulong zl bound 64
+put cz add b t get sb add zo t
+end
+put czn n zl
+b = mul n 16
+for u ulong 10
+put cd add b u get dy u
+end
+end
+
+note cell: the cell of the ZID sb[zo, zo+zl) and the day dy, made when it is new. At most 4096
+note of the 8192 slots are full, so an empty one comes within 4097 probes.
+fn cell zo ulong zl ulong to ulong
+s = cslot zo zl
+while true bound 8192
+j = get hc s
+if eq j 0
+break
+end
+if ceq sub j 1 zo zl
+ret sub j 1
+end
+s = and add s 1 8191
+end
+n = get nc 0
+if ge n 4096
+diem tmanyc
+end
+cput n zo zl
+put hc s add n 1
+put nc 0 add n 1
+ret n
+end
+
+note keq: does key k hold the bytes sb[o, o+n)
+fn keq k ulong o ulong n ulong to bool
+if ne get kl k n
+ret false
+end
+b = mul k 64
+for i ulong n bound 64
+if ne get kn add b i get sb add o i
+ret false
+end
+end
+ret true
+end
+
+note kslot: the first slot of hk for the name sb[o, o+n) under the tag g
+fn kslot g ulong o ulong n ulong to ulong
+x = mul xor ulong 14695981039346656037 g 1099511628211
+for i ulong n bound 64
+x = mul xor x ulong get sb add o i 1099511628211
+end
+ret and xor x shr x 32 524287
+end
+
+note kput: store the name sb[o, o+n) as key m
+fn kput m ulong o ulong n ulong to void
+put kl m n
+b = mul m 64
+for t ulong n bound 64
+put kn add b t get sb add o t
+end
+end
+
+note seen: record the name sb[o, o+n) of kind kd (0 host, 1 node) for cell c; true when it is
+note new. At most 262144 of the 524288 slots are full.
+fn seen c ulong kd ulong o ulong n ulong to bool
+g = add mul c 2 kd
+s = kslot g o n
+while true bound 524288
+j = get hk s
+if eq j 0
+break
+end
+if eq get kc sub j 1 g
+if keq sub j 1 o n
+ret false
+end
+end
+s = and add s 1 524287
+end
+m = get nk 0
+if ge m 262144
+diem tmanyk
+end
+put kc m g
+kput m o n
+put hk s add m 1
+put nk 0 add m 1
+ret true
+end
+
+note rec: count the line whose fields are in pf, of kind kd (0 HTTPS, 1 Radicle)
+fn rec kd ulong to void
+c = cell get pf 2 get pf 3
+i = add mul c 4 mul kd 2
+put cn i add get cn i 1
+if seen c kd get pf 0 get pf 1
+j = add i 1
+put cn j add get cn j 1
+end
+put st add kd 1 add get st add kd 1 1
+end
+
+note dline: handle the log line sb[s, q)
+fn dline s ulong q ulong to void
+if gt sub q s 16384
+ret
+end
+if prad s q
+rec 1
+ret
+end
+if phttp s q
+rec 0
+end
+end
+
+note scan: read standard input to its end, handing every line to dline
+fn scan to void
+e = ulong 0
+s = ulong 0
+skip = false
+note every pass but the last reads at least one byte
+while true bound 9223372036854775807
+k = read 0 sb e sub 4194304 e
+if lt k 0
+diem tstdin
+end
+if eq k 0
+break
+end
+q = e
+e = add e ulong k
+note every pass looks at one byte, or skips 64 bytes that hold no newline
+while lt q e bound 4194305
+if le add q 64 e
+if eq count sb q 64 10 0
+q = add q 64
+continue
+end
+end
+if eq get sb q 10
+if skip
+skip = false
+else
+dline s q
+end
+put st 0 add get st 0 1
+s = add q 1
+end
+q = add q 1
+end
+r = sub e s
+if gt r 16384
+skip = true
+r = ulong 0
+end
+for i ulong r bound 16384
+put sb i get sb add s i
+end
+e = r
+s = ulong 0
+end
+if or gt e 0 skip
+put st 0 add get st 0 1
+if not skip
+dline 0 e
+end
+end
+end
+
+note cmpcc: compare the (ZID, day) of cells a and b: -1, 0 or 1
+fn cmpcc a ulong b ulong to long
+n = get czn a
+m = get czn b
+k = n
+if lt m k
+k = m
+end
+x = mul a 64
+y = mul b 64
+for i ulong k bound 64
+u = get cz add x i
+v = get cz add y i
+if lt u v
+ret -1
+end
+if gt u v
+ret 1
+end
+end
+if lt n m
+ret -1
+end
+if gt n m
+ret 1
+end
+x = mul a 16
+y = mul b 16
+for j ulong 10
+u = get cd add x j
+v = get cd add y j
+if lt u v
+ret -1
+end
+if gt u v
+ret 1
+end
+end
+ret 0
+end
+
+note cmplc: compare the (rid, day) of LEDGER row r with cell c: -1, 0 or 1
+fn cmplc r ulong c ulong to long
+o = add get lo r 4
+n = sub get lr r 4
+m = get czn c
+k = n
+if lt m k
+k = m
+end
+y = mul c 64
+for i ulong k bound 64
+u = get lb add o i
+v = get cz add y i
+if lt u v
+ret -1
+end
+if gt u v
+ret 1
+end
+end
+if lt n m
+ret -1
+end
+if gt n m
+ret 1
+end
+o = add add get lo r get lr r 1
+y = mul c 16
+for j ulong 10
+u = get lb add o j
+v = get cd add y j
+if lt u v
+ret -1
+end
+if gt u v
+ret 1
+end
+end
+ret 0
+end
+
+note sortc: the cells into so in (rid, day) order, by insertion; the keys are distinct
+fn sortc to void
+n = get nc 0
+for t ulong n bound 4096
+put so t t
+end
+i = ulong 1
+while lt i n bound 4096
+x = get so i
+j = i
+while gt j 0 bound 4096
+y = get so sub j 1
+if lt cmpcc y x 0
+break
+end
+put so j y
+j = sub j 1
+end
+put so j x
+i = add i 1
+end
+end
+
+note orow: count one more row of OUT
+fn orow to void
+n = add get nout 0 1
+if gt n 262144
+diem tmanyo
+end
+put nout 0 n
+end
+
+note emrow: append LEDGER row r to ob unchanged, with its newline
+fn emrow r ulong to void
+orow
+o = get lo r
+n = add sub get lq r o 1
+for i ulong n bound 16777216
+emb get lb add o i
+end
+end
+
+note emcell: append the row of cell c to ob
+fn emcell c ulong to void
+orow
+emt trad
+b = mul c 64
+for i ulong get czn c bound 64
+emb get cz add b i
+end
+emb 9
+b = mul c 16
+for k ulong 10
+emb get cd add b k
+end
+b = mul c 4
+for j ulong 4
+emb 9
+emu get cn add b j
+end
+emb 10
+end
+
+note merge: OUT, the LEDGER rows and the cells in (rid, day) order, a cell replacing the row
+note with its (rid, day)
+fn merge to void
+emt thdr
+emb 10
+n = get nl 0
+m = get nc 0
+i = ulong 0
+j = ulong 0
+note every pass takes at least one row or one cell
+while or lt i n lt j m bound 266242
+if ge i n
+emcell get so j
+j = add j 1
+continue
+end
+if ge j m
+emrow i
+i = add i 1
+continue
+end
+c = cmplc i get so j
+if lt c 0
+emrow i
+i = add i 1
+continue
+end
+emcell get so j
+j = add j 1
+if eq c 0
+i = add i 1
+end
+end
+end
+
+note wsum: the summary line on stderr
+fn wsum to void
+w = write 2 tpre 0 len tpre
+w = write 2 tsum1 0 len tsum1
+a = get st 0
+wdec a
+w = write 2 tsum2 0 len tsum2
+b = get st 1
+wdec b
+w = write 2 tsum3 0 len tsum3
+c = get st 2
+wdec c
+w = write 2 tsum4 0 len tsum4
+wdec sub sub a b c
+w = write 2 tsum5 0 len tsum5
+wdec get nc 0
+w = write 2 tsum6 0 len tsum6
+wdec get nout 0
+w = write 2 tnl 0 len tnl
+end
+
+fn main to int
+if ne argcnt 3
+w = write 2 tusage 0 len tusage
+ret 2
+end
+e = loadl 1
+pled e
+scan
+sortc
+merge
+wout 2
+wsum
+ret 0
+end

@@ -1,0 +1,37 @@
+f-blank.tsv	forge: FACTS: line 3: blank line
+f-cols.tsv	forge: FACTS: line 3: wrong number of TAB-separated fields
+f-cr.tsv	forge: FACTS: line 2: carriage return in the line
+f-dupissue.tsv	forge: FACTS: line 5: issue or patch given twice
+f-dupproj.tsv	forge: FACTS: line 4: project given twice
+f-dupseeder.tsv	forge: FACTS: line 5: seeder given twice
+f-empty.tsv	forge: empty file: tests/forge/forge/bad/f-empty.tsv
+f-head.tsv	forge: FACTS: line 3: not 40 lowercase hex digits
+f-header.tsv	forge: FACTS: line 1: first line is not forge-facts 1
+f-jctl.tsv	forge: FACTS: line 3: malformed JSON
+f-jdeep.tsv	forge: FACTS: line 3: JSON nested more than 64 deep
+f-jesc.tsv	forge: FACTS: line 3: malformed JSON
+f-jmatch.tsv	forge: FACTS: line 3: malformed JSON
+f-jnotobj.tsv	forge: FACTS: line 3: JSON is not an object
+f-jopen.tsv	forge: FACTS: line 3: malformed JSON
+f-jtrail.tsv	forge: FACTS: line 3: malformed JSON
+f-juhex.tsv	forge: FACTS: line 3: malformed JSON
+f-kind.tsv	forge: FACTS: line 4: unknown record kind
+f-nid.tsv	forge: FACTS: line 4: NID is not z and 20..60 base58 digits
+f-nonl.tsv	forge: FACTS: line 3: no newline at the end of the line
+f-noseed.tsv	forge: FACTS: line 2: no seed record
+f-rid.tsv	forge: FACTS: line 3: RID is not rad: then z and 20..60 base58 digits
+f-ridshort.tsv	forge: FACTS: line 3: RID is not rad: then z and 20..60 base58 digits
+f-seed2.tsv	forge: FACTS: line 3: seed given twice
+f-seedchar.tsv	forge: FACTS: line 2: seed is not 1..200 bytes of URL characters
+f-seedlong.tsv	forge: FACTS: line 2: seed is not 1..200 bytes of URL characters
+f-unkrid.tsv	forge: FACTS: line 4: RID is not a project
+l-cols.tsv	forge: tests/forge/forge/bad/l-cols.tsv: line 2: row is not RID TAB DAY TAB four decimal counts
+l-day.tsv	forge: tests/forge/forge/bad/l-day.tsv: line 2: row is not RID TAB DAY TAB four decimal counts
+l-dup.tsv	forge: tests/forge/forge/bad/l-dup.tsv: line 3: rows are not strictly ascending by RID and day
+l-empty.tsv	forge: empty file: tests/forge/forge/bad/l-empty.tsv
+l-header.tsv	forge: tests/forge/forge/bad/l-header.tsv: line 1: header line is not rid TAB day TAB https TAB hosts TAB rad TAB peers
+l-inv.tsv	forge: tests/forge/forge/bad/l-inv.tsv: line 2: hosts over https or peers over rad
+l-nonl.tsv	forge: tests/forge/forge/bad/l-nonl.tsv: line 2: no newline at the end of the line
+l-num.tsv	forge: tests/forge/forge/bad/l-num.tsv: line 2: row is not RID TAB DAY TAB four decimal counts
+l-order.tsv	forge: tests/forge/forge/bad/l-order.tsv: line 3: rows are not strictly ascending by RID and day
+l-rid.tsv	forge: tests/forge/forge/bad/l-rid.tsv: line 2: row is not RID TAB DAY TAB four decimal counts

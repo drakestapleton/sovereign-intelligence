@@ -1,0 +1,2094 @@
+om2
+note tools/intake.om: the web intake of the Omega forge, in pure seeded Omega.
+note
+note People without Radicle open issues and comments on the forge's pages with a plain HTML form.
+note This server takes those form posts, checks every field, and writes each accepted one as a
+note record into a spool directory; the forge cycle, run by the repository's delegate, publishes
+note each record as a signed Radicle issue or comment. The server never touches Radicle, git or a
+note key. Build with the seed-born compiler:
+note   omc < tools/intake.om > intake && chmod +x intake
+note   { printf 'target x86linux\n'; cat tools/intake.om; } | omc-x86 > intake   (native x86-64)
+note Run:
+note   intake PORT ALLOW SPOOL
+note   PORT   decimal 1..65535: listen on 127.0.0.1:PORT only (a web server in front proxies
+note          "location = /forge/intake" to it)
+note   ALLOW  read once at start: the repositories that take submissions, one RID per line, each
+note          "rad:z" and 20..60 base58 digits, every line ending in a newline, no CR, no blank
+note          line, 1..4096 lines, at most 1 MiB
+note   SPOOL  a directory (at most 4000 bytes of path) holding the directories tmp/ and new/
+note Each connection is served by a child process, one at a time; the parent only accepts, forks
+note and reaps, so a client can neither crash nor wedge the server: the child reads for at most
+note 10 s, replies within 2 s more and lingers 1 s to drain, and the parent kills a child still
+note alive after 15 s.
+note A request is: "POST /forge/intake HTTP/1.1" (or HTTP/1.0), a header of at most 8192 bytes
+note (lines end in CR LF), a Content-Length of at most 65536 (no Transfer-Encoding), the
+note Content-Type application/x-www-form-urlencoded, and that many body bytes ("Expect:
+note 100-continue" gets "100 Continue" before the body is read). Form fields (+ is a space, %XX a
+note byte; keys are compared as sent; unknown keys are ignored; a known key twice is refused):
+note   repo     a line of ALLOW
+note   kind     issue or comment
+note   target   comment: the issue id, 40 lowercase hex digits; issue: empty or absent
+note   title    issue: 1..200 bytes; comment: empty or absent; no byte below 0x20 and no 0x7f
+note   body     CR LF becomes LF, then: issue 0..60000 bytes, comment 1..60000 bytes; no byte below
+note            0x20 except LF and TAB, and no 0x7f
+note   website  a trap for robots: must be empty or absent
+note   Decoded title and body must be valid UTF-8 (no overlong forms, no surrogates, at most
+note   U+10FFFF).
+note An accepted form gets a receipt id, 32 lowercase hex digits from getrandom; the record is
+note written to SPOOL/tmp/ID, synced, and renamed (never replacing) to SPOOL/new/ID. Its bytes
+note are exactly 8 lines and then the body:
+note   forge-intake 1 / id ID / repo RID / kind issue|comment / target HEX40|- /
+note   time UNIX-SECONDS / title TITLE (empty for a comment) / body N / N body bytes
+note Replies are small HTML pages with Content-Length and Connection: close: 200 with the receipt
+note id; 400 for a malformed request or form (the page names the rule, never echoes input); 404
+note for any other path; 405 for another method on /forge/intake; 408 when the request is not in
+note within 10 s; 411 without a Content-Length or with a Transfer-Encoding; 413 for a body over
+note 65536 bytes; 503 when SPOOL/new holds 4096 entries or more, or the record cannot be written.
+note stderr: "intake: ready port PORT allow N" once listening, then one line per request,
+note "intake: CODE ID" or "intake: CODE REASON", and never a peer address. Exit status: 2 for the
+note wrong number of arguments; 1 for a refusal at start, with one "intake: ..." line; the server
+note itself does not exit.
+
+const HMAX ulong 8192
+const BMAX ulong 65536
+const RQN ulong 73728
+const TMAX ulong 200
+const XMAX ulong 60000
+const SMAX ulong 4096
+const AMAX ulong 1048576
+const NOTN ulong 18446744073709551615
+
+note ALLOW: its bytes, and per line the offset and length of the RID
+global al uchar 1048577
+global ao ulong 4096
+global an ulong 4096
+global na ulong 1
+note SPOOL's path, a path being built, and the packed two-path list for renames
+global sp uchar 4096
+global spn ulong 1
+global pt uchar 4200
+global ptn ulong 1
+global pk uchar 8400
+global pkn ulong 1
+note the request: header and body as received, and the decoded form values
+global rq uchar 73728
+global dec uchar 65536
+note per form field (0 repo, 1 kind, 2 target, 3 title, 4 body, 5 website): offset and length
+note of its decoded value in dec, and whether it was seen
+global fo ulong 8
+global fl ulong 8
+global fs ulong 8
+note reply body, reply header, the spool record, a stderr line
+global ob uchar 8192
+global obn ulong 1
+global hb uchar 1024
+global hbn ulong 1
+global rb uchar 66560
+global rbn ulong 1
+global lb uchar 512
+global lbn ulong 1
+note directory entries, the socket address, the receipt id and its random bytes
+global dn uchar 32768
+global ad uchar 16
+global hid uchar 32
+global rnd uchar 16
+note connection state: 0 fd, 1 read deadline, 2 header end, 3 bytes received, 4 Content-Length,
+note 5 Content-Length seen, 6 Content-Type accepted, 7 Expect 100-continue, 8 Transfer-Encoding
+note seen, 9 Content-Type seen, 10 kind (1 issue, 2 comment), 11 ALLOW line of repo, 12 reply
+note deadline, 14 decoded bytes so far, 15 and 16 the reason's bytes in ob
+global cs ulong 32
+
+text tpre "intake: "
+text tnl "\n"
+text tusage "usage: intake PORT ALLOW SPOOL\n"
+text targ "cannot read a command-line argument"
+text tport "PORT is not a number from 1 to 65535"
+text tlong "SPOOL is longer than 4000 bytes"
+text topen "cannot open ALLOW "
+text tread "cannot read ALLOW "
+text tbig "ALLOW is over 1 MiB"
+text tnone "ALLOW names no repository"
+text tline "ALLOW line "
+text tnonl ": no newline at the end of the line"
+text tcr ": carriage return in the line"
+text tblank ": blank line"
+text trid ": not a Radicle ID (rad:z and 20 to 60 base58 digits)"
+text tmany "ALLOW has more than 4096 lines"
+text tnotmp "SPOOL has no directory tmp/: "
+text tnonew "SPOOL has no directory new/: "
+text tsock "cannot open a socket"
+text tbind "cannot bind 127.0.0.1 port "
+text tlist "cannot listen"
+text tready "ready port "
+text tallow " allow "
+text tchild "500 handler stopped: exit "
+text tsig "500 handler stopped: signal "
+text tfork "503 cannot fork"
+text tstmp "/tmp"
+text tsnew "/new"
+text tstmp2 "/tmp/"
+text tsnew2 "/new/"
+text tpath "/forge/intake"
+text tpost "POST"
+text th11 "HTTP/1.1"
+text th10 "HTTP/1.0"
+text tcl "content-length"
+text tct "content-type"
+text tte "transfer-encoding"
+text tex "expect"
+text t100 "100-continue"
+text tform "application/x-www-form-urlencoded"
+text kre "repo"
+text kki "kind"
+text kta "target"
+text kti "title"
+text kbo "body"
+text kwe "website"
+text kis "issue"
+text kco "comment"
+
+note statuses
+text s100 "100 Continue"
+text s200 "200 OK"
+text s400 "400 Bad Request"
+text s404 "404 Not Found"
+text s405 "405 Method Not Allowed"
+text s408 "408 Request Timeout"
+text s411 "411 Length Required"
+text s413 "413 Content Too Large"
+text s503 "503 Service Unavailable"
+text s500 "500 Internal Server Error"
+
+note reasons: number r, its text and (rcode) its status
+text r1 "malformed request line"
+text r2 "only HTTP/1.1 and HTTP/1.0 are served"
+text r3 "malformed header line"
+text r4 "Content-Length given twice"
+text r5 "Content-Length is not a number"
+text r6 "the form must be sent as application/x-www-form-urlencoded"
+text r7 "request header over 8192 bytes"
+text r8 "a form field is given twice"
+text r9 "bad percent escape in the form"
+text r10 "unknown repository"
+text r11 "kind must be issue or comment"
+text r12 "form rejected"
+text r13 "an issue takes no target"
+text r14 "title must be 1 to 200 bytes"
+text r15 "control character in the title"
+text r16 "title is not UTF-8"
+text r17 "body over 60000 bytes"
+text r18 "control character in the body"
+text r19 "body is not UTF-8"
+text r20 "target must be 40 lowercase hex digits"
+text r21 "a comment takes no title"
+text r22 "a comment body must be 1 to 60000 bytes"
+text r23 "Content-Type given twice"
+text r30 "no such page"
+text r31 "only POST is served here"
+text r32 "a Content-Length is required; chunked bodies are not taken"
+text r33 "body over 65536 bytes"
+text r34 "no complete request within 10 seconds"
+text r35 "the spool is full"
+text r36 "the spool cannot be written"
+text r37 "no randomness for a receipt id"
+text r38 "the request ended early"
+text r39 "the spool cannot be read"
+
+note page parts
+text pg1 "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>"
+text pg2 "</title></head><body><h1>"
+text pg3 "</h1><p>"
+text pg4 "</p><p><a href=\"/forge/\">Back to the forge</a></p></body></html>\n"
+text pgok "Received"
+text pgr1 "</h1><p>Receipt <code>"
+text pgr2 "</code>.</p><p>The next forge cycle publishes it as a Radicle issue in <code>"
+text pgr3 "</code>.</p><p>The next forge cycle publishes it as a comment on issue <code>"
+text pgr4 "</code> in <code>"
+text pgr5 "</code>.</p><p><a href=\"/forge/"
+text pgr6 "/\">Back to the repository</a></p></body></html>\n"
+text pgr7 "/issue-"
+text pgr8 ".html\">Back to the issue</a></p></body></html>\n"
+text hct "Content-Type: text/html; charset=utf-8"
+text hcl "Content-Length: "
+text hcc "Cache-Control: no-store"
+text hno "X-Content-Type-Options: nosniff"
+text hal "Allow: POST"
+text hcn "Connection: close"
+text hv "HTTP/1.1 "
+
+note record parts
+text rc1 "forge-intake 1\nid "
+text rc2 "\nrepo "
+text rc3 "\nkind "
+text rc4 "\ntarget "
+text rc5 "\ntime "
+text rc6 "\ntitle "
+text rc7 "\nbody "
+text rdash "-"
+
+note ---------------------------------------------------------------- stderr lines
+
+note lm / lu / lsend: build a stderr line in lb and write it in one call
+fn lm t view uchar * to void
+p = get lbn 0
+n = len t
+for i ulong n bound 512
+if lt add p i 511
+put lb add p i get t i
+end
+end
+q = add p n
+if gt q 511
+q = ulong 511
+end
+put lbn 0 q
+end
+
+fn lu v ulong to void
+d = new uchar 20 0
+x = v
+k = ulong 20
+note a ulong has at most 20 digits
+while true bound 20
+k = sub k 1
+put d k uchar add rem x 10 48
+x = div x 10
+if eq x 0
+break
+end
+end
+p = get lbn 0
+for i ulong sub 20 k bound 20
+if lt p 511
+put lb p get d add k i
+p = add p 1
+end
+end
+put lbn 0 p
+end
+
+fn lsend to void
+p = get lbn 0
+put lb p 10
+w = write 2 lb 0 add p 1
+put lbn 0 0
+end
+
+note diem: refuse at start with m, then exit 1
+fn diem m view uchar * to void
+put lbn 0 0
+lm tpre
+lm m
+lsend
+exit 1
+end
+
+note diep: refuse at start with m and the path in pt, then exit 1
+fn diep m view uchar * to void
+put lbn 0 0
+lm tpre
+lm m
+p = get lbn 0
+n = get ptn 0
+for i ulong n bound 4200
+if lt p 511
+put lb p get pt i
+p = add p 1
+end
+end
+put lbn 0 p
+lsend
+exit 1
+end
+
+note diel: refuse ALLOW line ln with m, then exit 1
+fn diel m view uchar * ln ulong to void
+put lbn 0 0
+lm tpre
+lm tline
+lu ln
+lm m
+lsend
+exit 1
+end
+
+note ---------------------------------------------------------------- small checks
+
+fn isb58 c uchar to bool
+if and ge c 49 le c 57
+ret true
+end
+if and ge c 65 le c 72
+ret true
+end
+if and ge c 74 le c 78
+ret true
+end
+if and ge c 80 le c 90
+ret true
+end
+if and ge c 97 le c 107
+ret true
+end
+if and ge c 109 le c 122
+ret true
+end
+ret false
+end
+
+note hexv: the value of a hex digit (either case), or 16
+fn hexv c uchar to uchar
+if and ge c 48 le c 57
+ret sub c 48
+end
+if and ge c 97 le c 102
+ret sub c 87
+end
+if and ge c 65 le c 70
+ret sub c 55
+end
+ret 16
+end
+
+note low: c in lower case (ASCII letters only)
+fn low c uchar to uchar
+if and ge c 65 le c 90
+ret add c 32
+end
+ret c
+end
+
+note qeq: do the n bytes of rq at o equal t
+fn qeq o ulong n ulong t view uchar * to bool
+if ne n len t
+ret false
+end
+for i ulong n bound 64
+if ne get rq add o i get t i
+ret false
+end
+end
+ret true
+end
+
+note qieq: as qeq, with ASCII letters of rq compared in lower case (t is lower case)
+fn qieq o ulong n ulong t view uchar * to bool
+if ne n len t
+ret false
+end
+for i ulong n bound 64
+if ne low get rq add o i get t i
+ret false
+end
+end
+ret true
+end
+
+note deq: do the n bytes of dec at o equal t
+fn deq o ulong n ulong t view uchar * to bool
+if ne n len t
+ret false
+end
+for i ulong n bound 64
+if ne get dec add o i get t i
+ret false
+end
+end
+ret true
+end
+
+note findq: the first offset in [p, e) of rq holding c, or e
+fn findq p ulong e ulong c uchar to ulong
+i = p
+while lt i e bound 73729
+if eq get rq i c
+ret i
+end
+i = add i 1
+end
+ret e
+end
+
+note ---------------------------------------------------------------- start: arguments, ALLOW, SPOOL
+
+note vrid: is al[o, o+n) a RID
+fn vrid o ulong n ulong to bool
+if or lt n 25 gt n 65
+ret false
+end
+if ne get al o 114
+ret false
+end
+if ne get al add o 1 97
+ret false
+end
+if ne get al add o 2 100
+ret false
+end
+if ne get al add o 3 58
+ret false
+end
+if ne get al add o 4 122
+ret false
+end
+for i ulong sub n 5 bound 64
+if not isb58 get al add add o 5 i
+ret false
+end
+end
+ret true
+end
+
+note port: argument 1 as a port, or refuse
+fn port to ulong
+b = new uchar 8 0
+n = argread 1 b 0 8
+if or le n 0 gt n 5
+diem tport
+end
+v = ulong 0
+for i ulong ulong n bound 5
+c = get b i
+if or lt c 48 gt c 57
+diem tport
+end
+v = add mul v 10 ulong sub c 48
+end
+if or eq v 0 gt v 65535
+diem tport
+end
+ret v
+end
+
+note loadal: read ALLOW (argument 2) into al and index its lines
+fn loadal to void
+n = argread 2 pt 0 4096
+if le n 0
+diem targ
+end
+put ptn 0 ulong n
+fd = fopen pt 0 ulong n 524288 0
+if lt fd 0
+diep topen
+end
+p = ulong 0
+note every pass but the last reads at least one byte of the 1048577-byte region
+while lt p 1048577 bound 1048578
+k = read int fd al p sub 1048577 p
+if lt k 0
+diep tread
+end
+if eq k 0
+break
+end
+p = add p ulong k
+end
+x = fclose int fd
+if gt p AMAX
+diem tbig
+end
+if eq p 0
+diem tnone
+end
+s = ulong 0
+ln = ulong 0
+q = ulong 0
+note every pass looks at one byte of the file
+while lt q p bound 1048577
+c = get al q
+if eq c 13
+diel tcr add ln 1
+end
+if eq c 10
+ln = add ln 1
+if eq q s
+diel tblank ln
+end
+if gt ln 4096
+diem tmany
+end
+if not vrid s sub q s
+diel trid ln
+end
+put ao sub ln 1 s
+put an sub ln 1 sub q s
+s = add q 1
+end
+q = add q 1
+end
+if ne s p
+diel tnonl add ln 1
+end
+put na 0 ln
+end
+
+note pclr / pm / psp / phid: build a path in pt
+fn pclr to void
+put ptn 0 0
+end
+
+fn pm t view uchar * to void
+p = get ptn 0
+n = len t
+for i ulong n bound 64
+put pt add p i get t i
+end
+put ptn 0 add p n
+end
+
+fn psp to void
+p = get ptn 0
+n = get spn 0
+for i ulong n bound 4096
+put pt add p i get sp i
+end
+put ptn 0 add p n
+end
+
+fn phid to void
+p = get ptn 0
+for i ulong 32
+put pt add p i get hid i
+end
+put ptn 0 add p 32
+end
+
+note isdir: can the path in pt be opened and listed as a directory
+fn isdir to bool
+fd = fopen pt 0 get ptn 0 524288 0
+if lt fd 0
+ret false
+end
+k = getdnts int fd dn 0 32768
+c = fclose int fd
+ret ge k 0
+end
+
+note loadsp: read SPOOL (argument 3) into sp; it must hold tmp/ and new/
+fn loadsp to void
+n = argread 3 sp 0 4096
+if le n 0
+diem targ
+end
+if gt n 4000
+diem tlong
+end
+put spn 0 ulong n
+pclr
+psp
+pm tstmp
+if not isdir
+diep tnotmp
+end
+pclr
+psp
+pm tsnew
+if not isdir
+diep tnonew
+end
+end
+
+note ---------------------------------------------------------------- deadlines and sending
+
+note left: nanoseconds until the deadline in cs k, 0 when it has passed
+fn left k ulong to long
+now = ulong monons
+d = get cs k
+if ge now d
+ret long 0
+end
+ret long sub d now
+end
+
+note sendb: send the n bytes of ob (b 0) or hb (b 1) before the deadline in cs 12
+fn sendb b ulong n ulong to bool
+fd = int get cs 0
+p = ulong 0
+c = ulong 0
+k = long 0
+note each pass sends at least one byte, or waits; c caps the waits
+while lt p n bound 1000000
+c = add c 1
+if gt c 100000
+ret false
+end
+lf = left 12
+if le lf 0
+ret false
+end
+w = waitio fd 4 lf
+if lt w 0
+if eq w -4
+continue
+end
+ret false
+end
+if eq w 0
+ret false
+end
+if eq b 0
+k = send fd ob p sub n p 0
+else
+k = send fd hb p sub n p 0
+end
+if lt k 0
+if or eq k -11 eq k -4
+continue
+end
+ret false
+end
+if eq k 0
+ret false
+end
+p = add p ulong k
+end
+ret true
+end
+
+note hm / hu / hcr: build the reply header in hb
+fn hm t view uchar * to void
+p = get hbn 0
+n = len t
+for i ulong n bound 128
+put hb add p i get t i
+end
+put hbn 0 add p n
+end
+
+fn hu v ulong to void
+d = new uchar 20 0
+x = v
+k = ulong 20
+while true bound 20
+k = sub k 1
+put d k uchar add rem x 10 48
+x = div x 10
+if eq x 0
+break
+end
+end
+p = get hbn 0
+for i ulong sub 20 k bound 20
+put hb add p i get d add k i
+end
+put hbn 0 add p sub 20 k
+end
+
+fn hcr to void
+p = get hbn 0
+put hb p 13
+put hb add p 1 10
+put hbn 0 add p 2
+end
+
+note em / emd / emx / emu: build the reply page in ob (never past its 8192 bytes)
+fn em t view uchar * to void
+p = get obn 0
+n = len t
+if gt add p n 8192
+ret
+end
+for i ulong n bound 8192
+put ob add p i get t i
+end
+put obn 0 add p n
+end
+
+fn emd o ulong n ulong to void
+p = get obn 0
+if gt add p n 8192
+ret
+end
+for i ulong n bound 8192
+put ob add p i get dec add o i
+end
+put obn 0 add p n
+end
+
+fn emx to void
+p = get obn 0
+if gt add p 32 8192
+ret
+end
+for i ulong 32
+put ob add p i get hid i
+end
+put obn 0 add p 32
+end
+
+note sel: emit t into ob (w 0) or hb (w 1)
+fn sel t view uchar * w ulong to void
+if eq w 0
+em t
+else
+hm t
+end
+end
+
+note stx: the status line text of code, into ob (w 0) or hb (w 1)
+fn stx code ulong w ulong to void
+if eq code 100
+sel s100 w
+ret
+end
+if eq code 200
+sel s200 w
+ret
+end
+if eq code 400
+sel s400 w
+ret
+end
+if eq code 404
+sel s404 w
+ret
+end
+if eq code 405
+sel s405 w
+ret
+end
+if eq code 408
+sel s408 w
+ret
+end
+if eq code 411
+sel s411 w
+ret
+end
+if eq code 413
+sel s413 w
+ret
+end
+if eq code 503
+sel s503 w
+ret
+end
+sel s500 w
+end
+
+note rcode: the status of reason r
+fn rcode r ulong to ulong
+if le r 23
+ret 400
+end
+if eq r 30
+ret 404
+end
+if eq r 31
+ret 405
+end
+if eq r 32
+ret 411
+end
+if eq r 33
+ret 413
+end
+if eq r 34
+ret 408
+end
+if eq r 38
+ret 400
+end
+ret 503
+end
+
+note emr: the text of reason r into ob
+fn emr r ulong to void
+if le r 12
+emr1 r
+ret
+end
+emr2 r
+end
+
+fn emr1 r ulong to void
+if eq r 1
+em r1
+end
+if eq r 2
+em r2
+end
+if eq r 3
+em r3
+end
+if eq r 4
+em r4
+end
+if eq r 5
+em r5
+end
+if eq r 6
+em r6
+end
+if eq r 7
+em r7
+end
+if eq r 8
+em r8
+end
+if eq r 9
+em r9
+end
+if eq r 10
+em r10
+end
+if eq r 11
+em r11
+end
+if eq r 12
+em r12
+end
+end
+
+fn emr2 r ulong to void
+if le r 23
+emr3 r
+ret
+end
+if eq r 30
+em r30
+end
+if eq r 31
+em r31
+end
+if eq r 32
+em r32
+end
+if eq r 33
+em r33
+end
+if eq r 34
+em r34
+end
+if eq r 35
+em r35
+end
+if eq r 36
+em r36
+end
+if eq r 37
+em r37
+end
+if eq r 38
+em r38
+end
+if eq r 39
+em r39
+end
+end
+
+fn emr3 r ulong to void
+if eq r 13
+em r13
+end
+if eq r 14
+em r14
+end
+if eq r 15
+em r15
+end
+if eq r 16
+em r16
+end
+if eq r 17
+em r17
+end
+if eq r 18
+em r18
+end
+if eq r 19
+em r19
+end
+if eq r 20
+em r20
+end
+if eq r 21
+em r21
+end
+if eq r 22
+em r22
+end
+if eq r 23
+em r23
+end
+end
+
+note errpg: the page for reason r; the reason's bytes are ob[cs 15, cs 16)
+fn errpg code ulong r ulong to void
+put obn 0 0
+em pg1
+stx code 0
+em pg2
+stx code 0
+em pg3
+put cs 15 get obn 0
+emr r
+put cs 16 get obn 0
+em pg4
+end
+
+note okpg: the page for an accepted form
+fn okpg to void
+put obn 0 0
+em pg1
+em pgok
+em pg2
+em pgok
+em pgr1
+emx
+ro = get fo 0
+rn = get fl 0
+if eq get cs 10 1
+em pgr2
+emd ro rn
+em pgr5
+emd add ro 4 sub rn 4
+em pgr6
+ret
+end
+em pgr3
+emd get fo 2 40
+em pgr4
+emd ro rn
+em pgr5
+emd add ro 4 sub rn 4
+em pgr7
+emd get fo 2 40
+em pgr8
+end
+
+note fin: send the reply header for code and the page in ob
+fn fin code ulong to void
+put hbn 0 0
+hm hv
+stx code 1
+hcr
+hm hct
+hcr
+hm hcl
+hu get obn 0
+hcr
+hm hcc
+hcr
+hm hno
+hcr
+if eq code 405
+hm hal
+hcr
+end
+hm hcn
+hcr
+hcr
+if sendb 1 get hbn 0
+ok = sendb 0 get obn 0
+end
+end
+
+note linger: stop sending, drain what the client still sends for up to 1 s, close
+fn linger to void
+fd = int get cs 0
+s = shutdown fd 1
+put cs 12 add ulong monons 1000000000
+c = ulong 0
+while true bound 2048
+c = add c 1
+if gt c 1024
+break
+end
+lf = left 12
+if le lf 0
+break
+end
+w = waitio fd 1 lf
+if le w 0
+if eq w -4
+continue
+end
+break
+end
+k = recv fd rq 0 RQN 0
+if or eq k -11 eq k -4
+continue
+end
+if le k 0
+break
+end
+end
+x = fclose fd
+end
+
+note lgr: the stderr line "intake: CODE REASON" from ob[cs 15, cs 16)
+fn lgr code ulong to void
+put lbn 0 0
+lm tpre
+lu code
+p = get lbn 0
+put lb p 32
+p = add p 1
+s = get cs 15
+e = get cs 16
+while lt s e bound 8192
+if lt p 511
+put lb p get ob s
+p = add p 1
+end
+s = add s 1
+end
+put lbn 0 p
+lsend
+end
+
+note lgid: the stderr line "intake: 200 ID"
+fn lgid to void
+put lbn 0 0
+lm tpre
+lu 200
+p = get lbn 0
+put lb p 32
+p = add p 1
+for i ulong 32
+put lb add p i get hid i
+end
+put lbn 0 add p 32
+lsend
+end
+
+note ---------------------------------------------------------------- reading the request
+
+note hend: the offset after the first CR LF CR LF in rq[s, n), or 0
+fn hend s ulong n ulong to ulong
+if lt n 4
+ret 0
+end
+i = s
+while le add i 4 n bound 8193
+if eq get rq i 13
+a = eq get rq add i 1 10
+b = eq get rq add i 2 13
+c = eq get rq add i 3 10
+if and a and b c
+ret add i 4
+end
+end
+i = add i 1
+end
+ret 0
+end
+
+note rdhdr: receive until the header ends; cs 2 = its end, cs 3 = bytes received. Returns 0, or
+note reason 7 (too large), 34 (deadline) or 38 (ended early)
+fn rdhdr to ulong
+fd = int get cs 0
+n = ulong 0
+s = ulong 0
+c = ulong 0
+note each pass receives at least one byte or waits; c caps the waits
+while true bound 200000
+c = add c 1
+if gt c 100000
+ret 34
+end
+lf = left 1
+if le lf 0
+ret 34
+end
+w = waitio fd 1 lf
+if lt w 0
+if eq w -4
+continue
+end
+ret 38
+end
+if eq w 0
+ret 34
+end
+k = recv fd rq n sub HMAX n 0
+if lt k 0
+if or eq k -11 eq k -4
+continue
+end
+ret 38
+end
+if eq k 0
+ret 38
+end
+n = add n ulong k
+h = hend s n
+if gt h 0
+put cs 2 h
+put cs 3 n
+ret 0
+end
+if ge n HMAX
+ret 7
+end
+if gt n 3
+s = sub n 3
+end
+end
+ret 34
+end
+
+note crlf: the offset of the first CR LF in rq[p, e), or e
+fn crlf p ulong e ulong to ulong
+i = p
+while lt add i 1 e bound 8193
+if eq get rq i 13
+if eq get rq add i 1 10
+ret i
+end
+end
+i = add i 1
+end
+ret e
+end
+
+note digits: rq[v, e) as a decimal number; NOTN when it is empty or not all digits; BMAX + 1
+note when it has more than 6 digits
+fn digits v ulong e ulong to ulong
+if eq v e
+ret NOTN
+end
+i = v
+while lt i e bound 8192
+c = get rq i
+if or lt c 48 gt c 57
+ret NOTN
+end
+i = add i 1
+end
+if gt sub e v 6
+ret add BMAX 1
+end
+x = ulong 0
+i = v
+while lt i e bound 8
+x = add mul x 10 ulong sub get rq i 48
+i = add i 1
+end
+ret x
+end
+
+note ctok: is rq[v, e) application/x-www-form-urlencoded, alone or before ; or white space
+fn ctok v ulong e ulong to bool
+n = len tform
+if lt sub e v n
+ret false
+end
+if not qieq v n tform
+ret false
+end
+if eq sub e v n
+ret true
+end
+c = get rq add v n
+ret or eq c 59 or eq c 32 eq c 9
+end
+
+note iswsp: is c a space or a TAB
+fn iswsp c uchar to bool
+ret or eq c 32 eq c 9
+end
+
+note hline: one header field line rq[p, q); returns 0 or a reason
+fn hline p ulong q ulong to ulong
+i = p
+while lt i q bound 8192
+c = get rq i
+if or eq c 0 or eq c 10 eq c 13
+ret 3
+end
+i = add i 1
+end
+m = findq p q 58
+if or ge m q eq m p
+ret 3
+end
+v = add m 1
+e = q
+while lt v e bound 8192
+if not iswsp get rq v
+break
+end
+v = add v 1
+end
+while lt v e bound 8192
+if not iswsp get rq sub e 1
+break
+end
+e = sub e 1
+end
+nm = sub m p
+if qieq p nm tcl
+if gt get cs 5 0
+ret 4
+end
+put cs 5 1
+x = digits v e
+if eq x NOTN
+ret 5
+end
+put cs 4 x
+ret 0
+end
+if qieq p nm tct
+if gt get cs 9 0
+ret 23
+end
+put cs 9 1
+if ctok v e
+put cs 6 1
+end
+ret 0
+end
+if qieq p nm tte
+put cs 8 1
+ret 0
+end
+if qieq p nm tex
+if qieq v sub e v t100
+put cs 7 1
+end
+end
+ret 0
+end
+
+note hparse: check the request line and header fields in rq[0, cs 2); returns 0 or a reason
+fn hparse to ulong
+h = get cs 2
+e = crlf 0 h
+i = ulong 0
+while lt i e bound 8192
+c = get rq i
+if or eq c 0 or eq c 10 eq c 13
+ret 1
+end
+i = add i 1
+end
+a = findq 0 e 32
+if ge a e
+ret 1
+end
+b = findq add a 1 e 32
+if ge b e
+ret 1
+end
+if ne findq add b 1 e 32 e
+ret 1
+end
+v = add b 1
+if not or qeq v sub e v th11 qeq v sub e v th10
+ret 2
+end
+if not qeq add a 1 sub b add a 1 tpath
+ret 30
+end
+if not qeq 0 a tpost
+ret 31
+end
+p = add e 2
+note each pass takes one header line of at least the two bytes of its CR LF
+while lt p sub h 2 bound 4097
+q = crlf p h
+r = hline p q
+if ne r 0
+ret r
+end
+p = add q 2
+end
+if gt get cs 8 0
+ret 32
+end
+if eq get cs 5 0
+ret 32
+end
+if gt get cs 4 BMAX
+ret 33
+end
+if eq get cs 6 0
+ret 6
+end
+ret 0
+end
+
+note rdbody: receive until rq holds the header and Content-Length body bytes; returns 0, or reason
+note 34 (deadline) or 38 (ended early)
+fn rdbody to ulong
+fd = int get cs 0
+t = add get cs 2 get cs 4
+n = get cs 3
+if ge n t
+ret 0
+end
+if gt get cs 7 0
+put hbn 0 0
+hm hv
+stx 100 1
+hcr
+hcr
+put cs 12 get cs 1
+if not sendb 1 get hbn 0
+ret 38
+end
+end
+c = ulong 0
+while lt n t bound 200000
+c = add c 1
+if gt c 100000
+ret 34
+end
+lf = left 1
+if le lf 0
+ret 34
+end
+w = waitio fd 1 lf
+if lt w 0
+if eq w -4
+continue
+end
+ret 38
+end
+if eq w 0
+ret 34
+end
+k = recv fd rq n sub t n 0
+if lt k 0
+if or eq k -11 eq k -4
+continue
+end
+ret 38
+end
+if eq k 0
+ret 38
+end
+n = add n ulong k
+end
+put cs 3 n
+ret 0
+end
+
+note ---------------------------------------------------------------- the form
+
+note fkey: the field index of the key rq[p, p+n), or 9
+fn fkey p ulong n ulong to ulong
+if qeq p n kre
+ret 0
+end
+if qeq p n kki
+ret 1
+end
+if qeq p n kta
+ret 2
+end
+if qeq p n kti
+ret 3
+end
+if qeq p n kbo
+ret 4
+end
+if qeq p n kwe
+ret 5
+end
+ret 9
+end
+
+note pdec: decode rq[v, q) into dec from cs 14 (+ is a space, %XX a byte); returns 0 or 9
+fn pdec v ulong q ulong to ulong
+d = get cs 14
+i = v
+while lt i q bound 65537
+c = get rq i
+if eq c 43
+c = uchar 32
+i = add i 1
+else
+if eq c 37
+if gt add i 3 q
+ret 9
+end
+hi = hexv get rq add i 1
+lo = hexv get rq add i 2
+if or gt hi 15 gt lo 15
+ret 9
+end
+c = or shl hi 4 lo
+i = add i 3
+else
+i = add i 1
+end
+end
+put dec d c
+d = add d 1
+end
+put cs 14 d
+ret 0
+end
+
+note pair: one form pair rq[p, q); returns 0 or a reason
+fn pair p ulong q ulong to ulong
+if eq p q
+ret 0
+end
+m = findq p q 61
+fi = fkey p sub m p
+if eq fi 9
+ret 0
+end
+if gt get fs fi 0
+ret 8
+end
+put fs fi 1
+v = m
+if lt m q
+v = add m 1
+end
+dp = get cs 14
+put fo fi dp
+r = pdec v q
+if ne r 0
+ret r
+end
+put fl fi sub get cs 14 dp
+ret 0
+end
+
+note form: decode the body rq[cs 2, cs 2 + cs 4) into the fields; returns 0 or a reason
+fn form to ulong
+h = get cs 2
+e = add h get cs 4
+p = h
+note each pass takes one pair and its &
+while le p e bound 65538
+q = findq p e 38
+r = pair p q
+if ne r 0
+ret r
+end
+p = add q 1
+end
+ret 0
+end
+
+note utf8: is dec[o, o+n) valid UTF-8
+fn utf8 o ulong n ulong to bool
+i = ulong 0
+while lt i n bound 65537
+c = get dec add o i
+if lt c 128
+i = add i 1
+continue
+end
+k = ulong 0
+lo = uchar 128
+hi = uchar 191
+if and ge c 194 le c 223
+k = ulong 1
+end
+if eq c 224
+k = ulong 2
+lo = uchar 160
+end
+if or and ge c 225 le c 236 and ge c 238 le c 239
+k = ulong 2
+end
+if eq c 237
+k = ulong 2
+hi = uchar 159
+end
+if eq c 240
+k = ulong 3
+lo = uchar 144
+end
+if and ge c 241 le c 243
+k = ulong 3
+end
+if eq c 244
+k = ulong 3
+hi = uchar 143
+end
+if eq k 0
+ret false
+end
+if gt add i k sub n 1
+ret false
+end
+b = get dec add add o i 1
+if or lt b lo gt b hi
+ret false
+end
+j = ulong 2
+while le j k bound 4
+b = get dec add add o i j
+if or lt b 128 gt b 191
+ret false
+end
+j = add j 1
+end
+i = add add i k 1
+end
+ret true
+end
+
+note noctl: no byte of dec[o, o+n) below 0x20 or 0x7f; with body, LF and TAB are allowed
+fn noctl o ulong n ulong body bool to bool
+for i ulong n bound 65536
+c = get dec add o i
+if eq c 127
+ret false
+end
+if lt c 32
+if not and body or eq c 10 eq c 9
+ret false
+end
+end
+end
+ret true
+end
+
+note crlfn: CR LF to LF in the body, in place; returns its new length
+fn crlfn to ulong
+o = get fo 4
+n = get fl 4
+i = ulong 0
+j = ulong 0
+while lt i n bound 65537
+c = get dec add o i
+if eq c 13
+if lt add i 1 n
+if eq get dec add add o i 1 10
+c = uchar 10
+i = add i 1
+end
+end
+end
+put dec add o j c
+j = add j 1
+i = add i 1
+end
+put fl 4 j
+ret j
+end
+
+note hex40: is dec[o, o+n) 40 lowercase hex digits
+fn hex40 o ulong n ulong to bool
+if ne n 40
+ret false
+end
+for i ulong 40
+c = get dec add o i
+if not or and ge c 48 le c 57 and ge c 97 le c 102
+ret false
+end
+end
+ret true
+end
+
+note arepo: the ALLOW line equal to the repo field, or 4096
+fn arepo to ulong
+o = get fo 0
+n = get fl 0
+m = get na 0
+for i ulong m bound 4096
+if eq get an i n
+if aeq get ao i o n
+ret i
+end
+end
+end
+ret 4096
+end
+
+note aeq: do al[a, a+n) and dec[o, o+n) agree
+fn aeq a ulong o ulong n ulong to bool
+for i ulong n bound 128
+if ne get al add a i get dec add o i
+ret false
+end
+end
+ret true
+end
+
+note vform: check the fields; returns 0 or a reason
+fn vform to ulong
+if eq get fs 0 0
+ret 10
+end
+ri = arepo
+if ge ri 4096
+ret 10
+end
+put cs 11 ri
+k = ulong 0
+if deq get fo 1 get fl 1 kis
+k = ulong 1
+end
+if deq get fo 1 get fl 1 kco
+k = ulong 2
+end
+if eq k 0
+ret 11
+end
+put cs 10 k
+if gt get fl 5 0
+ret 12
+end
+if eq k 1
+ret vissue
+end
+ret vcomm
+end
+
+fn vissue to ulong
+if gt get fl 2 0
+ret 13
+end
+tl = get fl 3
+if or eq tl 0 gt tl TMAX
+ret 14
+end
+if not noctl get fo 3 tl false
+ret 15
+end
+if not utf8 get fo 3 tl
+ret 16
+end
+nb = crlfn
+if gt nb XMAX
+ret 17
+end
+if not noctl get fo 4 nb true
+ret 18
+end
+if not utf8 get fo 4 nb
+ret 19
+end
+ret 0
+end
+
+fn vcomm to ulong
+if not hex40 get fo 2 get fl 2
+ret 20
+end
+if gt get fl 3 0
+ret 21
+end
+nb = crlfn
+if or eq nb 0 gt nb XMAX
+ret 22
+end
+if not noctl get fo 4 nb true
+ret 18
+end
+if not utf8 get fo 4 nb
+ret 19
+end
+ret 0
+end
+
+note ---------------------------------------------------------------- the spool
+
+note dcount: entries other than . and .. among the n bytes of linux_dirent64 records in dn
+fn dcount n ulong to ulong
+p = ulong 0
+k = ulong 0
+note each pass takes one record of at least 20 bytes
+while lt add p 20 n bound 2048
+r = or ulong get dn add p 16 shl ulong get dn add p 17 8
+if or lt r 20 gt add p r n
+ret k
+end
+a = get dn add p 19
+b = get dn add p 20
+dot = and eq a 46 eq b 0
+ddot = false
+if and eq a 46 eq b 46
+if lt add p 21 n
+ddot = eq get dn add p 21 0
+end
+end
+if not or dot ddot
+k = add k 1
+end
+p = add p r
+end
+ret k
+end
+
+note spfull: 0 when SPOOL/new holds fewer than 4096 entries, else reason 35 (full) or 39
+fn spfull to ulong
+pclr
+psp
+pm tsnew
+fd = fopen pt 0 get ptn 0 524288 0
+if lt fd 0
+ret 39
+end
+cnt = ulong 0
+r = ulong 0
+c = ulong 0
+note each pass lists at least one entry, or ends
+while true bound 100000
+c = add c 1
+if gt c 50000
+r = ulong 39
+break
+end
+k = getdnts int fd dn 0 32768
+if lt k 0
+r = ulong 39
+break
+end
+if eq k 0
+break
+end
+cnt = add cnt dcount ulong k
+if ge cnt SMAX
+r = ulong 35
+break
+end
+end
+x = fclose int fd
+ret r
+end
+
+note rm / rd / ru: build the record in rb
+fn rm t view uchar * to void
+p = get rbn 0
+n = len t
+for i ulong n bound 64
+put rb add p i get t i
+end
+put rbn 0 add p n
+end
+
+fn rd o ulong n ulong to void
+p = get rbn 0
+for i ulong n bound 65536
+put rb add p i get dec add o i
+end
+put rbn 0 add p n
+end
+
+fn ru v ulong to void
+d = new uchar 20 0
+x = v
+k = ulong 20
+while true bound 20
+k = sub k 1
+put d k uchar add rem x 10 48
+x = div x 10
+if eq x 0
+break
+end
+end
+p = get rbn 0
+for i ulong sub 20 k bound 20
+put rb add p i get d add k i
+end
+put rbn 0 add p sub 20 k
+end
+
+fn rx to void
+p = get rbn 0
+for i ulong 32
+put rb add p i get hid i
+end
+put rbn 0 add p 32
+end
+
+note mkhid: hid from the 16 random bytes
+fn mkhid to void
+for i ulong 16
+b = get rnd i
+put hid mul i 2 hx shr b 4
+put hid add mul i 2 1 hx and b 15
+end
+end
+
+fn hx v uchar to uchar
+if lt v 10
+ret add v 48
+end
+ret add v 87
+end
+
+note record: the spool record of the accepted form, in rb
+fn record to void
+put rbn 0 0
+rm rc1
+rx
+rm rc2
+rd get fo 0 get fl 0
+rm rc3
+if eq get cs 10 1
+rm kis
+else
+rm kco
+end
+rm rc4
+if eq get cs 10 1
+rm rdash
+else
+rd get fo 2 40
+end
+rm rc5
+t = ulong realns
+ru div t 1000000000
+rm rc6
+rd get fo 3 get fl 3
+rm rc7
+ru get fl 4
+p = get rbn 0
+put rb p 10
+put rbn 0 add p 1
+rd get fo 4 get fl 4
+end
+
+note pkadd: append the path in pt to the packed list pk
+fn pkadd to void
+p = get pkn 0
+n = get ptn 0
+put pk p uchar and n 255
+put pk add p 1 uchar shr n 8
+for i ulong n bound 4200
+put pk add add p 2 i get pt i
+end
+put pkn 0 add add p 2 n
+end
+
+note ptmp / pnew: the record's path in tmp/ or new/, in pt
+fn ptmp to void
+pclr
+psp
+pm tstmp2
+phid
+end
+
+fn pnew to void
+pclr
+psp
+pm tsnew2
+phid
+end
+
+note wall: write all of rb to fd
+fn wall fd int to bool
+n = get rbn 0
+p = ulong 0
+c = ulong 0
+while lt p n bound 70000
+c = add c 1
+if gt c 65536
+ret false
+end
+k = write fd rb p sub n p
+if lt k 0
+if eq k -4
+continue
+end
+ret false
+end
+if eq k 0
+ret false
+end
+p = add p ulong k
+end
+ret true
+end
+
+note store: write the record to SPOOL/tmp/ID, sync it, rename it to SPOOL/new/ID; returns 0 or
+note a reason
+fn store to ulong
+g = random rnd 0 16 0
+if ne g 16
+ret 37
+end
+mkhid
+record
+ptmp
+fd = fopen pt 0 get ptn 0 524481 416
+if lt fd 0
+ret 36
+end
+ok = wall int fd
+s = fsync int fd
+c = fclose int fd
+if or not ok or ne s 0 ne c 0
+u = unlink pt 0 get ptn 0
+ret 36
+end
+put pk 0 2
+put pk 1 0
+put pkn 0 2
+pkadd
+pnew
+pkadd
+r = renames pk 0 get pkn 0 1
+if ne r 0
+ptmp
+u = unlink pt 0 get ptn 0
+ret 36
+end
+pclr
+psp
+pm tsnew
+d = fopen pt 0 get ptn 0 524288 0
+if ge d 0
+s = fsync int d
+c = fclose int d
+end
+ret 0
+end
+
+note ---------------------------------------------------------------- one connection, the server
+
+note serve: read, check and answer one request on the connection in cs 0, then close it
+fn serve to void
+put cs 1 add ulong monons 10000000000
+r = rdhdr
+if eq r 0
+r = hparse
+end
+if eq r 0
+r = rdbody
+end
+if eq r 0
+r = form
+end
+if eq r 0
+r = vform
+end
+if eq r 0
+r = spfull
+end
+if eq r 0
+r = store
+end
+put cs 12 add ulong monons 2000000000
+if eq r 0
+okpg
+fin 200
+lgid
+else
+c = rcode r
+errpg c r
+fin c
+lgr c
+end
+linger
+end
+
+note reap: wait for the child pid; kill it after 15 s; log an exit other than 0, or a signal
+fn reap pid long to void
+st = new uchar 8 0
+dl = add ulong monons 15000000000
+c = ulong 0
+r = long 0
+note each pass waits 1 ms; c caps the passes
+while true bound 100000
+c = add c 1
+r = waitpid int pid st 0 4 1
+if ne r 0
+break
+end
+now = ulong monons
+if or ge now dl gt c 20000
+k = killpid int pid 9
+r = waitpid int pid st 0 4 0
+break
+end
+z = sleepns 1000000
+end
+if lt r 0
+ret
+end
+sig = and ulong get st 0 127
+ex = ulong get st 1
+if ne sig 0
+put lbn 0 0
+lm tpre
+lm tsig
+lu sig
+lsend
+ret
+end
+if ne ex 0
+put lbn 0 0
+lm tpre
+lm tchild
+lu ex
+lsend
+end
+end
+
+fn main to int
+if ne argcnt 4
+w = write 2 tusage 0 len tusage
+ret 2
+end
+pn = port
+loadal
+loadsp
+lfd = socknew 2 524289 0
+if lt lfd 0
+diem tsock
+end
+one = new uchar 4 0
+put one 0 1
+o = sockopt int lfd 1 2 one 0 4
+put ad 0 2
+put ad 1 0
+put ad 2 uchar shr pn 8
+put ad 3 uchar and pn 255
+put ad 4 127
+put ad 5 0
+put ad 6 0
+put ad 7 1
+b = bind int lfd ad 0 16
+if ne b 0
+put lbn 0 0
+lm tpre
+lm tbind
+lu pn
+lsend
+exit 1
+end
+l = listen int lfd 64
+if ne l 0
+diem tlist
+end
+put lbn 0 0
+lm tpre
+lm tready
+lu pn
+lm tallow
+lu get na 0
+lsend
+note the server runs until it is killed
+while true bound 9223372036854775807
+c = accept int lfd 526336
+if lt c 0
+if or eq c -24 or eq c -23 eq c -12
+z = sleepns 100000000
+end
+continue
+end
+pid = fork
+if eq pid 0
+put cs 0 ulong c
+serve
+exit 0
+end
+x = fclose int c
+if lt pid 0
+put lbn 0 0
+lm tpre
+lm tfork
+lsend
+z = sleepns 10000000
+continue
+end
+reap pid
+end
+ret 0
+end
