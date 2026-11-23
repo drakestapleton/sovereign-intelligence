@@ -38,6 +38,11 @@
 #  10. the examples of compiler words beyond the imported harness (tests/omc), on both targets
 #  11. control: omc.om with count's slice check deleted must build a compiler that fails both trap-3
 #      examples of count on every target that runs, while count_word still passes
+#  12. tools/flow.om, the merge queue's planner, built for both targets, must print
+#      tests/flow/expected.sh and expected-empty.sh and refuse every tests/flow/bad/*.tsv and three
+#      malformed arguments; 12b. with rad, git-remote-rad and bwrap installed, tests/flow/e2e.sh
+#      runs the whole queue, sandboxed, against a throwaway Radicle repository with each build, and
+#      tests/flow/install.sh deploys it on a throwaway seed with tools/flow-install.sh; else NOT_RUN
 # Last line: RC=0 when every step passed.
 set -eu
 R=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
@@ -371,5 +376,77 @@ for t in a64 x86; do
   grep -qx "PASS $t examples/count_word" $B/nochk.log || fail "control: $t count_word failed for another reason"
 done
 pass "control: count without its slice check fails count_trap3 and count_trap3_wrap; count_word still passes"
+
+# 12. tools/flow.om, the Omega merge queue's planner (tools/flow-cycle.sh runs it), on both targets.
+fb=b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0
+fg=9a7e777777777777777777777777777777777777
+for t in a64 x86; do
+  if [ $t = x86 ] && [ "$X86" = none ]; then note "NOT_RUN flow on x86-64"; continue; fi
+  if [ $t = a64 ]; then
+    a64 $O/omc < tools/flow.om > $O/flow-$t
+  else
+    { printf 'target x86linux\n'; cat tools/flow.om; } | x86 $O/omc-x86 > $O/flow-$t
+  fi
+  mk $O/flow-$t
+  for f in state:expected empty:expected-empty; do
+    i=tests/flow/${f%%:*}.tsv e=tests/flow/${f#*:}.sh
+    $t $O/flow-$t $fb $fg $i tests/flow/receipts.tsv $O/fl-$t.sh || fail "flow ($t) refused $i"
+    cmp -s $O/fl-$t.sh $e || fail "flow ($t) differs from $e"
+    sh -n $O/fl-$t.sh || fail "flow ($t): $e does not parse"
+  done
+  nbad=0
+  for b in tests/flow/bad/*.tsv; do
+    case ${b##*/} in
+      state-*) st=$b rf=tests/flow/receipts.tsv ;;
+      rec-*) st=tests/flow/state.tsv rf=$b ;;
+      *) fail "flow: $b is neither state-* nor rec-*" ;;
+    esac
+    rm -f $O/fl-bad.sh
+    if $t $O/flow-$t $fb $fg $st $rf $O/fl-bad.sh 2> $O/fl-bad.err; then fail "flow ($t) accepted $b"; fi
+    [ ! -e $O/fl-bad.sh ] || fail "flow ($t) wrote output for $b"
+    [ "$(wc -l < $O/fl-bad.err)" -eq 1 ] && grep -q '^flow: ' $O/fl-bad.err || fail "flow ($t) refused $b without one flow: line"
+    nbad=$((nbad + 1))
+  done
+  for a in "${fb%b0}b $fg" "$(printf %s $fb | tr b B) $fg" "$fb ${fg%7}g"; do
+    rm -f $O/fl-bad.sh
+    if $t $O/flow-$t $a tests/flow/state.tsv tests/flow/receipts.tsv $O/fl-bad.sh 2> /dev/null; then fail "flow ($t) accepted the arguments $a"; fi
+    [ ! -e $O/fl-bad.sh ] || fail "flow ($t) wrote output for the arguments $a"
+  done
+  rc=0; $t $O/flow-$t $fb $fg tests/flow/state.tsv $O/fl-bad.sh 2> /dev/null || rc=$?
+  [ $rc -eq 2 ] || fail "flow ($t) exited $rc, not 2, for four arguments"
+  pass "flow ($t) prints tests/flow/expected.sh and expected-empty.sh, refuses all $nbad bad inputs and 3 bad arguments"
+done
+#  12b. The merge queue against a real Radicle repository, offline, and its installer, when rad
+#  and bwrap are installed and flow.sh's sandbox can start here. It cannot inside another such
+#  sandbox (procfs will not mount there), which is where this gate runs when flow gates SI itself.
+fbox() { # the sandbox fl_box gives a gate, around true
+  bwrap --ro-bind / / --tmpfs /home --tmpfs /root --tmpfs /run --tmpfs /tmp --dir /tmp/home \
+    --dev /dev --proc /proc --unshare-all --die-with-parent --new-session --clearenv true 2> /dev/null
+}
+if ! { command -v rad && command -v git-remote-rad && command -v bwrap; } > /dev/null 2>&1; then
+  note "NOT_RUN flow e2e and install: need rad, git-remote-rad and bwrap (https://radicle.xyz)"
+elif ! fbox; then
+  note "NOT_RUN flow e2e and install: flow.sh's bwrap sandbox cannot start on this host"
+else
+  for t in a64 x86; do
+    [ -x $O/flow-$t ] || { note "NOT_RUN flow e2e on $t"; continue; }
+    if [ $t = a64 ]; then q=$A64; else q=$X86; fi
+    printf '#!/bin/sh\nexec %s "%s" "$@"\n' "$q" "$R/$O/flow-$t" > $O/flow-$t.run
+    mk $O/flow-$t.run
+    sh tests/flow/e2e.sh $O/flow-$t.run > $O/flow-e2e-$t.log 2>&1 || fail "flow e2e ($t): $(grep '^FAIL' $O/flow-e2e-$t.log | head -1)"
+    tail -1 $O/flow-e2e-$t.log | grep -qx 'RC=0' || fail "flow e2e ($t) did not finish"
+    pass "flow e2e ($t): $(grep -c '^PASS' $O/flow-e2e-$t.log) checks against a real Radicle repository"
+  done
+  # the installer, with this host's native planner (it installs the native build)
+  case $host in aarch64|arm64) nt=a64 ;; *) nt=x86 ;; esac
+  if [ -x $O/flow-$nt ]; then
+    sh tests/flow/install.sh $O/flow-$nt > $O/flow-install.log 2>&1 || fail "flow install: $(grep '^FAIL' $O/flow-install.log | head -1)"
+    tail -1 $O/flow-install.log | grep -qx 'RC=0' || fail "flow install did not finish"
+    grep '^NOTE' $O/flow-install.log | while IFS= read -r l; do printf '%s\n' "$l"; done
+    pass "flow install: $(grep -c '^PASS' $O/flow-install.log) checks of tools/flow-install.sh on a throwaway seed"
+  else
+    note "NOT_RUN flow install: no native planner"
+  fi
+fi
 
 printf 'RC=0\n'

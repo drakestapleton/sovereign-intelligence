@@ -1,0 +1,1012 @@
+om2
+note wire/tests/drive.om: the test driver of ipo, in Omega. It runs a command many times and
+note checks or collects what the command does; it knows nothing of ipo1 itself.
+note
+note   drive each CMD [ARG...] < lines > outputs
+note     Every line of stdin (its LF included) is the stdin of one run of CMD ARG... The stdout
+note     of every run that exits 0 is appended to stdout, in line order. A run that exits with
+note     anything else contributes nothing; stderr gets "drive: line K exit C" for it.
+note   drive uniq CMD [ARG...] < lines > outputs
+note     The same, but an output equal to an earlier output is dropped (first one kept).
+note   drive bad CMD [ARG...] -- FILE...
+note     FILE is named CODE-what.ipo or CODE-what.json. An .ipo file is the stdin of
+note     CMD ARG... dec, a .json file of CMD ARG... canon and of CMD ARG... enc. Each run must
+note     exit with exactly CODE and write nothing to stdout. stdout gets one line per run,
+note     "pass NAME MODE exit=C stdout=0 stderr=LINE" or "FAIL NAME MODE exit=C want=CODE
+note     stdout=N stderr=LINE" (LINE is the first line the run wrote to stderr), then
+note     "BADRUN PASS files=F runs=R" or "BADRUN FAIL files=F runs=R failed=K".
+note   drive fuzz MODE COUNT CMD [ARG...] < seeds
+note     MODE is dec, enc or canon. Every line of stdin (its LF included) is a seed. COUNT
+note     mutants are made of each seed, each by one change at a position chosen by a fixed
+note     xorshift64 sequence (so every run of the driver makes the same mutants): two times in
+note     four one byte replaced by a different byte, else one byte deleted, or one byte
+note     inserted. Each mutant is the stdin of CMD ARG... MODE, and must be handled as SPEC.md
+note     says any input is:
+note       refused: exit 20 to 51 and nothing on stdout (never a trap, a signal or 1);
+note       or accepted (exit 0), and then, for dec, CMD ARG... enc of the output is the mutant
+note       byte for byte (dec accepts only the canonical frame); for enc, CMD ARG... dec of
+note       the output is CMD ARG... canon of the mutant; for canon, canon of the output is
+note       the output.
+note     stdout gets "fail seed=S mutant=M exit=C" for each mutant that breaks this, one line
+note     "exit=C n=K" per exit status seen, then "FUZZ PASS mode=MODE seeds=S runs=N
+note     accepted=A refused=R" or "FUZZ FAIL ... failed=K".
+note
+note each and uniq end with "drive: lines=N ok=A refused=B kept=C" on stderr.
+note Exit 0: every run did what was wanted. 1: a run was refused (each, uniq), a bad file was
+note not refused as named (bad) or a mutant was mishandled (fuzz). 2: usage. 3: the driver
+note itself could not do its work.
+note
+note A run's stdin and stdout are anonymous memory files (memfd), so no path is written and a
+note large line cannot block a pipe. CMD is a path (no PATH search). An exit status above 255
+note is 256 plus the signal that ended the run; 512 means the run could not be started.
+note Limits: stdin 8 MiB, one output 2 MiB, all kept outputs 16 MiB, 65536 kept outputs,
+note one argument 2047 bytes, all arguments 8192 bytes, a fuzz seed 1 MiB, COUNT 1000000.
+
+text tusage "usage: drive each|uniq CMD [ARG...] < lines > outputs\n       drive bad CMD [ARG...] -- FILE...\n       drive fuzz dec|enc|canon COUNT CMD [ARG...] < seeds\n"
+text tfuzz "fuzz"
+text tffail "fail seed="
+text tfmut " mutant="
+text tfexit "exit="
+text tfn " n="
+text tfpass "FUZZ PASS mode="
+text tffailv "FUZZ FAIL mode="
+text tfseeds " seeds="
+text tfacc " accepted="
+text tfref " refused="
+text tpre "drive: "
+text tnl "\n"
+text teach "each"
+text tuniq "uniq"
+text tbad "bad"
+text tdec "dec"
+text tcanon "canon"
+text tenc "enc"
+text tipo "ipo"
+text tjson "json"
+text tmf "drive"
+text tline "line "
+text texit " exit "
+text tlines "lines="
+text tok " ok="
+text trefd " refused="
+text tkept " kept="
+text tpass "pass "
+text tfail "FAIL "
+text tsp " "
+text txexit " exit="
+text twant " want="
+text tstdout " stdout="
+text tstderr " stderr="
+text tbpass "BADRUN PASS files="
+text tbfail "BADRUN FAIL files="
+text truns " runs="
+text tfailed " failed="
+text eread "cannot read stdin"
+text ebig "stdin is over 8 MiB"
+text eargs "an argument is too long, or the arguments are over 8192 bytes"
+text emfd "memfd failed"
+text ewr "cannot write"
+text eout "an output is over 2 MiB"
+text ekept "the kept outputs are over 16 MiB or 65536"
+text ename "a bad file must be named CODE-what.ipo or CODE-what.json: "
+text efile "cannot open "
+
+note ib: stdin. cb: the stdout of one run. kb: the kept outputs, output j at ko (kl bytes).
+global ib uchar 8388624
+global ibn ulong 1
+global cb uchar 2097152
+global cbn ulong 1
+global kb uchar 16777216
+global kbn ulong 1
+global ko ulong 65536
+global kl ulong 65536
+global kc ulong 1
+note av: the packed arguments of a run (a 16-bit count, then per argument a 16-bit length and
+note the bytes, little-endian); avp its length, avc its count; avp0 and avc0 those of CMD ARG...
+global av uchar 8192
+global avp ulong 1
+global avc ulong 1
+global avp0 ulong 1
+global avc0 ulong 1
+note ab: one argument. pb: the path of the bad file. eb: the start of a run's stderr.
+global ab uchar 2048
+global abn ulong 1
+global pb uchar 2048
+global pbn ulong 1
+global eb uchar 256
+global st uchar 4
+note counts of bad and fuzz: files, runs, failed runs
+global gfiles ulong 1
+global gruns ulong 1
+global gbad ulong 1
+note fuzz: mb the mutant, xb an output kept for comparison, rs the generator's state, hist
+note the runs per exit status (767: that or more), facc the accepted runs
+global mb uchar 1048592
+global mbn ulong 1
+global xb uchar 2097152
+global xbn ulong 1
+global rs ulong 1
+global hist ulong 768
+global facc ulong 1
+
+fn say fd int t view uchar * to void
+w = write fd t 0 len t
+end
+
+note sayn: v in decimal on fd; a ulong has at most 20 digits
+fn sayn fd int v ulong to void
+d = new uchar 20 0
+x = v
+k = ulong 20
+while true bound 20
+k = sub k 1
+put d k uchar add rem x 10 48
+x = div x 10
+if eq x 0
+break
+end
+end
+w = write fd d k sub 20 k
+end
+
+note die: the driver cannot do its work
+fn die t view uchar * to void
+say 2 tpre
+say 2 t
+say 2 tnl
+exit 3
+end
+
+fn usage to void
+say 2 tusage
+exit 2
+end
+
+note aarg: argument i into ab
+fn aarg i ulong to void
+k = argread i ab 0 2047
+if lt k 0
+die eargs
+end
+put abn 0 ulong k
+end
+
+note setab: the text t into ab
+fn setab t view uchar * to void
+n = len t
+for i ulong n
+put ab i get t i
+end
+put abn 0 n
+end
+
+note abis: is ab the text t
+fn abis t view uchar * to bool
+n = len t
+if ne get abn 0 n
+ret false
+end
+for i ulong n
+if ne get ab i get t i
+ret false
+end
+end
+ret true
+end
+
+note aput: ab becomes the next argument of the run
+fn aput to void
+p = get avp 0
+n = get abn 0
+if gt add add p 2 n 8192
+die eargs
+end
+put av p uchar and n 255
+put av add p 1 uchar shr n 8
+p = add p 2
+i = ulong 0
+while lt i n bound 2048
+put av add p i get ab i
+i = add i 1
+end
+put avp 0 add p n
+put avc 0 add get avc 0 1
+end
+
+note acmd: the arguments from index a up to, not including, index b become CMD ARG...
+fn acmd a ulong b ulong to void
+put avp 0 2
+put avc 0 0
+i = a
+while lt i b bound 4096
+aarg i
+aput
+i = add i 1
+end
+put avp0 0 get avp 0
+put avc0 0 get avc 0
+end
+
+note mfd: a new anonymous memory file
+fn mfd to int
+r = memfd tmf 0 len tmf 0
+if lt r 0
+die emfd
+end
+ret int r
+end
+
+note spawn: run the arguments in av with i, o and e as stdin, stdout and stderr (e 2: this
+note process's own stderr) and wait for it. Its exit status, 256 plus the signal when a signal
+note ended it, 512 when it could not be started or awaited.
+fn spawn i int o int e int to ulong
+c = get avc 0
+put av 0 uchar and c 255
+put av 1 uchar shr c 8
+pid = fork
+if lt pid 0
+ret 512
+end
+if eq pid 0
+r = dupfd i 0 0
+r = dupfd o 1 0
+if ne e 2
+r = dupfd e 2 0
+end
+r = execprog av 0 get avp 0
+exit 98
+end
+r = waitpid int pid st 0 4 0
+if ne r pid
+ret 512
+end
+if ne get st 0 0
+ret add 256 ulong get st 0
+end
+ret ulong get st 1
+end
+
+note rdin: all of stdin into ib
+fn rdin to void
+p = ulong 0
+note every pass reads at least one byte
+while lt p 8388609 bound 8388610
+k = read 0 ib p sub 8388609 p
+if lt k 0
+die eread
+end
+if eq k 0
+break
+end
+p = add p ulong k
+end
+if gt p 8388608
+die ebig
+end
+put ibn 0 p
+end
+
+note wrib: write the n bytes of ib from o to fd, all of them
+fn wrib fd int o ulong n ulong to void
+p = o
+e = add o n
+note every pass writes at least one byte
+while lt p e bound 8388609
+k = write fd ib p sub e p
+if le k 0
+die ewr
+end
+p = add p ulong k
+end
+end
+
+note wrkb: write the kept outputs to stdout, all of them
+fn wrkb to void
+p = ulong 0
+e = get kbn 0
+note every pass writes at least one byte
+while lt p e bound 16777217
+k = write 1 kb p sub e p
+if le k 0
+die ewr
+end
+p = add p ulong k
+end
+end
+
+note slurp: everything written to the memory file fd into cb
+fn slurp fd int to void
+s = fseek fd 0 0
+p = ulong 0
+note every pass reads at least one byte
+while lt p 2097152 bound 2097153
+k = read fd cb p sub 2097152 p
+if lt k 0
+die eread
+end
+if eq k 0
+break
+end
+p = add p ulong k
+end
+if ge p 2097152
+die eout
+end
+put cbn 0 p
+end
+
+note same: is kept output j exactly cb
+fn same j ulong to bool
+m = get cbn 0
+if ne get kl j m
+ret false
+end
+b = get ko j
+i = ulong 0
+while lt i m bound 2097152
+if ne get kb add b i get cb i
+ret false
+end
+i = add i 1
+end
+ret true
+end
+
+note keep: append cb to the kept outputs; with uq, only when no kept output equals it
+fn keep uq bool to void
+c = get kc 0
+if uq
+j = ulong 0
+while lt j c bound 65536
+if same j
+ret
+end
+j = add j 1
+end
+end
+m = get cbn 0
+b = get kbn 0
+if or ge c 65536 gt m sub 16777216 b
+die ekept
+end
+i = ulong 0
+while lt i m bound 2097152
+put kb add b i get cb i
+i = add i 1
+end
+put ko c b
+put kl c m
+put kc 0 add c 1
+put kbn 0 add b m
+end
+
+note runline: one run with the n bytes of ib from o and an LF as its stdin; its status. When
+note that is 0, cb holds its stdout.
+fn runline o ulong n ulong to ulong
+mi = mfd
+mo = mfd
+wrib mi o n
+w = write mi tnl 0 1
+if ne w 1
+die ewr
+end
+s = fseek mi 0 0
+r = spawn mi mo 2
+if eq r 0
+slurp mo
+end
+c = fclose mi
+c = fclose mo
+ret r
+end
+
+note doeach: the modes each and uniq
+fn doeach uq bool to void
+rdin
+n = get ibn 0
+o = ulong 0
+k = ulong 0
+okc = ulong 0
+rf = ulong 0
+note every pass consumes at least one byte of ib
+while lt o n bound 8388609
+e = o
+while lt e n bound 8388609
+if eq get ib e 10
+break
+end
+e = add e 1
+end
+k = add k 1
+r = runline o sub e o
+if eq r 0
+okc = add okc 1
+keep uq
+else
+rf = add rf 1
+say 2 tpre
+say 2 tline
+sayn 2 k
+say 2 texit
+sayn 2 r
+say 2 tnl
+end
+o = add e 1
+end
+wrkb
+say 2 tpre
+say 2 tlines
+sayn 2 k
+say 2 tok
+sayn 2 okc
+say 2 trefd
+sayn 2 rf
+say 2 tkept
+sayn 2 get kc 0
+say 2 tnl
+if gt rf 0
+exit 1
+end
+end
+
+note pbase: where the file name starts in pb (after the last slash)
+fn pbase to ulong
+n = get pbn 0
+b = ulong 0
+i = ulong 0
+while lt i n bound 2048
+if eq get pb i 47
+b = add i 1
+end
+i = add i 1
+end
+ret b
+end
+
+note pext: where the extension starts in pb (after the last dot of the name), 0 when none
+fn pext b ulong to ulong
+n = get pbn 0
+x = ulong 0
+i = b
+while lt i n bound 2048
+if eq get pb i 46
+x = add i 1
+end
+i = add i 1
+end
+ret x
+end
+
+note pextis: is the extension, which starts at x, the text t
+fn pextis x ulong t view uchar * to bool
+n = len t
+if ne sub get pbn 0 x n
+ret false
+end
+for i ulong n
+if ne get pb add x i get t i
+ret false
+end
+end
+ret true
+end
+
+note badname: pb is not a usable bad file name
+fn badname to void
+say 2 tpre
+say 2 ename
+w = write 2 pb 0 get pbn 0
+say 2 tnl
+exit 3
+end
+
+note pcode: the exit status the name asks for: 1 to 3 digits at b, then a minus
+fn pcode b ulong to ulong
+n = get pbn 0
+v = ulong 0
+i = b
+while lt i n bound 2048
+c = get pb i
+if or lt c 48 gt c 57
+break
+end
+v = add mul v 10 ulong sub c 48
+i = add i 1
+end
+d = sub i b
+if or eq d 0 gt d 3
+badname
+end
+if ge i n
+badname
+end
+if ne get pb i 45
+badname
+end
+ret v
+end
+
+note errline: the first line of the memory file fd (at most 255 bytes) on stdout
+fn errline fd int to void
+s = fseek fd 0 0
+k = read fd eb 0 255
+if le k 0
+ret
+end
+n = ulong k
+m = ulong 0
+while lt m n bound 256
+if eq get eb m 10
+break
+end
+m = add m 1
+end
+w = write 1 eb 0 m
+end
+
+note badrun: one run of the bad file in pb (its name starts at b) under mode t; it must exit
+note with code and write nothing to stdout
+fn badrun b ulong code ulong t view uchar * to void
+put avp 0 get avp0 0
+put avc 0 get avc0 0
+setab t
+aput
+f = fopen pb 0 get pbn 0 524288 0
+if lt f 0
+say 2 tpre
+say 2 efile
+w = write 2 pb 0 get pbn 0
+say 2 tnl
+exit 3
+end
+fi = int f
+mo = mfd
+me = mfd
+r = spawn fi mo me
+sz = ulong fseek mo 0 2
+good = and eq r code eq sz 0
+put gruns 0 add get gruns 0 1
+if good
+say 1 tpass
+else
+put gbad 0 add get gbad 0 1
+say 1 tfail
+end
+w = write 1 pb b sub get pbn 0 b
+say 1 tsp
+say 1 t
+say 1 txexit
+sayn 1 r
+if not good
+say 1 twant
+sayn 1 code
+end
+say 1 tstdout
+sayn 1 sz
+say 1 tstderr
+errline me
+say 1 tnl
+c = fclose fi
+c = fclose mo
+c = fclose me
+end
+
+note badfile: the bad file in pb under every mode its extension names
+fn badfile to void
+b = pbase
+code = pcode b
+x = pext b
+if eq x 0
+badname
+end
+put gfiles 0 add get gfiles 0 1
+if pextis x tipo
+badrun b code tdec
+ret
+end
+if pextis x tjson
+badrun b code tcanon
+badrun b code tenc
+ret
+end
+badname
+end
+
+note dobad: the mode bad; n is the argument count
+fn dobad n ulong to void
+s = ulong 0
+i = ulong 2
+while lt i n bound 65536
+aarg i
+if eq get abn 0 2
+if and eq get ab 0 45 eq get ab 1 45
+s = i
+break
+end
+end
+i = add i 1
+end
+if or le s 2 ge add s 1 n
+usage
+end
+acmd 2 s
+i = add s 1
+while lt i n bound 65536
+k = argread i pb 0 2047
+if lt k 0
+die eargs
+end
+put pbn 0 ulong k
+badfile
+i = add i 1
+end
+f = get gbad 0
+if eq f 0
+say 1 tbpass
+else
+say 1 tbfail
+end
+sayn 1 get gfiles 0
+say 1 truns
+sayn 1 get gruns 0
+if ne f 0
+say 1 tfailed
+sayn 1 f
+end
+say 1 tnl
+if ne f 0
+exit 1
+end
+end
+
+note ---- the mode fuzz ----
+
+note rnd: the next value of a xorshift64 generator; the same sequence in every run
+fn rnd to ulong
+x = get rs 0
+x = xor x shl x 13
+x = xor x shr x 7
+x = xor x shl x 17
+put rs 0 x
+ret x
+end
+
+note mutate: mb becomes the t bytes of ib from o with one change: two times in four a byte
+note replaced by a different byte, else a byte deleted, or a byte inserted
+fn mutate o ulong t ulong to void
+k = rem rnd 4
+p = rem rnd t
+b = uchar and rnd 255
+j = ulong 0
+i = ulong 0
+while lt i t bound 1048577
+c = get ib add o i
+if eq i p
+if le k 1
+if eq c b
+b = xor b 1
+end
+c = b
+end
+if eq k 3
+put mb j b
+j = add j 1
+end
+end
+if or ne i p ne k 2
+put mb j c
+j = add j 1
+end
+i = add i 1
+end
+put mbn 0 j
+end
+
+note mfdmb: a memory file holding mb, positioned at its start
+fn mfdmb to int
+f = mfd
+n = get mbn 0
+p = ulong 0
+note every pass writes at least one byte
+while lt p n bound 1048593
+k = write f mb p sub n p
+if le k 0
+die ewr
+end
+p = add p ulong k
+end
+s = fseek f 0 0
+ret f
+end
+
+note mfdxb: a memory file holding xb, positioned at its start
+fn mfdxb to int
+f = mfd
+n = get xbn 0
+p = ulong 0
+note every pass writes at least one byte
+while lt p n bound 2097153
+k = write f xb p sub n p
+if le k 0
+die ewr
+end
+p = add p ulong k
+end
+s = fseek f 0 0
+ret f
+end
+
+note runfd: one run of CMD ARG... t with the memory file mi as stdin (closed afterwards) and
+note its stderr discarded; its status. cb holds its stdout, whatever the status.
+fn runfd mi int t view uchar * to ulong
+put avp 0 get avp0 0
+put avc 0 get avc0 0
+setab t
+aput
+mo = mfd
+me = mfd
+r = spawn mi mo me
+slurp mo
+c = fclose mi
+c = fclose mo
+c = fclose me
+ret r
+end
+
+note cbtoxb: xb becomes cb
+fn cbtoxb to void
+n = get cbn 0
+i = ulong 0
+while lt i n bound 2097152
+put xb i get cb i
+i = add i 1
+end
+put xbn 0 n
+end
+
+note cbeqxb: is cb exactly xb
+fn cbeqxb to bool
+n = get cbn 0
+if ne get xbn 0 n
+ret false
+end
+i = ulong 0
+while lt i n bound 2097152
+if ne get cb i get xb i
+ret false
+end
+i = add i 1
+end
+ret true
+end
+
+note cbeqmb: is cb exactly mb
+fn cbeqmb to bool
+n = get cbn 0
+if ne get mbn 0 n
+ret false
+end
+i = ulong 0
+while lt i n bound 1048593
+if ne get cb i get mb i
+ret false
+end
+i = add i 1
+end
+ret true
+end
+
+note fzacc: the first run accepted mb and cb holds its output. Mode 1 (dec): enc of the
+note output must be mb. Mode 2 (enc): dec of the output must be canon of mb. Mode 3 (canon):
+note canon of the output must be the output.
+fn fzacc md ulong to bool
+cbtoxb
+f = mfdxb
+r = ulong 0
+if eq md 1
+r = runfd f tenc
+if ne r 0
+ret false
+end
+ret cbeqmb
+end
+if eq md 3
+r = runfd f tcanon
+if ne r 0
+ret false
+end
+ret cbeqxb
+end
+r = runfd f tdec
+if ne r 0
+ret false
+end
+cbtoxb
+g = mfdmb
+r = runfd g tcanon
+if ne r 0
+ret false
+end
+ret cbeqxb
+end
+
+note fzone: one mutant of seed s (mutant number m): run it and check it
+fn fzone s ulong m ulong md ulong to void
+r = ulong 0
+f = mfdmb
+if eq md 1
+r = runfd f tdec
+end
+if eq md 2
+r = runfd f tenc
+end
+if eq md 3
+r = runfd f tcanon
+end
+h = r
+if gt h 767
+h = 767
+end
+put hist h add get hist h 1
+put gruns 0 add get gruns 0 1
+good = false
+if eq r 0
+put facc 0 add get facc 0 1
+good = fzacc md
+else
+good = and and ge r 20 le r 51 eq get cbn 0 0
+end
+if not good
+put gbad 0 add get gbad 0 1
+say 1 tffail
+sayn 1 s
+say 1 tfmut
+sayn 1 m
+say 1 txexit
+sayn 1 r
+say 1 tnl
+end
+end
+
+note fzsum: the lines "exit=C n=K", then the verdict
+fn fzsum md ulong seeds ulong to void
+c = ulong 0
+while lt c 768 bound 768
+if gt get hist c 0
+say 1 tfexit
+sayn 1 c
+say 1 tfn
+sayn 1 get hist c
+say 1 tnl
+end
+c = add c 1
+end
+f = get gbad 0
+if eq f 0
+say 1 tfpass
+else
+say 1 tffailv
+end
+if eq md 1
+say 1 tdec
+end
+if eq md 2
+say 1 tenc
+end
+if eq md 3
+say 1 tcanon
+end
+say 1 tfseeds
+sayn 1 seeds
+say 1 truns
+sayn 1 get gruns 0
+say 1 tfacc
+sayn 1 get facc 0
+say 1 tfref
+sayn 1 sub get gruns 0 get facc 0
+if ne f 0
+say 1 tfailed
+sayn 1 f
+end
+say 1 tnl
+if ne f 0
+exit 1
+end
+end
+
+note abnum: ab as a decimal number 1 to 1000000, else usage
+fn abnum to ulong
+n = get abn 0
+if or eq n 0 gt n 7
+usage
+end
+v = ulong 0
+i = ulong 0
+while lt i n bound 7
+c = get ab i
+if or lt c 48 gt c 57
+usage
+end
+v = add mul v 10 ulong sub c 48
+i = add i 1
+end
+if or eq v 0 gt v 1000000
+usage
+end
+ret v
+end
+
+note dofuzz: the mode fuzz; n is the argument count
+fn dofuzz n ulong to void
+if lt n 5
+usage
+end
+aarg 2
+md = ulong 0
+if abis tdec
+md = 1
+end
+if abis tenc
+md = 2
+end
+if abis tcanon
+md = 3
+end
+if eq md 0
+usage
+end
+aarg 3
+cnt = abnum
+acmd 4 n
+put rs 0 88172645463325252
+rdin
+t = get ibn 0
+o = ulong 0
+s = ulong 0
+note every pass consumes at least one byte of ib
+while lt o t bound 8388609
+e = o
+while lt e t bound 8388609
+if eq get ib e 10
+e = add e 1
+break
+end
+e = add e 1
+end
+s = add s 1
+if le sub e o 1048576
+m = ulong 0
+while lt m cnt bound 1000000
+m = add m 1
+mutate o sub e o
+fzone s m md
+end
+end
+o = e
+end
+fzsum md s
+end
+
+fn main to int
+c = argcnt
+if lt c 3
+usage
+end
+n = ulong c
+aarg 1
+if abis tbad
+dobad n
+ret 0
+end
+if abis tfuzz
+dofuzz n
+ret 0
+end
+uq = abis tuniq
+if not or uq abis teach
+usage
+end
+acmd 2 n
+doeach uq
+ret 0
+end

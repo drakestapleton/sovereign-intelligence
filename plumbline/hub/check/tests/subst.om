@@ -1,0 +1,254 @@
+om2
+note plumbline/hub/check/tests/subst.om: replace exactly one occurrence of a text in a file.
+note
+note   subst IN OUT FROM TO
+note
+note Reads IN (at most 4 MiB), looks for the bytes of FROM, and writes OUT: IN with that one
+note occurrence replaced by the bytes of TO (TO may be empty). FROM must occur exactly once:
+note zero or several occurrences are refused and OUT is not written. Overlapping occurrences
+note count separately. IN and OUT may be the same path. FROM and TO take the escapes of
+note cases.tsv: \n \t \r \\ and \xHH (two hex digits); any other backslash is a usage error.
+note The tests use it to build a mutant of check.om with one check removed:
+note   subst check.om mutant.om '\nr09 n\n' '\n'
+note Exit 0 done, 1 refused (stderr says why), 2 usage or a file error.
+note   omc < subst.om > subst        { printf 'target x86linux\n'; cat subst.om; } | omc-x86 > subst
+
+note fb: the file; pa, pz: the paths IN and OUT; ab: an argument as given; fr, tx: FROM and
+note TO with the escapes decoded
+global fb uchar 4194305
+global pa uchar 4096
+global pz uchar 4096
+global ab uchar 4096
+global fr uchar 4096
+global tx uchar 4096
+global dg uchar 24
+
+text musage "usage: subst IN OUT FROM TO   (FROM, TO: text with the escapes \\n \\t \\r \\\\ \\xHH)\n"
+text mopen "subst: cannot read IN\n"
+text mbig "subst: IN is over 4 MiB\n"
+text mwrite "subst: cannot write OUT\n"
+text mocc "subst: FROM occurs "
+text mtimes " times, exactly 1 is required\n"
+text mdone "subst: replaced 1 occurrence at byte "
+text mnl "\n"
+
+note num: v in decimal on descriptor d
+fn num d int v ulong to void
+x = v
+k = ulong 1
+put dg 0 uchar add rem x 10 48
+x = div x 10
+while gt x 0 bound 24
+put dg k uchar add rem x 10 48
+k = add k 1
+x = div x 10
+end
+while gt k 0 bound 24
+k = sub k 1
+w = write d dg k 1
+end
+end
+
+note usage: say how to call it and exit 2
+fn usage to void
+w = write 2 musage 0 len musage
+exit 2
+end
+
+fn hexv c uchar to ulong
+if and ge c 48 le c 57
+ret ulong sub c 48
+end
+if and ge c 97 le c 102
+ret ulong sub c 87
+end
+if and ge c 65 le c 70
+ret ulong sub c 55
+end
+ret 16
+end
+
+note escb: the escape whose letter is at i (after the backslash) in ab[i, e): its byte plus
+note 256 times the bytes it takes; 0 when it is not an escape
+fn escb i ulong e ulong to ulong
+d = get ab i
+if eq d 110
+ret 266
+end
+if eq d 116
+ret 265
+end
+if eq d 114
+ret 269
+end
+if eq d 92
+ret 348
+end
+if eq d 120
+if le add i 3 e
+h = hexv get ab add i 1
+l = hexv get ab add i 2
+if and lt h 16 lt l 16
+ret add 768 add mul h 16 l
+end
+end
+end
+ret 0
+end
+
+note unesc: decode ab[0, e) into tx; its length. A wrong escape is a usage error.
+fn unesc e ulong to ulong
+i = ulong 0
+n = ulong 0
+while lt i e bound 4097
+c = get ab i
+i = add i 1
+if eq c 92
+if ge i e
+usage
+end
+r = escb i e
+if eq r 0
+usage
+end
+c = uchar and r 255
+i = add i shr r 8
+end
+put tx n c
+n = add n 1
+end
+ret n
+end
+
+note rdin: read the file named by pa[0, n) into fb; its length, 4194305 when it is too big,
+note 4194306 when it cannot be read
+fn rdin n ulong to ulong
+fd = fopen pa 0 n 524288 0
+if lt fd 0
+ret 4194306
+end
+p = ulong 0
+while lt p 4194305 bound 4194306
+k = read int fd fb p sub 4194305 p
+if lt k 0
+c = fclose int fd
+ret 4194306
+end
+if eq k 0
+break
+end
+p = add p ulong k
+end
+c = fclose int fd
+ret p
+end
+
+note isat: do the m bytes of FROM stand at p of fb
+fn isat p ulong m ulong to bool
+for i ulong m
+if ne get fb add p i get fr i
+ret false
+end
+end
+ret true
+end
+
+note wall: write fb[o, o+n) to fd; false on an error
+fn wall fd int o ulong n ulong to bool
+p = ulong 0
+while lt p n bound 4194306
+k = write fd fb add o p sub n p
+if le k 0
+ret false
+end
+p = add p ulong k
+end
+ret true
+end
+
+note wtx: write the m bytes of TO to fd; false on an error
+fn wtx fd int m ulong to bool
+p = ulong 0
+while lt p m bound 4097
+k = write fd tx p sub m p
+if le k 0
+ret false
+end
+p = add p ulong k
+end
+ret true
+end
+
+note argtx: decode argument i into tx; its length
+fn argtx i ulong to ulong
+a = argread i ab 0 4096
+if lt a 0
+usage
+end
+ret unesc ulong a
+end
+
+fn main to int
+if ne argcnt 5
+usage
+end
+a = argread 1 pa 0 4096
+b = argread 2 pz 0 4096
+if or le a 0 le b 0
+usage
+end
+m = argtx 3
+if eq m 0
+usage
+end
+for i ulong m
+put fr i get tx i
+end
+t = argtx 4
+n = rdin ulong a
+if eq n 4194306
+w = write 2 mopen 0 len mopen
+ret 2
+end
+if eq n 4194305
+w = write 2 mbig 0 len mbig
+ret 2
+end
+cnt = ulong 0
+hit = ulong 0
+p = ulong 0
+while le add p m n bound 4194306
+if isat p m
+cnt = add cnt 1
+hit = p
+end
+p = add p 1
+end
+if ne cnt 1
+w = write 2 mocc 0 len mocc
+num 2 cnt
+w = write 2 mtimes 0 len mtimes
+ret 1
+end
+fd = fopen pz 0 ulong b 577 420
+if lt fd 0
+w = write 2 mwrite 0 len mwrite
+ret 2
+end
+ok = wall int fd 0 hit
+if ok
+ok = wtx int fd t
+end
+if ok
+ok = wall int fd add hit m sub sub n hit m
+end
+c = fclose int fd
+if or not ok ne c 0
+w = write 2 mwrite 0 len mwrite
+ret 2
+end
+w = write 1 mdone 0 len mdone
+num 1 hit
+w = write 1 mnl 0 len mnl
+ret 0
+end

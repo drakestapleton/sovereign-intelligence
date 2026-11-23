@@ -1,0 +1,3 @@
+kind=result n=8 json=6366 ipo=3500
+kind=tool_request n=31 json=18521 ipo=9282
+IPO1 PASS vectors=39 json_bytes=24887 ipo_bytes=12782

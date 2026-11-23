@@ -1,0 +1,1354 @@
+om2
+note plumbline/hub/check/tests/run.om: the test driver of hubcheck.
+note
+note   run HUBCHECK TESTS WORK [RUNNER]
+note
+note HUBCHECK is the built checker, TESTS this directory, WORK an existing scratch directory.
+note TESTS/cases.tsv holds one case per line, seven fields with a TAB between them:
+note   VERB  NAME  FILE  FROM  TO  STATUS  FIRST-LINE
+note For each case the driver creates WORK/NAME (it must not exist), copies TESTS/good into it,
+note applies the one change the line names, runs HUBCHECK on WORK/NAME as a child process
+note (fork, execprog, a pipe on the child's stdout, waitpid), compares the child's exit status
+note with STATUS and its first output line with FIRST-LINE, and then removes exactly the files
+note and directories it created for the case, WORK/NAME last. It removes nothing else.
+note   none     no change; FILE, FROM and TO are "-"
+note   edit     in FILE, replace the one occurrence of FROM by TO. FROM must occur exactly once
+note            (overlapping occurrences count separately); zero or several fail the case.
+note   add      create FILE with the content TO; FILE must not exist; FROM is "-"
+note   del      delete FILE; FROM and TO are "-"
+note   trunc    make FILE empty; FROM and TO are "-"
+note   symlink  create FILE as a symbolic link to TO; FROM is "-"
+note FILE is a path relative to the copy, with no empty, "." or ".." part. FROM and TO are
+note texts with the escapes \n \t \r \\ and \xHH (two hex digits); a field that is only "-"
+note means not used (write \x2d for a text that is one hyphen); TO may be empty. Lines that
+note are empty or start with '#' are skipped.
+note RUNNER, when given, is the program that runs HUBCHECK: the child is RUNNER HUBCHECK DIR.
+note It is how an AArch64 build is tested on a machine that needs qemu-aarch64-static.
+note Output: a FAIL block per failing case, then one line,
+note   HUBCHECK-TESTS PASS cases=N           exit 0
+note   HUBCHECK-TESTS FAIL cases=N failed=F  exit 1
+note Exit 2: usage, or cases.tsv cannot be read.
+note   omc < run.om > run        { printf 'target x86linux\n'; cat run.om; } | omc-x86 > run
+
+note tb: cases.tsv; fb: a file being copied or edited; ob: the child's stdout (the first
+note 65536 bytes); jb: what is read past that; av: a packed list (the child's arguments, or the
+note two paths of a symbolic link); hp, tp, wp, rp: HUBCHECK, TESTS, WORK, RUNNER; sp: a path
+note under TESTS/good; dp: a path under WORK/NAME; db: ten levels of directory records;
+note xf, xt: FROM and TO with the escapes decoded; fl: start and end of the seven fields
+global tb uchar 262145
+global fb uchar 4194305
+global ob uchar 65536
+global jb uchar 4096
+global av uchar 4096
+global hp uchar 1024
+global tp uchar 1024
+global wp uchar 1024
+global rp uchar 1024
+global sp uchar 4096
+global dp uchar 4096
+global db uchar 327680
+global xf uchar 8192
+global xt uchar 8192
+global fl ulong 16
+global st uchar 4
+global pf uchar 8
+global dg uchar 24
+note what the driver created for the case, in order: cpool holds the paths relative to
+note WORK/NAME, coff and clen where each is, ckind 1 for a file or link, 2 for a directory
+global cpool uchar 131072
+global coff ulong 1024
+global clen ulong 1024
+global ckind uchar 1024
+global g ulong 32
+
+note GH, GT, GW, GR lengths of hp, tp, wp, rp (GR 0: no runner); GX length of tb; GON length
+note of ob; GCS cases run; GFL failures; GAV, GAC bytes and records of av; GSB length of
+note TESTS/good in sp; GDB length of WORK/NAME in dp; GCC, GCP entries and bytes of the created
+note list; GERR why the case could not be built (0: built); GFN, GTN lengths of xf, xt;
+note GLN line number in cases.tsv; GHIT where FROM was found
+const GH ulong 0
+const GT ulong 1
+const GW ulong 2
+const GR ulong 3
+const GX ulong 4
+const GON ulong 5
+const GCS ulong 6
+const GFL ulong 7
+const GAV ulong 8
+const GAC ulong 9
+const GSB ulong 10
+const GDB ulong 11
+const GCC ulong 12
+const GCP ulong 13
+const GERR ulong 14
+const GFN ulong 15
+const GTN ulong 16
+const GLN ulong 17
+const GHIT ulong 18
+
+text musage "usage: run HUBCHECK TESTS WORK [RUNNER]\n"
+text mnotab "run: cannot read TESTS/cases.tsv (or it is over 256 KiB)\n"
+text mcases "/cases.tsv"
+text mgood "/good"
+text knone "none"
+text kedit "edit"
+text kadd "add"
+text kdel "del"
+text ktrunc "trunc"
+text ksym "symlink"
+text kdash "-"
+text mfail "FAIL "
+text mcol ": "
+text mnl "\n"
+text mwp "wrongly passes"
+text mwf "wrongly fails"
+text mwo "wrong exit status or first line"
+text mnr "the child could not be run"
+text mexpd "  expected: exit "
+text mobs "  observed: exit "
+text mcomma ", "
+text mline "FAIL cases.tsv line "
+text mform ": not VERB NAME FILE FROM TO STATUS FIRST-LINE as run.om describes them\n"
+text mnocase "FAIL cases.tsv: no case is listed\n"
+text mexist "WORK/NAME exists already; nothing was touched"
+text mnowork "cannot create WORK/NAME"
+text mleft "what the driver created under WORK/NAME could not all be removed"
+text me1 "cannot copy TESTS/good (unreadable, nested deeper than 9, or not only files and directories)"
+text me2 "cannot write under WORK/NAME"
+text me3 "FILE is not in the copy"
+text me4 "FROM occurs 0 times in FILE, exactly 1 is required"
+text me5 "FROM occurs more than once in FILE, exactly 1 is required"
+text me6 "FILE to add is already there or cannot be created"
+text me7 "a file is over 4 MiB"
+text me8 "TESTS/good holds more than the driver tracks (1024 entries, 131072 path bytes)"
+text mpass "HUBCHECK-TESTS PASS cases="
+text mfl "HUBCHECK-TESTS FAIL cases="
+text mfl2 " failed="
+
+note ---------------------------------------------------------------- output
+
+fn say t view uchar * to void
+w = write 1 t 0 len t
+end
+
+note sayn: v in decimal on stdout
+fn sayn v ulong to void
+x = v
+k = ulong 1
+put dg 0 uchar add rem x 10 48
+x = div x 10
+while gt x 0 bound 24
+put dg k uchar add rem x 10 48
+k = add k 1
+x = div x 10
+end
+while gt k 0 bound 24
+k = sub k 1
+w = write 1 dg k 1
+end
+end
+
+note fail: the case cannot be built, for reason c; the first reason is kept
+fn fail c ulong to void
+if eq get g GERR 0
+put g GERR c
+end
+end
+
+note why: the text of reason c
+fn why c ulong to void
+if eq c 1
+say me1
+end
+if eq c 2
+say me2
+end
+if eq c 3
+say me3
+end
+if eq c 4
+say me4
+end
+if eq c 5
+say me5
+end
+if eq c 6
+say me6
+end
+if eq c 7
+say me7
+end
+if eq c 8
+say me8
+end
+end
+
+note ---------------------------------------------------------------- fields of a line
+
+fn fbeg k ulong to ulong
+ret get fl mul k 2
+end
+
+fn fend k ulong to ulong
+ret get fl add mul k 2 1
+end
+
+fn flen k ulong to ulong
+ret sub fend k fbeg k
+end
+
+note split: cut the line tb[s, e) at its first six TABs; field k is then tb[fbeg k, fend k).
+note The number of fields, at most 7.
+fn split s ulong e ulong to ulong
+k = ulong 0
+a = s
+i = s
+while lt i e bound 262146
+if eq get tb i 9
+if lt k 6
+put fl mul k 2 a
+put fl add mul k 2 1 i
+k = add k 1
+a = add i 1
+end
+end
+i = add i 1
+end
+put fl mul k 2 a
+put fl add mul k 2 1 e
+ret add k 1
+end
+
+note fis: is field k the text t
+fn fis k ulong t view uchar * to bool
+o = fbeg k
+n = flen k
+if ne n len t
+ret false
+end
+for i ulong n
+if ne get tb add o i get t i
+ret false
+end
+end
+ret true
+end
+
+note verbof: 1 none, 2 edit, 3 add, 4 del, 5 trunc, 6 symlink; 0 for anything else
+fn verbof to ulong
+if fis 0 knone
+ret 1
+end
+if fis 0 kedit
+ret 2
+end
+if fis 0 kadd
+ret 3
+end
+if fis 0 kdel
+ret 4
+end
+if fis 0 ktrunc
+ret 5
+end
+if fis 0 ksym
+ret 6
+end
+ret 0
+end
+
+note stnum: the decimal exit status in field 5; 1000 when it is not 1 to 3 digits
+fn stnum to ulong
+s = fbeg 5
+n = flen 5
+if or eq n 0 gt n 3
+ret 1000
+end
+v = ulong 0
+for i ulong n
+c = get tb add s i
+if or lt c 48 gt c 57
+ret 1000
+end
+v = add mul v 10 ulong sub c 48
+end
+ret v
+end
+
+note okname: is field 1 a case name: 1 to 100 of A-Z a-z 0-9 . _ - and no '.' first
+fn okname to bool
+s = fbeg 1
+n = flen 1
+if or eq n 0 gt n 100
+ret false
+end
+if eq get tb s 46
+ret false
+end
+for i ulong n
+c = get tb add s i
+u = or and ge c 65 le c 90 and ge c 97 le c 122
+d = or and ge c 48 le c 57 or eq c 46 or eq c 95 eq c 45
+if not or u d
+ret false
+end
+end
+ret true
+end
+
+note okrel: is field 2 a relative path of 1 to 900 bytes with no empty, "." or ".." part
+fn okrel to bool
+s = fbeg 2
+e = fend 2
+if or ge s e gt sub e s 900
+ret false
+end
+a = s
+i = s
+while le i e bound 902
+stop = eq i e
+if lt i e
+stop = eq get tb i 47
+end
+if stop
+if badpart a i
+ret false
+end
+a = add i 1
+end
+i = add i 1
+end
+ret true
+end
+
+note badpart: is the path part tb[a, i) empty, "." or ".."
+fn badpart a ulong i ulong to bool
+n = sub i a
+if eq n 0
+ret true
+end
+if eq n 1
+ret eq get tb a 46
+end
+if eq n 2
+ret and eq get tb a 46 eq get tb add a 1 46
+end
+ret false
+end
+
+fn hexv c uchar to ulong
+if and ge c 48 le c 57
+ret ulong sub c 48
+end
+if and ge c 97 le c 102
+ret ulong sub c 87
+end
+if and ge c 65 le c 70
+ret ulong sub c 55
+end
+ret 16
+end
+
+note escb: the escape whose letter is at i (after the backslash) in tb[i, e): its byte plus
+note 256 times the bytes it takes; 0 when it is not an escape
+fn escb i ulong e ulong to ulong
+d = get tb i
+if eq d 110
+ret 266
+end
+if eq d 116
+ret 265
+end
+if eq d 114
+ret 269
+end
+if eq d 92
+ret 348
+end
+if eq d 120
+if le add i 3 e
+h = hexv get tb add i 1
+l = hexv get tb add i 2
+if and lt h 16 lt l 16
+ret add 768 add mul h 16 l
+end
+end
+end
+ret 0
+end
+
+note unesc: decode field k into xt; its length, 100000 when an escape is wrong or the text is
+note over 8192 bytes
+fn unesc k ulong to ulong
+i = fbeg k
+e = fend k
+n = ulong 0
+while lt i e bound 262146
+if ge n 8192
+ret 100000
+end
+c = get tb i
+i = add i 1
+if eq c 92
+if ge i e
+ret 100000
+end
+r = escb i e
+if eq r 0
+ret 100000
+end
+c = uchar and r 255
+i = add i shr r 8
+end
+put xt n c
+n = add n 1
+end
+ret n
+end
+
+note tofrom: the n bytes decoded into xt are FROM
+fn tofrom n ulong to void
+for i ulong n
+put xf i get xt i
+end
+put g GFN n
+end
+
+note fields: check that the line uses FILE, FROM and TO as its verb v needs, and decode them
+fn fields v ulong to bool
+put g GFN 0
+put g GTN 0
+df = fis 2 kdash
+dfr = fis 3 kdash
+dto = fis 4 kdash
+if eq v 1
+ret and df and dfr dto
+end
+if df
+ret false
+end
+if not okrel
+ret false
+end
+if eq v 2
+if or dfr dto
+ret false
+end
+n = unesc 3
+if or eq n 0 gt n 8192
+ret false
+end
+tofrom n
+end
+if ne v 2
+if not dfr
+ret false
+end
+end
+if or eq v 4 eq v 5
+ret dto
+end
+if dto
+ret false
+end
+m = unesc 4
+if gt m 8192
+ret false
+end
+if eq v 6
+if eq m 0
+ret false
+end
+end
+put g GTN m
+ret true
+end
+
+note ---------------------------------------------------------------- paths and the created list
+
+note setsp: sp becomes TESTS/good; its length
+fn setsp to ulong
+n = get g GT
+for i ulong n
+put sp i get tp i
+end
+for j ulong len mgood
+put sp add n j get mgood j
+end
+n = add n len mgood
+put g GSB n
+ret n
+end
+
+note setdp: dp becomes WORK/NAME; its length
+fn setdp to ulong
+n = get g GW
+for i ulong n
+put dp i get wp i
+end
+put dp n 47
+o = fbeg 1
+m = flen 1
+for j ulong m
+put dp add add n 1 j get tb add o j
+end
+n = add add n 1 m
+put g GDB n
+ret n
+end
+
+note dprel: dp becomes WORK/NAME/FILE; its length
+fn dprel to ulong
+b = get g GDB
+put dp b 47
+o = fbeg 2
+m = flen 2
+for j ulong m
+put dp add add b 1 j get tb add o j
+end
+ret add add b 1 m
+end
+
+note hasroom: can the created list take the path dp[0, dn)
+fn hasroom dn ulong to bool
+n = sub dn add get g GDB 1
+if or ge get g GCC 1024 gt n sub 131072 get g GCP
+fail 8
+ret false
+end
+ret true
+end
+
+note noted: put dp[0, dn) on the created list as kind (1 file or link, 2 directory). A file
+note is listed before it is created, so nothing the driver made is ever left unlisted.
+fn noted kind uchar dn ulong to bool
+if not hasroom dn
+ret false
+end
+c = get g GCC
+b = add get g GDB 1
+n = sub dn b
+u = get g GCP
+for i ulong n
+put cpool add u i get dp add b i
+end
+put coff c u
+put clen c n
+put ckind c kind
+put g GCC add c 1
+put g GCP add u n
+ret true
+end
+
+note relpath: dp becomes WORK/NAME/<created entry c>; its length
+fn relpath c ulong to ulong
+b = get g GDB
+o = get coff c
+n = get clen c
+put dp b 47
+for i ulong n
+put dp add add b 1 i get cpool add o i
+end
+ret add add b 1 n
+end
+
+note cleanup: remove what the created list names, last made first, then WORK/NAME. An entry
+note that is already gone (the del verb, or a create that failed) is not an error. False when
+note something could not be removed.
+fn cleanup to bool
+ok = true
+c = get g GCC
+while gt c 0 bound 1025
+c = sub c 1
+n = relpath c
+r = long 0
+if eq get ckind c 1
+r = unlink dp 0 n
+end
+if eq get ckind c 2
+r = rmdir dp 0 n
+end
+if ne r 0
+if ne r -2
+ok = false
+end
+end
+end
+q = rmdir dp 0 get g GDB
+if ne q 0
+ok = false
+end
+ret ok
+end
+
+note ---------------------------------------------------------------- files
+
+note rdfd: read all of fd into fb; the byte count, 4194305 when it is over 4 MiB, 4194306
+note when a read fails
+fn rdfd fd int to ulong
+p = ulong 0
+while lt p 4194305 bound 4194306
+k = read fd fb p sub 4194305 p
+if lt k 0
+ret 4194306
+end
+if eq k 0
+break
+end
+p = add p ulong k
+end
+ret p
+end
+
+note wfb: write fb[o, o+n) to fd; false on an error
+fn wfb fd int o ulong n ulong to bool
+p = ulong 0
+while lt p n bound 4194306
+k = write fd fb add o p sub n p
+if le k 0
+ret false
+end
+p = add p ulong k
+end
+ret true
+end
+
+note wxt: write TO to fd; false on an error
+fn wxt fd int to bool
+m = get g GTN
+p = ulong 0
+while lt p m bound 8193
+k = write fd xt p sub m p
+if le k 0
+ret false
+end
+p = add p ulong k
+end
+ret true
+end
+
+note ---------------------------------------------------------------- copying TESTS/good
+
+note dname: length of the zero-terminated name at o of db, inside the record that ends at z
+fn dname o ulong z ulong to ulong
+n = ulong 0
+while lt add o n z bound 32769
+if eq get db add o n 0
+break
+end
+n = add n 1
+end
+ret n
+end
+
+note isdots: is the name db[o, o+n) "." or ".."
+fn isdots o ulong n ulong to bool
+if eq n 1
+ret eq get db o 46
+end
+if eq n 2
+ret and eq get db o 46 eq get db add o 1 46
+end
+ret false
+end
+
+note cpname: append '/' and the name db[o, o+n) to sp at sn and to dp at dn
+fn cpname sn ulong dn ulong o ulong n ulong to void
+put sp sn 47
+put dp dn 47
+for i ulong n
+c = get db add o i
+put sp add add sn 1 i c
+put dp add add dn 1 i c
+end
+end
+
+note cpfile: copy the file sp[0, sn) to the new file dp[0, dn) (created exclusively, mode 0644)
+fn cpfile sn ulong dn ulong to void
+fd = fopen sp 0 sn 524288 0
+if lt fd 0
+fail 1
+ret
+end
+n = rdfd int fd
+c = fclose int fd
+if eq n 4194306
+fail 1
+ret
+end
+if eq n 4194305
+fail 7
+ret
+end
+if not noted 1 dn
+ret
+end
+wd = fopen dp 0 dn 524481 420
+if lt wd 0
+fail 2
+ret
+end
+ok = wfb int wd 0 n
+q = fclose int wd
+if or not ok ne q 0
+fail 2
+end
+end
+
+note cpkind: sp[0, sn) of directory-record type t (4 directory, 8 regular file) found in a
+note directory of level lvl goes to dp[0, dn). Anything else in TESTS/good fails the case.
+fn cpkind lvl ulong sn ulong dn ulong t uchar to void
+if eq t 4
+if ge lvl 9
+fail 1
+ret
+end
+if not hasroom dn
+ret
+end
+r = makedir dp 0 dn 493
+if ne r 0
+fail 2
+ret
+end
+ok = noted 2 dn
+cpdir add lvl 1 sn dn
+ret
+end
+if eq t 8
+cpfile sn dn
+ret
+end
+fail 1
+end
+
+note cpone: the directory record at p of db, x bytes long, in the directory sp[0, sn)
+fn cpone lvl ulong sn ulong dn ulong p ulong x ulong to void
+o = add p 19
+n = dname o add p x
+if eq n 0
+ret
+end
+if isdots o n
+ret
+end
+if or gt add sn n 3000 gt add dn n 3000
+fail 1
+ret
+end
+cpname sn dn o n
+cpkind lvl add add sn 1 n add add dn 1 n get db add p 18
+end
+
+note cpent: the same; the length of the record
+fn cpent lvl ulong sn ulong dn ulong p ulong to ulong
+x = add ulong get db add p 16 mul ulong get db add p 17 256
+if lt x 20
+fail 1
+ret 32768
+end
+cpone lvl sn dn p x
+ret x
+end
+
+note cpdir: copy the content of the directory sp[0, sn) of level lvl into dp[0, dn), which
+note exists. Each level reads its records into its own part of db.
+fn cpdir lvl ulong sn ulong dn ulong to void
+fd = fopen sp 0 sn 524288 0
+if lt fd 0
+fail 1
+ret
+end
+off = mul lvl 32768
+while true bound 1048577
+k = getdnts int fd db off 32768
+if lt k 0
+fail 1
+break
+end
+if eq k 0
+break
+end
+p = off
+z = add off ulong k
+while lt p z bound 32769
+p = add p cpent lvl sn dn p
+end
+if ne get g GERR 0
+break
+end
+end
+c = fclose int fd
+end
+
+note ---------------------------------------------------------------- the one change
+
+note isat: do the m bytes of FROM stand at p of fb
+fn isat p ulong m ulong to bool
+for i ulong m
+if ne get fb add p i get xf i
+ret false
+end
+end
+ret true
+end
+
+note occur: how often FROM occurs in fb[0, n); the last place goes to g GHIT
+fn occur n ulong to ulong
+m = get g GFN
+cnt = ulong 0
+p = ulong 0
+while le add p m n bound 4194306
+if isat p m
+cnt = add cnt 1
+put g GHIT p
+end
+p = add p 1
+end
+ret cnt
+end
+
+note doedit: replace the one occurrence of FROM in FILE by TO
+fn doedit to void
+dn = dprel
+fd = fopen dp 0 dn 524288 0
+if lt fd 0
+fail 3
+ret
+end
+n = rdfd int fd
+c = fclose int fd
+if eq n 4194306
+fail 3
+ret
+end
+if eq n 4194305
+fail 7
+ret
+end
+cnt = occur n
+if eq cnt 0
+fail 4
+ret
+end
+if gt cnt 1
+fail 5
+ret
+end
+rewrite dn n
+end
+
+note rewrite: write FILE again: fb up to the hit, TO, fb after FROM
+fn rewrite dn ulong n ulong to void
+hit = get g GHIT
+m = get g GFN
+wd = fopen dp 0 dn 524801 0
+if lt wd 0
+fail 2
+ret
+end
+ok = wfb int wd 0 hit
+if ok
+ok = wxt int wd
+end
+if ok
+ok = wfb int wd add hit m sub sub n hit m
+end
+q = fclose int wd
+if or not ok ne q 0
+fail 2
+end
+end
+
+note mkdirs: make the directories on the way to the file dp[0, dn) that are not there yet
+fn mkdirs dn ulong to void
+i = add get g GDB 1
+while lt i dn bound 4097
+if eq get dp i 47
+if not hasroom i
+ret
+end
+r = makedir dp 0 i 493
+if eq r 0
+ok = noted 2 i
+end
+if ne r 0
+if ne r -17
+fail 2
+ret
+end
+end
+end
+i = add i 1
+end
+end
+
+note doadd: create FILE with the content TO
+fn doadd to void
+dn = dprel
+mkdirs dn
+if ne get g GERR 0
+ret
+end
+if not noted 1 dn
+ret
+end
+wd = fopen dp 0 dn 524481 420
+if lt wd 0
+fail 6
+ret
+end
+ok = wxt int wd
+q = fclose int wd
+if or not ok ne q 0
+fail 2
+end
+end
+
+note dodel: delete FILE
+fn dodel to void
+dn = dprel
+r = unlink dp 0 dn
+if ne r 0
+fail 3
+end
+end
+
+note dotrunc: make FILE empty; it must be there
+fn dotrunc to void
+dn = dprel
+wd = fopen dp 0 dn 524801 0
+if lt wd 0
+fail 3
+ret
+end
+q = fclose int wd
+end
+
+note dosym: create FILE as a symbolic link to TO. symlnk takes a packed list: 2 records, the
+note target and the link path, each a 16-bit little-endian length and its bytes.
+fn dosym to void
+dn = dprel
+mkdirs dn
+if ne get g GERR 0
+ret
+end
+m = get g GTN
+if gt add add m dn 6 4096
+fail 2
+ret
+end
+if not noted 1 dn
+ret
+end
+put av 0 2
+put av 1 0
+put av 2 uchar and m 255
+put av 3 uchar shr m 8
+for i ulong m
+put av add 4 i get xt i
+end
+p = add 4 m
+put av p uchar and dn 255
+put av add p 1 uchar shr dn 8
+for j ulong dn
+put av add add p 2 j get dp j
+end
+r = symlnk av 0 add add p 2 dn
+if ne r 0
+fail 6
+end
+end
+
+note apply: the change of verb v
+fn apply v ulong to void
+if eq v 2
+doedit
+end
+if eq v 3
+doadd
+end
+if eq v 4
+dodel
+end
+if eq v 5
+dotrunc
+end
+if eq v 6
+dosym
+end
+end
+
+note ---------------------------------------------------------------- running the child
+
+note ahead: start a record of n bytes in av; where its bytes go
+fn ahead n ulong to ulong
+p = get g GAV
+put av p uchar and n 255
+put av add p 1 uchar shr n 8
+put g GAV add add p 2 n
+put g GAC add get g GAC 1
+ret add p 2
+end
+
+note arun, ahub, adir: the records RUNNER (when there is one), HUBCHECK, WORK/NAME
+fn arun to void
+r = get g GR
+if gt r 0
+p = ahead r
+for i ulong r
+put av add p i get rp i
+end
+end
+end
+
+fn ahub to void
+h = get g GH
+q = ahead h
+for j ulong h
+put av add q j get hp j
+end
+end
+
+fn adir to void
+d = get g GDB
+q = ahead d
+for j ulong d
+put av add q j get dp j
+end
+end
+
+note argv: the packed list of the child: [RUNNER] HUBCHECK WORK/NAME
+fn argv to void
+put g GAV 2
+put g GAC 0
+arun
+ahub
+adir
+put av 0 uchar get g GAC
+put av 1 0
+end
+
+note drain: read the child's stdout to its end; the first 65536 bytes stay in ob
+fn drain rfd int to ulong
+n = ulong 0
+while true bound 16777216
+k = long 0
+if lt n 65536
+k = read rfd ob n sub 65536 n
+end
+if ge n 65536
+k = read rfd jb 0 4096
+end
+if le k 0
+break
+end
+if lt n 65536
+n = add n ulong k
+end
+end
+ret n
+end
+
+note spawn: run the list in av with stdout on a pipe. The child's exit status, 256 plus the
+note signal when a signal ended it, 512 when it could not be started.
+fn spawn to ulong
+put g GON 0
+r = pipefds pf 0 8 524288
+if lt r 0
+ret 512
+end
+rfd = int or ulong get pf 0 shl ulong get pf 1 8
+wfd = int or ulong get pf 4 shl ulong get pf 5 8
+pid = fork
+if lt pid 0
+c = fclose rfd
+c = fclose wfd
+ret 512
+end
+if eq pid 0
+y = dupfd wfd 1 0
+y = execprog av 0 get g GAV
+exit 127
+end
+c = fclose wfd
+put g GON drain rfd
+c = fclose rfd
+r = waitpid int pid st 0 4 0
+if ne r pid
+ret 512
+end
+if ne get st 0 0
+ret add 256 ulong get st 0
+end
+ret ulong get st 1
+end
+
+note oline: length of the first line of ob
+fn oline to ulong
+n = get g GON
+i = ulong 0
+while lt i n bound 65537
+if eq get ob i 10
+break
+end
+i = add i 1
+end
+ret i
+end
+
+note sameln: is the first line of ob (m bytes) field 6
+fn sameln m ulong to bool
+o = fbeg 6
+if ne m flen 6
+ret false
+end
+for i ulong m bound 262146
+if ne get ob i get tb add o i
+ret false
+end
+end
+ret true
+end
+
+note ---------------------------------------------------------------- one case
+
+note head: "FAIL NAME: "
+fn head to void
+put g GFL add get g GFL 1
+say mfail
+w = write 1 tb fbeg 1 flen 1
+say mcol
+end
+
+note report: the child's status got or its first line is not what the line expects
+fn report want ulong got ulong to void
+head
+kind = ulong 0
+if and eq got 0 ne want 0
+kind = 1
+end
+if and eq want 0 ne got 0
+kind = 2
+end
+if ge got 256
+kind = 3
+end
+if eq kind 0
+say mwo
+end
+if eq kind 1
+say mwp
+end
+if eq kind 2
+say mwf
+end
+if eq kind 3
+say mnr
+end
+say mnl
+say mexpd
+sayn want
+say mcomma
+n = flen 6
+if gt n 0
+w = write 1 tb fbeg 6 n
+end
+say mnl
+say mobs
+sayn got
+say mcomma
+m = oline
+if gt m 0
+w = write 1 ob 0 m
+end
+say mnl
+end
+
+note judge: the copy is built and changed; run the checker on it and compare
+fn judge want ulong to void
+argv
+got = spawn
+ok = eq got want
+if ok
+ok = sameln oline
+end
+if not ok
+report want got
+end
+end
+
+note onecase: build WORK/NAME, change it (verb v), judge it, remove it
+fn onecase v ulong want ulong to void
+put g GERR 0
+put g GCC 0
+put g GCP 0
+dn = setdp
+r = makedir dp 0 dn 493
+if ne r 0
+head
+if eq r -17
+say mexist
+end
+if ne r -17
+say mnowork
+end
+say mnl
+ret
+end
+cpdir 0 setsp dn
+if eq get g GERR 0
+apply v
+end
+e = get g GERR
+if ne e 0
+head
+why e
+say mnl
+end
+if eq e 0
+judge want
+end
+if not cleanup
+head
+say mleft
+say mnl
+end
+end
+
+note badline: line GLN of cases.tsv is not a case
+fn badline to void
+put g GFL add get g GFL 1
+say mline
+sayn get g GLN
+say mform
+end
+
+note runline: one line tb[s, e) of cases.tsv
+fn runline s ulong e ulong to void
+if ge s e
+ret
+end
+if eq get tb s 35
+ret
+end
+if ne split s e 7
+badline
+ret
+end
+v = verbof
+want = stnum
+if or eq v 0 eq want 1000
+badline
+ret
+end
+if not okname
+badline
+ret
+end
+if not fields v
+badline
+ret
+end
+put g GCS add get g GCS 1
+onecase v want
+end
+
+note rdtab: read TESTS/cases.tsv into tb; false when it cannot be read or is too big
+fn rdtab to bool
+n = get g GT
+for i ulong n
+put sp i get tp i
+end
+for j ulong len mcases
+put sp add n j get mcases j
+end
+fd = fopen sp 0 add n len mcases 524288 0
+if lt fd 0
+ret false
+end
+p = ulong 0
+while lt p 262145 bound 262146
+k = read int fd tb p sub 262145 p
+if lt k 0
+c = fclose int fd
+ret false
+end
+if eq k 0
+break
+end
+p = add p ulong k
+end
+c = fclose int fd
+put g GX p
+ret lt p 262145
+end
+
+note usage: say how to call it and exit 2
+fn usage to void
+w = write 2 musage 0 len musage
+exit 2
+end
+
+note args: read the command line into hp, tp, wp and rp
+fn args to void
+ac = argcnt
+if or lt ac 4 gt ac 5
+usage
+end
+h = argread 1 hp 0 1000
+t = argread 2 tp 0 1000
+u = argread 3 wp 0 1000
+if or le h 0 or le t 0 le u 0
+usage
+end
+put g GH ulong h
+put g GT ulong t
+put g GW ulong u
+if eq ac 5
+r = argread 4 rp 0 1000
+if le r 0
+usage
+end
+put g GR ulong r
+end
+end
+
+fn main to int
+args
+if not rdtab
+w = write 2 mnotab 0 len mnotab
+ret 2
+end
+x = get g GX
+s = ulong 0
+while lt s x bound 262146
+e = s
+while lt e x bound 262146
+if eq get tb e 10
+break
+end
+e = add e 1
+end
+put g GLN add get g GLN 1
+runline s e
+s = add e 1
+end
+if eq get g GCS 0
+put g GFL add get g GFL 1
+say mnocase
+end
+f = get g GFL
+if gt f 0
+say mfl
+sayn get g GCS
+say mfl2
+sayn f
+say mnl
+ret 1
+end
+say mpass
+sayn get g GCS
+say mnl
+ret 0
+end

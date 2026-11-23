@@ -1,0 +1,229 @@
+note hub/src/47-omegese.om: /omegese/, how agents talk.
+note
+note Every number on this page is read at build time from the gates' own recorded outputs:
+note   WIRESUM  plumbline/wire/tests/expected.txt   the last line is the selftest summary
+note            "IPO1 PASS vectors=N json_bytes=A ipo_bytes=B"
+note   EXJSON   one canonical JSON envelope, one line   EXIPO  the same envelope as an ipo1 frame
+note   NL8      plumbline/neuralese/nl8/expected.tsv, the table and verdict lines of "nl8 all"
+note   NL8SWEEP plumbline/neuralese/nl8/sweep.txt, the after-the-fact 64-seed sweep
+note The page prints the two example files and their byte lengths as they are; it retypes neither.
+
+note wsm: start, end of WIRESUM; exj: EXJSON; exi: EXIPO; nl8: NL8; nsw: NL8SWEEP
+global wsm ulong 2
+global exj ulong 2
+global exi ulong 2
+global nl8 ulong 2
+global nsw ulong 2
+
+text g01 "<section class='sec' id='why'><div class='wrap'><p class='eyebrow'>The cost of the wire</p><h2>One request, two ways to say it</h2><p class='sub'>An INTERPLANE message is a JSON envelope today. Every message repeats the name of every field, and a model that reads or writes it pays for each of those bytes. Omegese, the surface of Omega, has no need for them: a word that takes a fixed number of values needs no brackets and no keys. The same envelope, written both ways:</p><div class='two'><div><h3 class='cap'>JSON envelope, canonical, "
+text g02 " bytes</h3><pre class='wrapc'><code>"
+text g03 "</code></pre></div><div><h3 class='cap'>ipo1 frame, "
+text g04 " bytes</h3><pre class='wrapc'><code>"
+text g05 "</code></pre><p class='fine'>The frame decodes back to the envelope on the left, byte for byte. That is what the gate checks.</p></div></div></div></section>\n"
+text g10 "<section class='sec' id='measured'><div class='wrap'><p class='eyebrow'>Measured</p><h2>Across the protocol&#39;s own fixture envelopes</h2><div class='receipt-grid'><div class='cell'><span class='big'>"
+text g11 "</span><span class='label'>distinct envelopes from the protocol repository&#39;s conformance and provenance fixtures. An envelope holding a whole number above 2^53 is refused, not approximated, and is not counted here.</span></div><div class='cell'><span class='big'>"
+text g12 "</span><span class='label'>bytes as canonical JSON</span></div><div class='cell'><span class='big'>"
+text g13 "</span><span class='label'>bytes as ipo1 frames</span></div><div class='cell'><span class='big'>"
+text g14 "%</span><span class='label'>of the JSON size. Every frame decodes back to its envelope byte for byte, on both instruction sets.</span></div></div><p class='fine'>Read from the selftest&#39;s recorded output: <code>"
+text g15 "</code></p></div></section>\n"
+text g20 "<section class='sec' id='form'><div class='wrap'><div class='two'><div><p class='eyebrow'>The form</p><h2>ipo1, the INTERPLANE Omegese form</h2><div class='prose'><p>One frame is one line: the word <code>ipo1</code>, then one value. Words are lowercase and separated by single spaces.</p><ul><li><code>nil</code>, <code>yes</code>, <code>no</code> and whole numbers stand for themselves.</li><li>A string that looks like a word is written bare. Any other string keeps its quotes.</li><li>The JSON words <code>true</code>, <code>false</code> and <code>null</code> are not in the form. Written bare they are refused, so a writer with JSON habits gets a refusal and never a different value. As strings they keep their quotes.</li><li>An object whose fields are a known shape is one shape word followed by its values in a fixed order: no keys, no closing word. The shape table is pinned by its hash.</li><li>Any other object is <code>obj</code>, its keys and values, then <code>end</code>. A list is <code>arr</code>, its values, then <code>end</code>.</li></ul><p>There is exactly one frame for each value. A decoder refuses anything else: a quoted string that could be bare, a spelled-out object that matches a shape, a missing or extra value.</p></div></div><div><p class='eyebrow'>What it is not</p><h2>Limits, stated</h2><div class='prose'><ul><li><span class='pill none'>HOST_TESTED</span> It runs on a CPU, built for AArch64 and for x86-64 by the seed-grown compiler. Nothing here ran inside a model or a serving path.</li><li><span class='pill wait'>PROPOSED</span> It is an encoding of the existing envelope, not part of the protocol&#39;s specification. The protocol repository decides whether it becomes one.</li><li>A valid frame is never an authorization. The runtime still decides, exactly as it does for JSON.</li><li>The gain is in the shapes. A value that matches no shape comes out longer than its JSON, and one extra key drops an object&#39;s whole shape.</li><li>It is text on purpose. The readers and writers are models. Numbers with a fraction or an exponent, and whole numbers above 2^53, are refused in this version, and it carries no signature.</li></ul></div></div></div></div></section>\n"
+text g30 "<section class='sec' id='neuralese'><div class='wrap'><p class='eyebrow'>Neuralese</p><h2>The learned code, and why it failed</h2><div class='prose'><p>Neuralese was my experiment in letting two small models invent their own code: a sender sees four bits, sends a message, a receiver rebuilds the bits. The learned code never beat a byte typed in by hand, and on the hardest splits it recovered none of the held-out cases.</p><p>The cause was not capacity or training time. When two inputs always agree in the training data, nothing in that data says which of them an output should follow, so no amount of training can find out. The channel was also never discrete while training, only afterwards.</p><p>The repair I tested is a prior, not more epochs: give every bit position the same weights, and train through the one-bit channel itself. The control is the same model with the weights untied. The criteria were written down before the first run, and the table and verdicts below are the experiment&#39;s own output, failures included.</p><p>Read the verdicts before the table. A criterion marked FAIL failed as I wrote it, and it stays failed: where the untied control reaches all eight held-out cases, the weight difference that would have to be learned has not moved from its random starting value (the last column), so that run was decided by its starting weights and not by training.</p></div><ul class='counts'>"
+text g31 "</tr></thead><tbody>\n"
+text g34 "</ul><div class='scroll'><table class='tbl'><thead><tr>"
+text g35 "</tbody></table></div><h3>After the fact: 64 seeds</h3><p class='fine'>Not a pre-registered criterion. Run afterwards to see how often each arm recovers all eight held-out cases.</p><ul class='counts'>"
+text g32 "</tbody></table></div>"
+text g33 "</ul><p class='fine'>Arm 0 tied, 1 untied (control), 2 a byte typed in by hand (reference), 3 shuffled labels (control). Masks: 65535 trains on all sixteen cases, 38505 on even parity, 39321 only where bits 0 and 1 agree, 42405 only where bits 0 and 2 agree. It shows which prior makes this toy identifiable and that a discrete channel can be trained through. It does not show a learned language for real models.</p></div></section>\n"
+text gth "<th>"
+text gthz "</th>"
+text gtr "<tr>"
+text gtrz "</tr>\n"
+text gtd "<td class='r'>"
+text gtdz "</td>"
+text gli1 "<li><span class='pill "
+text gli2 "'>"
+text gli3 "</span> "
+text gliz "</li>"
+text gok "ok"
+text gbad "bad"
+text gkv "vectors="
+text gkj "json_bytes="
+text gki "ipo_bytes="
+text gnosum "the wire selftest summary has no "
+text gpass " PASS"
+
+note lastline: start of the last non-empty line of src[s, e)
+fn lastline s ulong e ulong to ulong
+p = s
+b = s
+while lt p e bound 100000
+q = eol p e
+if gt q p
+b = p
+end
+p = add q 1
+end
+ret b
+end
+
+note kvnum: the number after the text k on the line that starts at p and ends before e
+fn kvnum p ulong e ulong k view uchar * to ulong
+q = eol p e
+f = find p q k
+if ge f q
+w = write 2 thub 0 len thub
+w = write 2 gnosum 0 len gnosum
+w = write 2 k 0 len k
+w = write 2 tnl 0 len tnl
+exit 1
+end
+d = add f len k
+z = d
+while lt z q bound 32
+c = get src z
+if or lt c 48 gt c 57
+break
+end
+z = add z 1
+end
+ret num d sub z d
+end
+
+note trimlf: end of src[s, e) without one trailing line feed
+fn trimlf s ulong e ulong to ulong
+if gt e s
+if eq get src sub e 1 10
+ret sub e 1
+end
+end
+ret e
+end
+
+note nl8row: one TAB-separated line as a table row; h says whether it is the header
+fn nl8row p ulong q ulong h bool to void
+if not h
+em gtr
+end
+i = p
+while lt i q bound 64
+t = tabf i q
+if h
+em gth
+emh i sub t i
+em gthz
+else
+em gtd
+emh i sub t i
+em gtdz
+end
+i = add t 1
+end
+if not h
+em gtrz
+end
+end
+
+note nl8pills: every line of src[s, e) that holds no TAB, as a pill line; a line with " PASS" is
+note green, any other line red
+fn nl8pills s ulong e ulong to void
+p = s
+while lt p e bound 100000
+q = eol p e
+if gt q p
+if ge tabf p q q
+em gli1
+if lt find p q gpass q
+em gok
+else
+em gbad
+end
+em gli2
+emh p sub q p
+em gli3
+em gliz
+end
+end
+p = add q 1
+end
+end
+
+note nl8rows: every line of src[s, e) that holds a TAB, as table rows; the first is the header
+fn nl8rows s ulong e ulong to void
+p = s
+n = ulong 0
+while lt p e bound 100000
+q = eol p e
+if lt tabf p q q
+if eq n 0
+nl8row p q true
+em g31
+else
+nl8row p q false
+end
+n = add n 1
+end
+p = add q 1
+end
+end
+
+note nl8list: every non-empty line of src[s, e) as a plain list item
+fn nl8list s ulong e ulong to void
+p = s
+while lt p e bound 100000
+q = eol p e
+if gt q p
+em mli
+emh p sub q p
+em mliz
+end
+p = add q 1
+end
+end
+
+note nl8tab: the verdict lines of NL8 as pills, then its table, then the after-the-fact sweep
+fn nl8tab to void
+nl8pills get nl8 0 get nl8 1
+em g34
+nl8rows get nl8 0 get nl8 1
+em g35
+nl8list get nsw 0 get nsw 1
+em g33
+end
+
+note pgomeg: /omegese/
+fn pgomeg to void
+pgopen 3
+pghead 3
+js = get exj 0
+je = trimlf js get exj 1
+is = get exi 0
+ie = trimlf is get exi 1
+em g01
+emu sub je js
+em g02
+emh js sub je js
+em g03
+emu sub ie is
+em g04
+emh is sub ie is
+em g05
+l = lastline get wsm 0 get wsm 1
+le0 = get wsm 1
+a = kvnum l le0 gkj
+b = kvnum l le0 gki
+em g10
+emc kvnum l le0 gkv
+em g11
+emc a
+em g12
+emc b
+em g13
+emp div add mul b 1000 div a 2 a
+em g14
+emh l sub trimlf l eol l le0 l
+em g15
+em g20
+em g30
+nl8tab
+pgclose
+wfile wf3
+end

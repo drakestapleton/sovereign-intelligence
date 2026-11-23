@@ -1,0 +1,125 @@
+om2
+note wire/tests/subst.om: replace exactly one occurrence of a text, in Omega. It makes the
+note mutants of the negative controls from the real source, so a mutant differs from the
+note program by one stated edit and an edit that did not apply cannot pass for a mutant.
+note
+note   subst FROM TO < in > out
+note
+note stdout is stdin with its one occurrence of FROM replaced by TO. FROM and TO are taken as
+note bytes (no escapes, no patterns); FROM is 1 to 4096 bytes, TO 0 to 4096 bytes, stdin at
+note most 8 MiB. Occurrences are counted at every byte position, overlapping ones included.
+note Nothing is written to stdout unless exactly one occurrence was found.
+note Exit 0 replaced, 2 usage, 3 FROM does not occur, 4 FROM occurs more than once,
+note 5 stdin unreadable or over 8 MiB, or stdout not writable.
+
+text tusage "usage: subst FROM TO < in > out\n"
+text tnone "subst: FROM does not occur\n"
+text tmany "subst: FROM occurs more than once\n"
+text tio "subst: cannot read stdin, stdin is over 8 MiB, or cannot write stdout\n"
+
+global ib uchar 8388624
+global fb uchar 4096
+global tb uchar 4096
+
+fn err t view uchar * c int to void
+w = write 2 t 0 len t
+exit c
+end
+
+note rdin: all of stdin into ib; its length
+fn rdin to ulong
+p = ulong 0
+note every pass reads at least one byte
+while lt p 8388609 bound 8388610
+k = read 0 ib p sub 8388609 p
+if lt k 0
+err tio 5
+end
+if eq k 0
+break
+end
+p = add p ulong k
+end
+if gt p 8388608
+err tio 5
+end
+ret p
+end
+
+note mat: are the n bytes of ib from p the n bytes of fb
+fn mat p ulong n ulong to bool
+i = ulong 0
+while lt i n bound 4096
+if ne get ib add p i get fb i
+ret false
+end
+i = add i 1
+end
+ret true
+end
+
+note wib: write ib in [o, e) to stdout, all of it
+fn wib o ulong e ulong to void
+p = o
+note every pass writes at least one byte
+while lt p e bound 8388609
+k = write 1 ib p sub e p
+if le k 0
+err tio 5
+end
+p = add p ulong k
+end
+end
+
+note wtb: write the first n bytes of tb to stdout, all of them
+fn wtb n ulong to void
+p = ulong 0
+note every pass writes at least one byte
+while lt p n bound 4097
+k = write 1 tb p sub n p
+if le k 0
+err tio 5
+end
+p = add p ulong k
+end
+end
+
+fn main to int
+if ne argcnt 3
+err tusage 2
+end
+k = argread 1 fb 0 4096
+if le k 0
+err tusage 2
+end
+fl = ulong k
+k = argread 2 tb 0 4096
+if lt k 0
+err tusage 2
+end
+tl = ulong k
+n = rdin
+c = ulong 0
+a = ulong 0
+if ge n fl
+last = sub n fl
+p = ulong 0
+while le p last bound 8388609
+if mat p fl
+c = add c 1
+a = p
+end
+p = add p 1
+end
+end
+if eq c 0
+err tnone 3
+end
+if gt c 1
+err tmany 4
+end
+wib 0 a
+wtb tl
+wib add a fl n
+ret 0
+end

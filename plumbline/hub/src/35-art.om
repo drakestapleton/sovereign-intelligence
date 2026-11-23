@@ -1,0 +1,263 @@
+note hub/src/35-art.om: the hub's one picture, drawn by arithmetic.
+note
+note Four planes seen from above at an angle (hardware at the bottom, then software, models, agents)
+note and one plumb line dropped through their centres, with its bob below the lowest plane. Every
+note coordinate is computed here: plane p has its centre at (250, 520 - 120 p), half-width 210 and
+note half-height 60, and carries a 6 by 6 grid. The project count beside each plane is read from
+note STACK.tsv, and each lit tile on a plane is one of those projects: project k of plane p sits in
+note grid cell (11k + 1 + 7p) mod 36. Sixteen loose fragments drift around the planes; their places come
+note from a fixed linear congruential sequence, so the picture is the same on every build. No image
+note file is shipped.
+
+text a01 "<svg class='art' viewBox='0 0 620 640' role='img' aria-labelledby='artt'><title id='artt'>Four planes, hardware, software, models and agents, with one plumb line through all of them. Each lit tile is one project on that plane. Loose fragments drift around them.</title>\n"
+text a02 "<polygon class='pl' points='"
+text a03 "'/>\n<path class='gr' d='"
+text a04 "'/>\n"
+text a05 "<path class='ln' d='M250 36V588'/>\n<circle class='cap' cx='250' cy='36' r='4'/>\n<polygon class='bob' points='250,584 260,597 250,618 240,597'/>\n"
+text a06 "<circle class='halo' cx='250' cy='"
+text a07 "' r='7' style='animation-delay:"
+text a08 "ms'/><circle class='nd' cx='250' cy='"
+text a09 "' r='6' style='animation-delay:"
+text a10 "ms'/>\n"
+text a11 "<text class='lb' x='474' y='"
+text a12 "'>"
+text a13 "</text><text class='ls' x='474' y='"
+text a14 " project"
+text a16 "</text>\n"
+text a15 "</svg>\n"
+text a17 "<polygon class='tl' points='"
+text a18 "' style='animation-delay:"
+text a19 "<rect class='jk' x='"
+text a20 "' y='"
+text a21 "' width='"
+text a22 "' height='"
+text a23 "' style='animation-delay:-"
+text ap0 "HARDWARE"
+text ap1 "SOFTWARE"
+text ap2 "MODELS"
+text ap3 "AGENTS"
+
+note plsub: the subsystem (index into the ledger groups) that is number k (0 or 1) of plane p, or 9.
+note Plane 0 hardware: gpu, os. 1 software: compiler, runtime. 2 models: train. 3 agents: agents,
+note protocol. 4 is the line itself: evidence, docs.
+fn plsub p ulong k ulong to ulong
+if eq p 0
+if eq k 0
+ret 1
+end
+ret 2
+end
+if eq p 1
+if eq k 0
+ret 0
+end
+ret 3
+end
+if eq p 2
+if eq k 0
+ret 4
+end
+ret 9
+end
+if eq p 3
+if eq k 0
+ret 6
+end
+ret 5
+end
+if eq k 0
+ret 7
+end
+ret 8
+end
+
+note plcount: projects on plane p
+fn plcount p ulong to ulong
+n = get agc plsub p 0
+s = plsub p 1
+if lt s 9
+n = add n get agc s
+end
+ret n
+end
+
+note plom, plfo: lines of Omega and of other languages on plane p
+fn plom p ulong to ulong
+n = get ago plsub p 0
+s = plsub p 1
+if lt s 9
+n = add n get ago s
+end
+ret n
+end
+fn plfo p ulong to ulong
+n = get agf plsub p 0
+s = plsub p 1
+if lt s 9
+n = add n get agf s
+end
+ret n
+end
+
+note artpt: "x,y"
+fn artpt x ulong y ulong to void
+emu x
+emb 44
+emu y
+end
+
+note artseg: "Mx1 y1Lx2 y2"
+fn artseg x1 ulong y1 ulong x2 ulong y2 ulong to void
+emb 77
+emu x1
+emb 32
+emu y1
+emb 76
+emu x2
+emb 32
+emu y2
+end
+
+note artplane: the rhombus of plane p and its grid
+fn artplane p ulong to void
+cy = sub 520 mul 120 p
+em a02
+artpt 250 sub cy 60
+emb 32
+artpt 460 cy
+emb 32
+artpt 250 add cy 60
+emb 32
+artpt 40 cy
+em a03
+for i ulong 5
+t = add i 1
+u = mul 35 t
+v = mul 10 t
+y1 = add sub cy 60 v
+y2 = add cy v
+artseg add 250 u y1 add 40 u y2
+artseg sub 250 u y1 sub 460 u y2
+end
+em a04
+end
+
+note arttile: the lit tile of project k on plane p, in grid cell (11k + 1 + 7p) mod 36. Cell (i, j) has
+note its centre at (250 + 35 (i - j), cy - 60 + 10 (i + j + 1)).
+fn arttile p ulong k ulong to void
+cy = sub 520 mul 120 p
+c = rem add add mul k 11 1 mul p 7 36
+i = div c 6
+j = rem c 6
+x = sub add 250 mul 35 i mul 35 j
+y = add sub cy 60 mul 10 add add i j 1
+em a17
+artpt x sub y 7
+emb 32
+artpt add x 24 y
+emb 32
+artpt x add y 7
+emb 32
+artpt sub x 24 y
+em a18
+emu add 2200 mul 70 k
+em a10
+end
+
+note arttiles: one tile per project of plane p (at most 36)
+fn arttiles p ulong to void
+n = plcount p
+if gt n 36
+n = 36
+end
+for k ulong n bound 36
+arttile p k
+end
+end
+
+note artjunk: sixteen loose fragments. s runs through s' = (1103515245 s + 12345) mod 2^31 from 2026.
+fn artjunk to void
+s = ulong 2026
+for i ulong 16
+s = and add mul s 1103515245 12345 2147483647
+x = add 16 rem shr s 8 440
+y = add 24 rem shr s 4 590
+w = add 5 rem shr s 16 7
+if and ge x 226 le x 274
+x = add x 60
+end
+em a19
+emu x
+em a20
+emu y
+em a21
+emu w
+em a22
+emu w
+em a23
+emu rem shr s 3 9000
+em a10
+end
+end
+
+note artnode: the lit node where the line crosses plane p. Its light-up is delayed to the moment
+note the falling line reaches it: 250 ms + 1900 ms * (cy - 36) / 552.
+fn artnode p ulong to void
+cy = sub 520 mul 120 p
+d = add 250 div mul 1900 sub cy 36 552
+em a06
+emu cy
+em a07
+emu d
+em a08
+emu cy
+em a09
+emu d
+em a10
+end
+
+note artlabel: the name of plane p and its project count, right of the plane
+fn artlabel p ulong to void
+cy = sub 520 mul 120 p
+em a11
+emu add cy 4
+em a12
+if eq p 0
+em ap0
+end
+if eq p 1
+em ap1
+end
+if eq p 2
+em ap2
+end
+if eq p 3
+em ap3
+end
+em a13
+emu add cy 21
+em a12
+n = plcount p
+emu n
+em a14
+if ne n 1
+emb 115
+end
+em a16
+end
+
+note art: the whole picture
+fn art to void
+em a01
+artjunk
+for p ulong 4
+artplane p
+arttiles p
+end
+em a05
+for q ulong 4
+artnode q
+artlabel q
+end
+em a15
+end

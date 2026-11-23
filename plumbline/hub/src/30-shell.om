@@ -1,0 +1,383 @@
+note hub/src/30-shell.om: what every page shares: head, navigation, page header, footer.
+note
+note Routes: 0 overview, 1 stack, 2 evidence, 3 omegese, 4 protocol; 11..16 are the protocol's own
+note pages, routes 1..6 of 60-protocol.om (quick-start, concepts, adapter, conformance, status, forge).
+note BASE (the site's address, like https://interplane.io) is an argument, so the same build can be
+note published under any address; nothing else in a page is absolute except links to other sites.
+
+note bas: offset and length of BASE in src
+global bas ulong 2
+
+text hbad "BASE must be https://host with lowercase letters, digits, dots and dashes, and no trailing slash: "
+text hd1 "<!doctype html>\n<html lang='en'>\n<head>\n<meta charset='utf-8'>\n<meta name='viewport' content='width=device-width,initial-scale=1'>\n<title>INTERPLANE: "
+text hd2 "</title>\n<meta name='description' content='"
+text hd3 "'>\n<meta property='og:title' content='INTERPLANE: "
+text hd4 "'>\n<meta property='og:description' content='"
+text hd5 "'>\n<meta property='og:type' content='website'>\n<meta property='og:url' content='"
+text hd6 "'>\n<meta name='color-scheme' content='light dark'>\n<meta name='theme-color' content='#0b0d12'>\n<meta name='generator' content='Plumbline (seeded Omega)'>\n<link rel='canonical' href='"
+text hd7 "'>\n<link rel='icon' href='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%227%22 fill=%22%230b0d12%22/%3E%3Cpath d=%22M5 11h22M5 21h22%22 stroke=%22%23f2f0ea%22 stroke-width=%222%22/%3E%3Cpath d=%22M16 4v24%22 stroke=%22%23f2a93b%22 stroke-width=%223%22/%3E%3C/svg%3E'>\n<link rel='stylesheet' href='/style.css'>\n<link rel='alternate' type='application/json' href='/facts.json' title='Facts behind this page'>\n<script type='application/ld+json'>{\"@context\":\"https://schema.org\",\"@graph\":[{\"@type\":\"WebSite\",\"@id\":\""
+text hd8 "/\",\"url\":\""
+text hd9 "/\",\"name\":\"INTERPLANE\"},{\"@type\":\"WebPage\",\"url\":\""
+text hda "\",\"isPartOf\":{\"@id\":\""
+text hdb "/\"}}]}</script>\n</head>\n<body>\n<a class='skip' href='#main'>Skip to content</a>\n<header class='top'><div class='wrap'><a class='brand' href='/' aria-label='INTERPLANE, overview'><svg viewBox='0 0 32 32' aria-hidden='true'><path d='M5 11h22M5 21h22' stroke='#f2f0ea' stroke-width='2' fill='none'/><path d='M16 4v24' stroke='#f2a93b' stroke-width='3' fill='none'/></svg><span>INTERPLANE</span></a><nav class='nav' aria-label='Main'>"
+text hdc "</nav></div></header>\n"
+text hna "<a href='"
+text hnb "' aria-current='page'>"
+text hnc "'>"
+text hnd "</a>"
+text hp0 "/"
+text hp1 "/stack/"
+text hp2 "/evidence/"
+text hp3 "/omegese/"
+text hp4 "/protocol/"
+text hp6 "/forge/"
+text hl0 "Overview"
+text hl1 "Stack"
+text hl2 "Evidence"
+text hl3 "Omegese"
+text hl4 "Protocol"
+text hl6 "Forge"
+text ht0 "No proof. Not done."
+text ht1 "The whole stack"
+text ht2 "What is proven, and at which level"
+text ht3 "Agents speak Omegese"
+text ht4 "The protocol"
+text hs0 "INTERPLANE is the home for space junk: builds that did not quite work but hold a piece that helps somebody else. It checks AI completion claims against reproducible evidence, so slop can become something functional, verifiable and replicable. Open source on Radicle."
+text hs1 "Every project of the stack in one place: what it is, which plane it belongs to, how much of it is already Omega, and the exact commit to fetch from Radicle."
+text hs2 "Each claim with its evidence label and receipt, read from the front door's own record, and what is still not done."
+text hs3 "The Interplane Omegese form: agents exchange checked, compact lines of Omegese in place of JSON envelopes, with the measured sizes."
+text hs4 "What INTERPLANE checks, what runs today and what does not, the receipts that were allowed to fail, and how to run the offline reference."
+text hk1 "<div class='phead'><div class='wrap'><p class='kicker'><span>INTERPLANE</span><span>"
+text hk2 "</span></p><h1>"
+text hk3 "</h1><p>"
+text hk4 "</p>"
+text hk5 "</div></div>\n"
+text hfg "INTERPLANE Forge"
+text hkg0 "Hub"
+text hkg1 "Protocol"
+text hkg2 "Forge"
+text hsn1 "<nav class='subnav' aria-label='Protocol pages'>"
+text hsn2 "</nav>"
+text hm1 "<main id='main' tabindex='-1'>\n"
+text hm2 "<main id='main' tabindex='-1' class='legacy docs-main'>\n"
+text hmz "</main>\n"
+text hf1 "<footer class='foot'><div class='wrap'><div class='cols'><div><h4>INTERPLANE</h4><p>No proof. Not done.</p><p>The one place for the stack I build: hardware, software, models and agents, and the rule that runs through all of them.</p></div><div><h4>Hub</h4><ul><li><a href='/'>Overview</a></li><li><a href='/stack/'>Stack</a></li><li><a href='/evidence/'>Evidence</a></li><li><a href='/omegese/'>Omegese</a></li></ul></div><div><h4>Protocol</h4><ul><li><a href='/protocol/'>Protocol</a></li>"
+text hf2 "<li><a href='/"
+text hf3 "/'>"
+text hf4 "</a></li>"
+text hf5 "</ul></div><div><h4>Elsewhere</h4><ul><li><a href='https://www.aienos.com/'>AIEN</a></li><li><a href='https://drakestapleton.com/'>Drake Stapleton</a></li><li><a href='https://radicle.xyz/'>Radicle</a></li><li><a href='https://github.com/drakestapleton/sovereign-intelligence'>Front door on GitHub</a></li></ul></div></div><div class='hdae'><p>Development follows Human-Directed Agentic Engineering (HDAE): humans define goals, architecture, constraints, acceptance criteria and stopping points; agents implement, execute checks, diagnose failures and revise within those boundaries. Human review retains responsibility for claims, acceptance and release decisions. This development method is distinct from runtime behavior.</p><p>For the documented method and a systems-software case study, see Gregory M. Kurtzer, <a href='https://doi.org/10.5281/zenodo.23682548'>Ginux: Building an Independent Kernel That Runs Linux Userspace through Human-Directed Agentic Engineering</a> (2026).</p></div><div class='fine'><span>Written out by an Omega program, built by a compiler grown from hand-written bytes.</span><span>No executable scripts. No outside fonts. No trackers.</span><span>Plumbline build</span></div></div></footer>\n</body>\n</html>\n"
+
+note setbase: argument ai is BASE; keep it in src and check its shape
+fn setbase ai ulong to void
+s = get srcn 0
+n = argread ai src s 256
+if le n 8
+die hbad 0 0
+end
+k = ulong n
+put srcn 0 add s k
+put bas 0 s
+put bas 1 k
+if not eqt s 8 mhttps
+die hbad s k
+end
+for i ulong sub k 8 bound 256
+c = get src add add s 8 i
+ok = false
+if and ge c 97 le c 122
+ok = true
+end
+if and ge c 48 le c 57
+ok = true
+end
+if or eq c 45 eq c 46
+ok = true
+end
+if not ok
+die hbad s k
+end
+end
+end
+
+note embase: append BASE
+fn embase to void
+ems get bas 0 get bas 1
+end
+
+note rtpath: append the path of route r, from the root, with its trailing slash
+fn rtpath r ulong to void
+if eq r 0
+em hp0
+end
+if eq r 1
+em hp1
+end
+if eq r 2
+em hp2
+end
+if eq r 3
+em hp3
+end
+if eq r 4
+em hp4
+end
+if ge r 11
+emb 47
+pp_slug sub r 10
+emb 47
+end
+end
+
+note rttitle: append the title of route r (without the "INTERPLANE: " prefix)
+fn rttitle r ulong to void
+if eq r 0
+em ht0
+end
+if eq r 1
+em ht1
+end
+if eq r 2
+em ht2
+end
+if eq r 3
+em ht3
+end
+if eq r 4
+em ht4
+end
+if ge r 11
+pp_title sub r 10
+end
+end
+
+note rtdesc: append the description of route r
+fn rtdesc r ulong to void
+if eq r 0
+em hs0
+end
+if eq r 1
+em hs1
+end
+if eq r 2
+em hs2
+end
+if eq r 3
+em hs3
+end
+if eq r 4
+em hs4
+end
+if ge r 11
+pp_desc sub r 10
+end
+end
+
+note attrfix: the bytes appended to ob since position m become safe inside a single-quoted
+note attribute: each ' becomes &#39; and each double quote &quot;. The slice is copied through the
+note free end of src and written again.
+fn attrfix m ulong to void
+n = sub get obn 0 m
+s = get srcn 0
+if gt n sub 8388608 s
+die tbig 0 0
+end
+for i ulong n bound 4194305
+put src add s i get ob add m i
+end
+put obn 0 m
+for j ulong n bound 4194305
+c = get src add s j
+if eq c 39
+em tapos
+else
+if eq c 34
+em tquot
+else
+emb c
+end
+end
+end
+end
+
+note navgrp: which main navigation entry route r belongs to (0 overview, 1 stack, 2 evidence,
+note 3 protocol, 4 omegese, 5 forge)
+fn navgrp r ulong to ulong
+if eq r 3
+ret 4
+end
+if eq r 4
+ret 3
+end
+if eq r 16
+ret 5
+end
+if ge r 11
+ret 3
+end
+ret r
+end
+
+note navlink: one navigation link; cur says whether it is the current page's entry
+fn navlink cur bool p view uchar * l view uchar * to void
+em hna
+em p
+if cur
+em hnb
+else
+em hnc
+end
+em l
+em hnd
+end
+
+note pgopen: everything from the doctype to the end of the top bar, for route r
+fn pgopen r ulong to void
+em hd1
+rttitle r
+em hd2
+m = get obn 0
+rtdesc r
+attrfix m
+em hd3
+m = get obn 0
+rttitle r
+attrfix m
+em hd4
+m = get obn 0
+rtdesc r
+attrfix m
+em hd5
+embase
+rtpath r
+em hd6
+embase
+rtpath r
+em hd7
+embase
+em hd8
+embase
+em hd9
+embase
+rtpath r
+em hda
+embase
+em hdb
+g = navgrp r
+navlink eq g 0 hp0 hl0
+navlink eq g 1 hp1 hl1
+navlink eq g 2 hp2 hl2
+navlink eq g 3 hp4 hl4
+navlink eq g 4 hp3 hl3
+navlink eq g 5 hp6 hl6
+em hdc
+end
+
+note sublink: one link of the protocol sub-navigation, to protocol route q (0 is /protocol/)
+fn sublink r ulong q ulong to void
+em hna
+if eq q 0
+em hp4
+else
+emb 47
+pp_slug q
+emb 47
+end
+if eq r add q 10
+em hnb
+else
+if and eq r 4 eq q 0
+em hnb
+else
+em hnc
+end
+end
+if eq q 0
+em hl0
+else
+plabel q
+end
+em hnd
+end
+
+note pghead: the dark page header of a sub-page (kicker, h1, description, and the protocol
+note sub-navigation on protocol pages), then the opening of main
+fn pghead r ulong to void
+em hk1
+g = navgrp r
+if eq g 3
+em hkg1
+else
+if eq g 5
+em hkg2
+else
+em hkg0
+end
+end
+em hk2
+if eq r 16
+em hfg
+else
+rttitle r
+end
+em hk3
+rtdesc r
+em hk4
+if eq g 3
+em hsn1
+for q ulong 6
+sublink r q
+end
+em hsn2
+end
+em hk5
+if ge r 4
+em hm2
+else
+em hm1
+end
+end
+
+note pgclose: the end of main, the footer and the end of the document
+fn pgclose to void
+em hmz
+em hf1
+n = pp_nroute
+for i ulong n bound 16
+q = add i 1
+em hf2
+pp_slug q
+em hf3
+plabel q
+em hf4
+end
+em hf5
+end
+
+text hq1 "Quick Start"
+text hq2 "Concepts"
+text hq3 "Writing an Adapter"
+text hq4 "Conformance"
+text hq5 "Versioned Status"
+text hq6 "Forge"
+
+note plabel: the navigation label of protocol route q (1..6)
+fn plabel q ulong to void
+if eq q 1
+em hq1
+end
+if eq q 2
+em hq2
+end
+if eq q 3
+em hq3
+end
+if eq q 4
+em hq4
+end
+if eq q 5
+em hq5
+end
+if eq q 6
+em hq6
+end
+end

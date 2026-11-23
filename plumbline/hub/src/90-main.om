@@ -1,0 +1,125 @@
+note hub/src/90-main.om: the program.
+note
+note   hub build OUT BASE REPOS STACK LEDGER PINS README FACTS WIRESUM EXJSON EXIPO NL8 NL8SWEEP REGISTRY
+note     OUT     directory to write the site into (created when missing)
+note     BASE    the address the site will be served at, like https://interplane.io
+note     REPOS   repos.tsv              STACK  stack/STACK.tsv      LEDGER stack/LEDGER.tsv
+note     PINS    seed/PINS.tsv          README README.md of the front door
+note     FACTS   the protocol facts, as written by "hub facts"
+note     WIRESUM, EXJSON, EXIPO, NL8, NL8SWEEP   the recorded gate outputs that /omegese/ prints
+note     REGISTRY  the Radicle registry (RIDS.md) the forge count is read from, or - for none
+note   hub facts PROTO_DIR SHA TIME OUTFILE
+note     read a checkout of the protocol repository at commit SHA and write the facts file
+note The build prints "HUB files=N" and exits 0, or names what it refused and exits 1.
+
+text musage "usage: hub build OUT BASE REPOS STACK LEDGER PINS README FACTS WIRESUM EXJSON EXIPO NL8 NL8SWEEP REGISTRY\n       hub facts PROTO_DIR SHA TIME OUTFILE\n"
+text mbuild "build"
+text mfacts "facts"
+text mdone "HUB files="
+
+note usage: print the usage and exit 2
+fn usage to void
+w = write 2 musage 0 len musage
+exit 2
+end
+
+note ldrows: load the file named by argument ai as table k
+fn ldrows k ulong ai ulong to void
+s = load ai
+rows k s get srcn 0
+end
+
+note precheck: every README section a page needs must exist before the first file is written, so a
+note refused build leaves no half-written site behind
+fn precheck to void
+b = md_sec oq1
+b = md_sec oq2
+b = md_sec eq3
+b = md_sec eq4
+b = md_sec eq5
+b = md_sec sq1
+l = lastline get wsm 0 get wsm 1
+n = kvnum l get wsm 1 gkv
+n = kvnum l get wsm 1 gkj
+n = kvnum l get wsm 1 gki
+n = seedbytes
+end
+
+note build: write the whole site. One local is reused for every input so that the function stays
+note inside the 16 registers of the AArch64 target.
+fn build to void
+setout 2
+setbase 3
+ldrows 0 4
+ldrows 1 5
+ldrows 2 6
+ldrows 3 7
+s = load 8
+put mdr 0 s
+put mdr 1 get srcn 0
+s = load 9
+put fac 0 s
+put fac 1 get srcn 0
+s = load 10
+put wsm 0 s
+put wsm 1 get srcn 0
+s = load 11
+put exj 0 s
+put exj 1 get srcn 0
+s = load 12
+put exi 0 s
+put exi 1 get srcn 0
+s = load 13
+put nl8 0 s
+put nl8 1 get srcn 0
+s = load 14
+put nsw 0 s
+put nsw 1 get srcn 0
+regload 15
+aggregate
+fx_parse get fac 0 get fac 1
+precheck
+home
+wfile wf0
+pgstack
+pgevid
+pgomeg
+pgproto
+n = pp_nroute
+for i ulong n bound 16
+pgsub add i 1
+end
+discovery
+em mdone
+emu get nfile 0
+emb 10
+w = write 1 ob 0 get obn 0
+end
+
+fn main to int
+if lt argcnt 2
+usage
+end
+setpath 1
+n = get pbn 0
+s = get srcn 0
+for i ulong n bound 4096
+put src add s i get pb i
+end
+if eqt s n mbuild
+if ne argcnt 16
+usage
+end
+build
+ret 0
+end
+if eqt s n mfacts
+if ne argcnt 6
+usage
+end
+fx_gather
+ret 0
+end
+usage
+ret 2
+end

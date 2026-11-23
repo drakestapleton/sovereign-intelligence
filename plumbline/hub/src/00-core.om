@@ -1,0 +1,388 @@
+om2
+note hub/src/00-core.om: buffers, files and emit helpers of the INTERPLANE hub generator.
+note
+note The generator is one Omega program. Its units are the files of hub/src in name order,
+note concatenated (Omega has no imports) and compiled by the seed-grown omc:
+note   cat hub/src/*.om | omc > hub
+note Nothing here reads a clock, the environment or the network: the site is a function of
+note the input files' bytes.
+
+note src: every input file, one after another. ob: the page being written.
+global src uchar 8388608
+global srcn ulong 1
+global ob uchar 4194304
+global obn ulong 1
+note pb: a path being built. od: the output directory with its trailing slash, odn bytes long.
+global pb uchar 4096
+global pbn ulong 1
+global od uchar 4096
+global odn ulong 1
+note nfile: files written so far (the manifest count)
+global nfile ulong 1
+
+text thub "hub: "
+text tnl "\n"
+text toverf "a page is over the 4 MiB buffer"
+text targ "cannot read a command-line argument"
+text topen "cannot open "
+text tread "cannot read "
+text tbig "inputs over the 8 MiB buffer at "
+text twrite "cannot write "
+text tmkdir "cannot create directory "
+text tlong "path over 4096 bytes"
+text tamp "&amp;"
+text tlt "&lt;"
+text tgt "&gt;"
+text tquot "&quot;"
+text tapos "&#39;"
+
+note die: report m and up to 200 bytes of src from o on stderr, then exit 1
+fn die m view uchar * o ulong n ulong to void
+k = n
+if gt k 200
+k = 200
+end
+w = write 2 thub 0 len thub
+w = write 2 m 0 len m
+if gt k 0
+w = write 2 src o k
+end
+w = write 2 tnl 0 len tnl
+exit 1
+end
+
+note dief: report m and the current path on stderr, then exit 1
+fn dief m view uchar * to void
+w = write 2 thub 0 len thub
+w = write 2 m 0 len m
+w = write 2 pb 0 get pbn 0
+w = write 2 tnl 0 len tnl
+exit 1
+end
+
+note setpath: copy command-line argument ai into pb
+fn setpath ai ulong to void
+n = argread ai pb 0 4096
+if le n 0
+die targ 0 0
+end
+put pbn 0 ulong n
+end
+
+note load: append the file named by argument ai to src and return where it starts;
+note its end is get srcn 0 afterwards
+fn load ai ulong to ulong
+setpath ai
+fd = fopen pb 0 get pbn 0 0 0
+if lt fd 0
+dief topen
+end
+s = get srcn 0
+p = s
+while lt p 8388608 bound 8388609
+k = read int fd src p sub 8388608 p
+if lt k 0
+dief tread
+end
+if eq k 0
+break
+end
+p = add p ulong k
+end
+c = fclose int fd
+if ge p 8388608
+dief tbig
+end
+put srcn 0 p
+ret s
+end
+
+note setout: argument ai names the output directory; keep it in od, with a trailing slash
+fn setout ai ulong to void
+setpath ai
+n = get pbn 0
+if ge n 4000
+dief tlong
+end
+if ne get pb sub n 1 47
+put pb n 47
+n = add n 1
+end
+for i ulong n bound 4096
+put od i get pb i
+end
+put odn 0 n
+m = makedir od 0 n 493
+end
+
+note pathset: pb = output directory + rel
+fn pathset rel view uchar * to void
+n = get odn 0
+k = len rel
+if gt k sub 4096 n
+dief tlong
+end
+for j ulong n bound 4096
+put pb j get od j
+end
+for i ulong k
+put pb add n i get rel i
+end
+put pbn 0 add n k
+end
+
+note mkdirs: create every directory on the way to the file path now in pb (existing ones are fine)
+fn mkdirs to void
+n = get pbn 0
+s = get odn 0
+i = s
+while lt i n bound 4097
+if eq get pb i 47
+m = makedir pb 0 i 493
+end
+i = add i 1
+end
+end
+
+note wfile: write ob to OUT/rel (created or truncated, mode 0644), then empty ob
+fn wfile rel view uchar * to void
+pathset rel
+mkdirs
+fd = fopen pb 0 get pbn 0 577 420
+if lt fd 0
+dief topen
+end
+n = get obn 0
+p = ulong 0
+while lt p n bound 4194305
+k = write int fd ob p sub n p
+if le k 0
+dief twrite
+end
+p = add p ulong k
+end
+c = fclose int fd
+if ne c 0
+dief twrite
+end
+put obn 0 0
+put nfile 0 add get nfile 0 1
+end
+
+note em: append a text to ob
+fn em t view uchar * to void
+p = get obn 0
+n = len t
+if gt n sub 4194304 p
+die toverf 0 0
+end
+for i ulong n
+put ob add p i get t i
+end
+put obn 0 add p n
+end
+
+note emb: append one byte to ob
+fn emb c uchar to void
+p = get obn 0
+if ge p 4194304
+die toverf 0 0
+end
+put ob p c
+put obn 0 add p 1
+end
+
+note ems: append n bytes of src from o to ob, as they are
+fn ems o ulong n ulong to void
+p = get obn 0
+if gt n sub 4194304 p
+die toverf 0 0
+end
+for i ulong n
+put ob add p i get src add o i
+end
+put obn 0 add p n
+end
+
+note emx: append one byte, HTML-escaped (& < > " ')
+fn emx c uchar to void
+if eq c 38
+em tamp
+ret
+end
+if eq c 60
+em tlt
+ret
+end
+if eq c 62
+em tgt
+ret
+end
+if eq c 34
+em tquot
+ret
+end
+if eq c 39
+em tapos
+ret
+end
+emb c
+end
+
+note emh: append n bytes of src from o to ob, HTML-escaped. Every byte that comes from an
+note input file reaches a page through this word, never through ems.
+fn emh o ulong n ulong to void
+for i ulong n
+emx get src add o i
+end
+end
+
+note emu: append v in decimal
+fn emu v ulong to void
+d = new uchar 20 0
+x = v
+put d 0 uchar add rem x 10 48
+k = ulong 1
+x = div x 10
+while gt x 0 bound 20
+put d k uchar add rem x 10 48
+k = add k 1
+x = div x 10
+end
+while gt k 0 bound 20
+k = sub k 1
+emb get d k
+end
+end
+
+note emc: append v in decimal with a comma between groups of three digits (902,624)
+fn emc v ulong to void
+d = new uchar 20 0
+x = v
+put d 0 uchar add rem x 10 48
+k = ulong 1
+x = div x 10
+while gt x 0 bound 20
+put d k uchar add rem x 10 48
+k = add k 1
+x = div x 10
+end
+while gt k 0 bound 20
+k = sub k 1
+emb get d k
+if and gt k 0 eq rem k 3 0
+emb 44
+end
+end
+end
+
+note emp: append a permille value as a percentage with one decimal (233 -> 23.3)
+fn emp v ulong to void
+emu div v 10
+emb 46
+emu rem v 10
+end
+
+note eqt: do the n bytes of src at o equal the text t
+fn eqt o ulong n ulong t view uchar * to bool
+if ne n len t
+ret false
+end
+for i ulong n
+if ne get src add o i get t i
+ret false
+end
+end
+ret true
+end
+
+note eqs: are two slices of src equal
+fn eqs a ulong an ulong b ulong bn ulong to bool
+if ne an bn
+ret false
+end
+for i ulong an
+if ne get src add a i get src add b i
+ret false
+end
+end
+ret true
+end
+
+note find: first position in [s, e) where the text t starts, or e
+fn find s ulong e ulong t view uchar * to ulong
+n = len t
+if gt n sub e s
+ret e
+end
+last = sub e n
+p = s
+while le p last bound 8388609
+if eqt p n t
+ret p
+end
+p = add p 1
+end
+ret e
+end
+
+note eol: position of the line feed that ends the line at p, or e
+fn eol p ulong e ulong to ulong
+q = p
+while lt q e bound 8388609
+if eq get src q 10
+ret q
+end
+q = add q 1
+end
+ret e
+end
+
+note tabf: position of the next TAB in [p, q), or q
+fn tabf p ulong q ulong to ulong
+i = p
+while lt i q bound 8388609
+if eq get src i 9
+ret i
+end
+i = add i 1
+end
+ret q
+end
+
+note fld: start of TAB-separated field k (0-based) of the line [p, q); q when the line has fewer
+fn fld p ulong q ulong k ulong to ulong
+i = p
+j = ulong 0
+while lt j k bound 64
+t = tabf i q
+if ge t q
+ret q
+end
+i = add t 1
+j = add j 1
+end
+ret i
+end
+
+note fln: length of the field that starts at f on the line ending at q
+fn fln f ulong q ulong to ulong
+ret sub tabf f q f
+end
+
+note num: decimal value of the n digits of src at o; a non-digit refuses
+text tbnum "not a decimal number: "
+fn num o ulong n ulong to ulong
+v = ulong 0
+if or eq n 0 gt n 18
+die tbnum o n
+end
+for i ulong n
+c = get src add o i
+if or lt c 48 gt c 57
+die tbnum o n
+end
+v = add mul v 10 ulong sub c 48
+end
+ret v
+end

@@ -1,0 +1,1 @@
+ipo1 env obj id mock kind runtime end "0.1" m-17-replay-0-0 nil treq obj path "/tmp/a.txt" end tool_request prov none openai "1" mock-model "1.0.0" read_file nil nil 0 req-17a tool read_file nil peer mock-model model "2026-01-01T00:00:00Z" trace-17

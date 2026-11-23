@@ -1,0 +1,420 @@
+note wire/src/40-main.om: the modes of ipo. Argument 1 is the mode, stdin the input, stdout
+note the output. A refusal writes nothing to stdout (selftest: only its verdict line).
+note   canon     any JSON value in, canonical JSON and one LF out
+note   enc       any JSON value in, one ipo1 frame out
+note   dec       one ipo1 frame in, canonical JSON and one LF out
+note   selftest  canonical JSON values, one per line, in; per-kind lines and a verdict out
+note   shapes    the embedded shape table out
+note Exit 0 done, 2 usage, 20..51 the refusal class; selftest exits 0 (PASS) or 1 (FAIL).
+
+text tmcanon "canon"
+text tmenc "enc"
+text tmdec "dec"
+text tmself "selftest"
+text tmshape "shapes"
+text tusage "usage: ipo canon|enc|dec|selftest|shapes (stdin to stdout)\n"
+text tkind "kind="
+text tkvec " n="
+text tkjson " json="
+text tkipo " ipo="
+text tpass "IPO1 PASS vectors="
+text tpjson " json_bytes="
+text tpipo " ipo_bytes="
+text tpayld "payload"
+text tkindk "kind"
+
+global arg uchar 16
+note fr: the frame of the current selftest line
+global fr uchar 1048576
+global frn ulong 1
+note the kinds selftest saw: name in kpl at koff (klen bytes; 0 bytes is the kind "-"),
+note vectors, JSON bytes and frame bytes of that kind; kdone marks a kind already printed
+global kpl uchar 4096
+global kpn ulong 1
+global koff ulong 64
+global klen ulong 64
+global kvec ulong 64
+global kjs ulong 64
+global kip ulong 64
+global kdone ulong 64
+global kcn ulong 1
+note totals of selftest: vectors, JSON bytes, frame bytes (neither counts the line's LF)
+global tvec ulong 1
+global tjs ulong 1
+global tip ulong 1
+
+note usage: the usage line on stderr, exit 2
+fn usage to void
+w = write 2 tusage 0 len tusage
+exit 2
+end
+
+note argis: is argument 1 (n bytes in arg) the text t
+fn argis t view uchar * n ulong to bool
+if ne n len t
+ret false
+end
+for i ulong n
+if ne get arg i get t i
+ret false
+end
+end
+ret true
+end
+
+note docanon: canonical JSON of stdin
+fn docanon to void
+rdall LIM
+setin 0 get sfn 0
+r = jparse
+put obn 0 0
+jw r
+ob1 10
+flush
+end
+
+note doenc: the frame of the JSON value on stdin
+fn doenc to void
+rdall LIM
+setin 0 get sfn 0
+r = jparse
+fwframe r
+flush
+end
+
+note dodec: canonical JSON of the frame on stdin
+fn dodec to void
+rdall LIM
+setin 0 get sfn 0
+r = fdec
+put obn 0 0
+jw r
+ob1 10
+flush
+end
+
+note mfind: the member of object a whose key is the text t, 0 when there is none
+fn mfind a ulong t view uchar * to ulong
+if ne get nk a 7
+ret 0
+end
+c = get na a
+while ne c 0 bound BND
+if seqt get nko c get nkn c t
+ret c
+end
+c = get nx c
+end
+ret 0
+end
+
+note keq: is the name of kind i the pool slice
+fn keq i ulong o ulong n ulong to bool
+if ne get klen i n
+ret false
+end
+b = get koff i
+j = ulong 0
+while lt j n bound 64
+if ne get kpl add b j get sp add o j
+ret false
+end
+j = add j 1
+end
+ret true
+end
+
+note kslot: the index of the kind named by the pool slice (n at most 64), added when new
+fn kslot o ulong n ulong to ulong
+c = get kcn 0
+i = ulong 0
+while lt i c bound 64
+if keq i o n
+ret i
+end
+i = add i 1
+end
+if ge c 64
+fail ECAP 0
+end
+p = get kpn 0
+j = ulong 0
+while lt j n bound 64
+put kpl add p j get sp add o j
+j = add j 1
+end
+put koff c p
+put klen c n
+put kpn 0 add p n
+put kcn 0 add c 1
+ret c
+end
+
+note kindof: the kind of the value at r: its payload.kind when that is a string of the bare
+note pattern [a-z_][a-z0-9_.-]{0,63}, else "-" (the empty name)
+fn kindof r ulong to ulong
+o = ulong 0
+n = ulong 0
+p = mfind r tpayld
+if ne p 0
+k = mfind p tkindk
+if ne k 0
+if eq get nk k 5
+if barepat get na k get nb k
+o = get na k
+n = get nb k
+end
+end
+end
+end
+ret kslot o n
+end
+
+note kless: does the name of kind i sort before the name of kind j (bytes, then length)
+fn kless i ulong j ulong to bool
+a = get koff i
+an = get klen i
+b = get koff j
+bn = get klen j
+m = an
+if lt bn m
+m = bn
+end
+t = ulong 0
+while lt t m bound 64
+x = get kpl add a t
+y = get kpl add b t
+if lt x y
+ret true
+end
+if gt x y
+ret false
+end
+t = add t 1
+end
+ret lt an bn
+end
+
+note knext: the unprinted kind whose name sorts first, 64 when all are printed
+fn knext to ulong
+c = get kcn 0
+b = ulong 64
+i = ulong 0
+while lt i c bound 64
+if eq get kdone i 0
+if eq b 64
+b = i
+else
+if kless i b
+b = i
+end
+end
+end
+i = add i 1
+end
+ret b
+end
+
+note kline: the report line of kind i
+fn kline i ulong to void
+obt tkind
+n = get klen i
+if eq n 0
+ob1 45
+end
+b = get koff i
+j = ulong 0
+while lt j n bound 64
+ob1 get kpl add b j
+j = add j 1
+end
+obt tkvec
+obdec get kvec i
+obt tkjson
+obdec get kjs i
+obt tkipo
+obdec get kip i
+ob1 10
+end
+
+note report: the per-kind lines in name order, then the PASS line
+fn report to void
+put obn 0 0
+c = get kcn 0
+t = ulong 0
+while lt t c bound 64
+i = knext
+put kdone i 1
+kline i
+t = add t 1
+end
+obt tpass
+obdec get tvec 0
+obt tpjson
+obdec get tjs 0
+obt tpipo
+obdec get tip 0
+ob1 10
+flush
+end
+
+note obeqsf: is the output exactly the n bytes of sf from o
+fn obeqsf o ulong n ulong to bool
+if ne get obn 0 n
+ret false
+end
+i = ulong 0
+while lt i n bound BND
+if ne get ob i get sf add o i
+ret false
+end
+i = add i 1
+end
+ret true
+end
+
+note obeqfr: is the output exactly the saved frame
+fn obeqfr to bool
+n = get frn 0
+if ne get obn 0 n
+ret false
+end
+i = ulong 0
+while lt i n bound BND
+if ne get ob i get fr i
+ret false
+end
+i = add i 1
+end
+ret true
+end
+
+note obtofr: save the output as the frame of this line
+fn obtofr to void
+n = get obn 0
+i = ulong 0
+while lt i n bound BND
+put fr i get ob i
+i = add i 1
+end
+put frn 0 n
+end
+
+note stline: one selftest line, the n bytes of sf from o (its LF not included):
+note canon(line) = line; frame = enc(line); dec(frame) = line; enc(dec(frame)) = frame
+fn stline o ulong n ulong to void
+if gt n LIM
+fail ETOOBIG 0
+end
+setin o n
+r = jparse
+k = kindof r
+put obn 0 0
+jw r
+if not obeqsf o n
+fail ESCANON 0
+end
+fwframe r
+obtofr
+obtoin
+r = fdec
+put obn 0 0
+jw r
+if not obeqsf o n
+fail ESRT 0
+end
+fwframe r
+if not obeqfr
+fail ESREENC 0
+end
+m = sub get frn 0 1
+put kvec k add get kvec k 1
+put kjs k add get kjs k n
+put kip k add get kip k m
+put tvec 0 add get tvec 0 1
+put tjs 0 add get tjs 0 n
+put tip 0 add get tip 0 m
+end
+
+note selftest: every line of stdin (at most SFLIM bytes in all) through stline, then report
+fn selftest to void
+rdall SFLIM
+t = get sfn 0
+if eq t 0
+fail ESEMPTY 0
+end
+o = ulong 0
+k = ulong 0
+note every pass consumes at least one byte of sf
+while lt o t bound BND
+k = add k 1
+put sline 0 k
+e = o
+while lt e t bound BND
+if eq get sf e 10
+break
+end
+e = add e 1
+end
+if eq e t
+fail ESNOLF sub e o
+end
+stline o sub e o
+o = add e 1
+end
+report
+end
+
+fn main to int
+put mode 0 0
+put sline 0 0
+if ne argcnt 2
+usage
+end
+k = argread 1 arg 0 16
+if lt k 1
+usage
+end
+n = ulong k
+m = ulong 0
+if argis tmcanon n
+m = 1
+end
+if argis tmenc n
+m = 2
+end
+if argis tmdec n
+m = 3
+end
+if argis tmself n
+m = 4
+end
+if argis tmshape n
+m = 5
+end
+if eq m 0
+usage
+end
+if eq m 4
+put mode 0 1
+end
+shinit
+if eq m 1
+docanon
+end
+if eq m 2
+doenc
+end
+if eq m 3
+dodec
+end
+if eq m 4
+selftest
+end
+if eq m 5
+put obn 0 0
+obs 0 get sp0 0
+flush
+end
+ret 0
+end
