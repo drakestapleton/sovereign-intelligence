@@ -1,0 +1,6 @@
+# Sovereign Intelligence 1.0 Compliant Human-in-the-Loop Orca Automations
+# Policy: zero fake accounts, zero scripted engagement, zero credential scraping, zero telemetry, 1-click human approval before any external post.
+workflow_id	trigger	schedule_or_source	action_summary	approval_gate	compliance_policy	status
+launch-receipt-drafter	event_public_push	interplane_public_sync_log	Read public commit diff and verified SHA-256 receipt; stage crisp technical post draft plus matching <1MB card in local review queue	human_1click_approval	zero_fake_accounts;zero_scripted_engagement;official_api_only;zero_telemetry	STAGED_HOLD
+community-qa-researcher	interval	every_30m_official_inbox	Ground technical Q&A drafts strictly in real repo commits, OM-1.0-PROFILE.md, and runnable verification commands without overclaiming	human_1click_approval	zero_fake_accounts;zero_scripted_engagement;official_api_only;zero_telemetry	STAGED_HOLD
+seo-aio-health-watch	cron	0 6 * * *	Read-only check of HTTP 200 on interplane.io and aienos.com, <1MB OG card sizes, valid /llms.txt, zero-JS CSP headers, and zero broken links	readonly_alert_only	zero_fake_accounts;zero_scripted_engagement;readonly_http_only;zero_telemetry	STAGED_HOLD

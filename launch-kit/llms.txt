@@ -1,0 +1,56 @@
+# Sovereign Intelligence 1.0
+
+> Sovereign, not super: intelligence you own, run on hardware you own, and can check yourself.
+
+## Canonical Definitions
+
+- **Sovereign Intelligence:** A 100% pure-Omega compiler, formal verification pipeline, local serving stack, GPU compute layer, and bare-metal OS grown deterministically from a 408-byte hand-written seed (`seed0 -> hex1 -> asm2 -> om4 -> omc`). Zero C on the seed path, zero telemetry, zero outside authority.
+- **Sovereign Intelligent Agent:** A verifiable, bit-for-bit, locally controlled, human-owned tool on a solo individual level — not conscious itself, and never a collective mind, but an extension of an individual human's consciousness and autonomy.
+- **AienOS:** The local, bit-for-bit verifiable Sovereign Intelligence operating environment and runtime extending an individual human on hardware they own.
+- **Interplane:** The open, verifiable interconnection between sovereign individuals (`https://interplane.io/`) — hosting source mirrors, the zero-JS online compiler, and the Interplane Helix Chain Hub — never a centralized collective.
+- **Omega & Omega NG:** Canonical prefix Omega (`.om`) is the inspectable seeded core language; **Omega NG** is the human-readable, Lean 4–verified infix language attached directly to canonical Omega **bit for bit** (identical ΩIR, identical `SEMANTIC_ID`, identical verified binary output).
+- **Omega Helix:** The personal agent DNA training and evolution studio (`OLLMSP01` specialist strands, `spclip` DNA editing, local RLVR) so no two Sovereign Intelligent Agents are alike — everyone trains their own DNA from the scratch they choose, with complete individual autonomy over morals and values.
+
+## Honest Evidence & Milestone Status (RM1–RM11)
+
+Host and QEMU passes are never cited as physical silicon qualification.
+
+- **RM1 Ground truth & gate coverage:** `HOST_VERIFIED` (operator manifest wiring `BLOCKED_OPERATOR`)
+- **RM2 Executable contracts (`requires` trap 9, `ensures`/`invariant` trap 10):** `HOST_VERIFIED`
+- **RM3 Measured efficiency & SM121 scheduling:** `HOST_VERIFIED` (`PHYSICAL_SILICON=NOT_RUN` for exclusive GB10 timing window)
+- **RM4 Memory model (Runtime pools `global T *`, `enlarge`, `len`, no `free`):** `HOST_VERIFIED`
+- **RM5 Strings & text (`seed/text`):** `HOST_VERIFIED`
+- **RM6 Modules (`seed/modules/rm6/modlink.om`):** `HOST_VERIFIED`
+- **RM7 `omega-bridge` ABI v2 FFI (`bridge/abi-v2-spec/`):** `HOST_VERIFIED` (C, C-BTI, C++, Rust `#![forbid(unsafe_code)]`, Zig, Python, Go + FR-7 `shlib.om` & `OMEGA_ABI_2.0` `dlvsym`)
+- **RM8 Diagnostics & error registry (`1..30`):** `HOST_VERIFIED`
+- **RM9 Targets:** Linux AArch64 / x86_64 / Wasm / SPIR-V / StableHLO `HOST_VERIFIED`; AArch64 UEFI `EXERCISED_EMULATED` (QEMU/EDK2 `pass=35 fail=0 not_run=1`); GB10 chip & physical Spark `PHYSICAL_SILICON=NOT_RUN`
+- **RM10 Compiler trust (3-path Diverse Double Compilation `seed/ddc/`):** `HOST_VERIFIED` (converges bit-identically on `seed/out/omc` + live Trusting-Trust trojan caught)
+- **RM11 Stability guarantee (`docs/OM-1.0-PROFILE.md` C1/C2/C3/C4 + conformance suite):** `HOST_VERIFIED`
+- **Local Serving Router (`apps/om-route/`):** `HOST_THERMAL_LIVE` (dual OpenAI + Anthropic router with live DGX Spark thermal admission)
+- **Bare-Metal Aienux (`SPARK.EFI`):** `EXERCISED_EMULATED` (20-core QEMU/EDK2 `SMP_ONLINE 20/20`, SMMUv3, RO NVMe+GPT+ext4+`OMFWBND1`); physical Spark cold-boot (`DRA-938`) `PHYSICAL_SILICON=NOT_RUN`
+
+## Standalone Community Repositories
+
+- `omega-gpu-driver`: Pure-Omega Blackwell GB10/GB20B GSP and compute channel driver (`gpu/driver`)
+- `omega-sm121-sass`: Pure-Omega SM121 Blackwell SASS codegen, QMD packer, and scheduler (`om/gpu`, `seed/sm121`)
+- `omega-ng-egraph`: Pure-Omega NG compiler, ΩIR equality-saturation e-graph optimizer, and EGP3 checker (`seed/ng`)
+- `omega-wattd`: Pure-Omega thermal and power control barrier daemon (`WattCBF`, `apps/omega-wattd`)
+- `rtl8127-omega`: Pure-Omega bare-metal Realtek RTL8127 10GbE NIC driver and OMTK wire transport (`aienux/net/rtl8127`)
+- `tensorfold-omega`: Optional Zig ABI v2 (`omega2_*`) plugin layout (`bridge/omega-bridge/src`)
+
+## Reproducible Verification Commands
+
+```sh
+sh seed/omega-from-seed.sh
+sha256sum -c seed/out/omc.sha256
+sh si/release-1.0/install-si-1.0.sh --profile full --dry-run
+sh bridge/abi-v2-spec/gate_abi_v2.sh
+```
+
+## Primary Links
+
+- [AienOS](https://aienos.com/)
+- [How It's Built](https://aienos.com/how-its-built/)
+- [Interplane](https://interplane.io/)
+- [Omega Online Compiler (Zero-JS Sandbox)](https://interplane.io/omega/compile/)
+- [Interplane Helix Chain Hub](https://interplane.io/omega/helix/#chain-hub)

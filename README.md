@@ -1,360 +1,140 @@
-> ## I tried it GitHub's way. GitHub said no.
->
-> I tried to be good and do it their way: everything public, on GitHub, in the open. 109 repositories in the `aien-dev` organization. On 7 November 2026 GitHub's answer was no. It flagged the organization, hid every repository and suspended my machine account.
->
-> **So now I'm doing it the sovereign way, the way I should have done it from the start. Lesson learned.**
->
-> My code isn't published on GitHub anymore. Each project is moving into its own repository on [Radicle](https://radicle.xyz), a peer-to-peer network that no single company can switch off, served from my own hardware. This repository is only a signpost. The Radicle links below are the only way in.
+![Sovereign Intelligence 1.0](launch-kit/assets/si_1_0_hero_banner.jpg)
 
-# Sovereign Intelligence
+# Sovereign Intelligence 1.0
 
-**Omega's seed-grown compiler and the front-door tools, written in Omega and grown from 408 hand-written bytes.**
+> **Sovereign, not super:** intelligence you own, run on hardware you own, and can check yourself.
 
-Besides being the signpost, this repository carries two things: the Omega compiler, grown from a 408-byte program I wrote by hand in hex so that every binary built here can be traced back to bytes a person can read, and the front-door tools that list, fetch and check my projects. It does not hold the projects. Every project lives in its own Radicle repository, with its own key and its own history. Their Radicle links are [below](#projects); they are the only way in.
+---
 
-Clone this repository over Radicle, or read-only from my own seed without Radicle, then build it:
+## Why Omega NG Exists: Never Take an Agent's Word for It
 
-```sh
-rad clone --timeout 5min rad:z2JJz4RDfZZxKGBLn6UhmW5p9VJQj
-# without Radicle, read-only from my seed:
-git clone https://www.aienos.com/rad/z2JJz4RDfZZxKGBLn6UhmW5p9VJQj.git sovereign-intelligence
-cd sovereign-intelligence
-sh build.sh
+We get it — canonical prefix Omega isn't easy for humans to read. You shouldn't have to take an agent's word for what it wrote. **Omega NG** gives humans a clean, readable, Lean 4–verified infix language attached directly to canonical Omega **bit for bit** — identical ΩIR, identical `SEMANTIC_ID`, and identical verified binary output, down to the last instruction byte.
+
+---
+
+## The Sovereign Intelligent Agent Manifesto
+
+- **Individual, never collective:** A Sovereign Intelligent Agent is not "AI," not a "bot," and not a collective mind. It is a **verifiable, bit-for-bit, locally controlled, human-owned tool** on a **solo, individual level** — not conscious itself, but an **extension of an individual human's consciousness and humanity**, just as cars, phones, and houses become extensions of the person who owns them.
+- **Individual consciousness, open interconnection:** There is no collective "human consciousness" — only **individual consciousness**: each person's own unique, individually crafted consciousness, interconnected with others through communication, interaction, daily life, and now the internet. **AienOS / Sovereign Intelligence** is the local, bit-for-bit verifiable extension of the **individual**; **Interplane** is the open, verifiable **interconnection** between sovereign individuals — never a centralized collective.
+- **No two Sovereign Intelligent Agents are alike:** Because every Sovereign Intelligent Agent extends a unique human, no two are the same. **That is why Omega Helix exists** — your own DNA, from your own scratch. Everyone trains their own agent (`OLLMSP01` specialist strands, `spclip` DNA editing, local Studio) from the scratch they choose — shaped by who they are, what they need, and who they want to be.
+- **Absolute individual autonomy:** Complete individual choice over morals, values, and how your agent thinks. Zero outside authority, platform, or third party can ever override or decide that for an individual human.
+- **Human computing heritage:** Sovereign Intelligence honors the decade-by-decade craft from von Neumann and bare machine code through the pioneers of Unix, C, and compilers — keeping humans firmly at the center of computing culture, never relegated to spectators of black-box services.
+
+---
+
+## Architecture at a Glance
+
+Sovereign Intelligence 1.0 is grown deterministically from a **408-byte hand-written seed** (`seed0 -> hex1 -> asm2 -> om4 -> omc`). Every forward component compiles with unified pinned `seed/out/omc` (`85b84c6de85083e4d9d2368015c1ddcab3d863aada922be0e63d774dddf23134`), runs offline with zero telemetry, and ships reproducible verification gates rather than marketing claims.
+
+```text
+  408-byte seed0.hex ──► hex1 ──► asm2 ──► om4 ──► seed/out/omc (2x bit-identical fixpoint)
+                                                        │
+      ┌─────────────────────┬───────────────────────────┼──────────────────────────┐
+      ▼                     ▼                           ▼                          ▼
+  Core Language       FFI & Serving               GPU & Evolution            Bare-Metal OS
+  ─────────────       ─────────────               ───────────────            ─────────────
+  • OM-1.0 & Omega NG • ABI v2 (omega2_*)         • Pure-Omega SM121 SASS    • Aienux SPARK.EFI
+  • RM2 contracts     • C/C++/Rust/Zig/Py/Go      • Zero-CUDA Blackwell QMD  • target a64efi PE32+
+  • RM4 runtime pools • FR-7 shlib.om + dlvsym    • Helix BFT / MonkCheck    • 20-core SMP + SMMUv3
+  • RM6 modlink DAG   • om-route (OpenAI+Claude)  • OLLMSP01 DNA + spclip    • RO NVMe + RTL8127
 ```
 
-## Built from the seed
+- **Pure Omega forward path:** Zero C/Python on forward production paths, zero third-party GPU toolkits, zero analytics or phone-home traffic.
+- **Zero signing-fee gatekeepers:** macOS installs via Homebrew or SHA-256-verified Terminal quarantine-clear + ad-hoc `codesign`; Windows runs static `x86linux` ELF inside WSL 2 (or the in-browser zero-JS online compiler).
 
-`build.sh` grows the compiler, then builds and checks everything else with it. No C compiler, assembler or linker writes a byte. The one outside tool is a 24-line shell script, `seed/rung0/load0.sh`, that writes the first 408 bytes with `printf`. It ends with `RC=0` when every step passed.
+> **Release status (honest):** **Big-Bang 1.0 HOLD.** [`MANIFEST-1.0.tsv`](MANIFEST-1.0.tsv) remains held (`REFUSED 1.0-HOLD`) until all 10 repositories carry matching 40-hex commit SHAs, unified `omc` SHA-256 pins, zero unwaived blockers, and the attended physical DGX Spark boot ceremony (`DRA-938`) is recorded under `evidence/`. See [`evidence/RECEIPTS-1.0.md`](evidence/RECEIPTS-1.0.md) for the exact pinned receipts and open hardware blockers.
 
-| Claim | Label | Receipt |
-|---|---|---|
-| The Omega compiler, omc, grows from 408 hand-written bytes in four rungs (seed0, hex1, asm2, om4). It then compiles itself to a fixpoint, sha256 `45442c7d…080d`: omega-mv's compiler with two local changes, [`seed/LOCAL.patch`](seed/LOCAL.patch): the checked bulk word `count`, and `fma` refused on x86 only after its operands are typed. Without them the fixpoint is `cfd96b48…0a8d`, the same bytes as the compiler omega-mv commits. | HOST_TESTED, 2026-11-07, on x86-64, the AArch64 rungs under qemu-aarch64 8.2.2 | `build.sh` steps 1 and 2; pins in [`seed/PINS.tsv`](seed/PINS.tsv) |
-| A native x86-64 Omega compiler, omc-x86 (sha256 `5e1f6e1f…3f19`), built by omc. It rebuilds itself byte for byte. Compiling omc.om with it gives exactly the AArch64 omc: the same compiler source, compiled through two instruction sets, agrees with itself. | HOST_TESTED, 2026-11-07, native x86-64 | step 3 |
-| A one-word edit of the seed, and a one-line edit of the compiler, each change what is born, and the pins catch both. | HOST_TESTED, 2026-11-07 | step 4 |
-| The front-door generator, [`compiler/si.om`](compiler/si.om), built for both targets, regenerates this README's generated blocks and [`repos.tsv`](repos.tsv) byte for byte. Both builds write the same `si.sh`. Its inputs are the projects I chose and the Radicle state [`tools/si-state.sh`](tools/si-state.sh) reads, never a typed commit; `build.sh` prints the script's sha256 on the `NOTE si.sh sha256` line, and www.aienos.com/si serves the same generator's output from the Radicle state at the last site deploy. | HOST_TESTED, 2026-11-07; inputs from Radicle since 2026-11-11 | step 5; cases in [`compiler/gate.om`](compiler/gate.om) |
-| The stack ledger, [`tools/ledger.om`](tools/ledger.om), gives the same counts on both targets as an independent oracle, over 68,575 files and 954,659,395 bytes of the recovered stack. | HOST_TESTED, 2026-11-07 | step 6 (fixture); [`stack/LEDGER.tsv`](stack/LEDGER.tsv) |
-| All 110 worked examples of the Omega harness, and the 3 compiler regressions in [`tests/regress/`](tests/regress/), pass on AArch64 and on native x86-64: compile status, exit status, stdout and refusal line. | HOST_TESTED, 2026-11-07 | step 7, [`tests/examples.sh`](tests/examples.sh) |
-| cuda-crack, a copy of its tables and Omega tools for this gate (its home stays its own Radicle repository, `rad:z631r2JJiVT8it4tST7RK24hpowi`): its Omega table generator, built by the seed-born compilers, regenerates all 471 sm_121 instruction forms. Its Omega reencoder rebuilds the 70 kernels that ran on the GB10 (13,520 instructions) from those tables alone, to the chip receipt's sha256. Its four planted bugs, now made by Omega (`check/mutate.om`, byte for byte the same as the original awk and od), are each caught. | HOST_TESTED, 2026-11-07, AArch64 and native x86-64; the kernels themselves ran on the chip on 2026-10-27 | step 8, [`gpu/cuda-crack/PROVENANCE.md`](gpu/cuda-crack/PROVENANCE.md) |
-| The fork-push generator, [`tools/forkpush.om`](tools/forkpush.om), writes the same script on both targets from [`stack/FORKS.tsv`](stack/FORKS.tsv). It refuses 18 malformed manifests, and a branch marked private appears only as a comment, never as a push. | HOST_TESTED, 2026-11-07 | step 9 |
-| The checked bulk word `count A off n v`, added to omc ([`seed/PROVENANCE.md`](seed/PROVENANCE.md#local-changes)): its 16 examples in [`tests/omc/`](tests/omc/) pass on both targets, and a compiler with its slice check deleted fails both trap-3 examples. Built with it, the stack ledger runs 6.1 times faster on native x86-64. | HOST_TESTED, 2026-11-07; the speed-up was measured over the 44 stack checkouts, outside the gate | steps 10 and 11; speed-up in [`seed/PROVENANCE.md`](seed/PROVENANCE.md#local-changes) |
-| omega-mv's whole FR-9 x86 corpus ran with its x86-64 programs native for the first time: 16,179 rows, 15,499 PASS, 232 FAIL, 32 NOT_RUN, 30 MISSING_IMPLEMENTATION, 75 BLOCKED, 311 EXCLUDED. No FAIL is an x86 miscompile. 150 need om2 candidate compilers whose commits are not published; 46 are omega-bridge refusing the compiler's hash (all 49 bridge rows pass when that one pin is moved); 36 pin the AArch64 bytes of an older omc. The run also found a cross-target bug in omc, fixed in [`seed/LOCAL.patch`](seed/LOCAL.patch). | HOST_TESTED, 2026-11-07, native x86-64; the AArch64 side under qemu-aarch64 8.2.2 | [`evidence/x86-native/`](evidence/x86-native/) |
+---
 
-The whole gate takes 19.3 s on a 4-vCPU x86-64 cloud machine. There, omc-x86 compiles the 337,225-byte compiler in 0.10 s natively.
+## Omega 1.0 Milestone Readiness Matrix (RM1–RM11 & Platform Layers)
 
-omega-mv records its x86-64 backend as a draft that has never run on x86-64 hardware (`docs/X86-LINUX.md`, FR-9). These are its first native runs: one cloud x86-64 host, covering the compiler itself, the programs above and omega-mv's full FR-9 fixture corpus. The oracle's verdict is still FAIL, and the reasons are in [`evidence/x86-native/`](evidence/x86-native/). Native x86 code is correct there but slow: omega-mv's SHA-256 runs at 20.6 MB/s on x86-64, against 57 MB/s for the AArch64 build under emulation, because the x86 backend keeps its values in memory. Nothing here has run on a GPU.
+Every row carries an explicit, honest evidence class (`HOST_VERIFIED`, `EXERCISED_EMULATED`, `HOST_THERMAL_LIVE`, `PHYSICAL_SILICON=NOT_RUN`, `BLOCKED_OPERATOR`). Host and QEMU passes are **never** reported as physical silicon qualification.
 
-The only hardware result above is the cuda-crack kernels' chip run of 2026-10-27, which the gate checks by sha256 without a GPU. Hardware scope: GB10 only. The NVIDIA open kernel module 580.173.02 and NVIDIA-signed firmware remain in the path.
+| Milestone / Layer | Specification / Proof | Evidence Class | Status & Honest Scope |
+|---|---|---|---|
+| **RM1** Ground truth & gate coverage | `omega-mv/seed/qualification/om2/` | `HOST_VERIFIED` / `BLOCKED_OPERATOR` | OM-2 spec, fixtures, mutants & `#775` closed on host; wiring new gates into `tests/gates/` requires Spark operator run. |
+| **RM2** Executable contracts | [`docs/OM-1.0-PROFILE.md`](docs/OM-1.0-PROFILE.md) | `HOST_VERIFIED` | Native `requires` (trap `9`), `ensures` & `invariant` (trap `10`), `om2 release` erasure, constant-true proofs, error `30`. |
+| **RM3** Measured efficiency | `omega-mv/seed/ng/rm3_bench/` | `HOST_VERIFIED` / `PHYSICAL_SILICON=NOT_RUN` | Paired 11-kernel X925 baseline: `ng` beats `omc` `1.094x` (`chacha` `2.54x` faster); exclusive GB10 silicon timing window pending. |
+| **RM4** Memory model (Runtime pools) | [`docs/OM-1.0-PROFILE.md`](docs/OM-1.0-PROFILE.md) | `HOST_VERIFIED` | Decision 24 kept (no `free`); explicit `global T *`, `enlarge`, `len` with checked bounds and overflow refusal. |
+| **RM5** Strings & text | `omega-mv/seed/text/` | `HOST_VERIFIED` | Pure-Omega compare, search, split, decimal/hex integer parse/format, and strict UTF-8 validation. |
+| **RM6** Modules & separate compilation | `omega-mv/seed/modules/rm6/` | `HOST_VERIFIED` | Digest-addressed module linker (`gate_rm6` 12/12 tests, 7/7 controls, bit-identical to single-unit builds). |
+| **RM7** `omega-bridge` ABI v2 FFI | [`docs/ABI-V2-SPEC.md`](docs/ABI-V2-SPEC.md) | `HOST_VERIFIED` | All 6 host languages (C, C++, Rust `#![forbid(unsafe_code)]`, Zig, Python, Go) + C-BTI; statuses `0`, `1..14`, `32`, live `SIGUSR1` `33`; FR-7 `shlib.om` `ET_DYN` + `OMEGA_ABI_2.0` `dlvsym`. |
+| **RM8** Diagnostics & error codes | `omega-mv/seed/omc/gate_omc_1_0/` | `HOST_VERIFIED` | Complete code registry (`1..30`), `sitecov` `555/553`, structured `OMC_DIAG=1`, `sendfd`/`recvfd`, `x86linux` `execpure`. |
+| **RM9** Targets | `omega-mv/seed/ng/multi_target/` | `HOST_VERIFIED` / `EXERCISED_EMULATED` / `PHYSICAL_SILICON=NOT_RUN` | Linux AArch64 / Wasm / SPIR-V / StableHLO / macOS M2+Metal `HOST_VERIFIED`; x86-64 `EXERCISED_EMULATED` (`qemu-x86_64`); `target a64efi` 35/35 QEMU/EDK2; external GPUs & physical GB10 chip gate `PHYSICAL_SILICON=NOT_RUN`. |
+| **RM10** Compiler trust & DDC | [`docs/DDC-INDEPENDENCE.md`](docs/DDC-INDEPENDENCE.md) | `HOST_VERIFIED` | 3-path Diverse Double Compilation (`om4`/`ng_a64`/`ng_opt_split`) converges bit-identically on `85b84c6d...` + live Trusting-Trust trojan caught; `#669` 15/15 branch displacement boundaries PASS. |
+| **RM11** Stability guarantee | [`docs/OM-1.0-PROFILE.md`](docs/OM-1.0-PROFILE.md) | `HOST_VERIFIED` | Frozen `OM-1.0` profile with explicit C1/C2/C3/C4 compatibility promise and 52-check automated conformance gate (`omc` `85b84c6d...`). |
+| **Local Serving & Thermal Admission** | `omega-mv/apps/om-route/`, `apps/omega-wattd/` | `HOST_THERMAL_LIVE` | Dual OpenAI + Anthropic router (`10/6/6`) and read-only `omega-wattd` (`13/13` + `WattCBF.lean` 0 sorry) on live DGX Spark thermal zones. |
+| **Bare-Metal Aienux (`SPARK.EFI`)** | [`docs/aienux_boot_audit.md`](docs/aienux_boot_audit.md), [`PHYSICAL-BOOT-RUNBOOK.md`](PHYSICAL-BOOT-RUNBOOK.md) | `EXERCISED_EMULATED` / `PHYSICAL_SILICON=NOT_RUN` | 20-core QEMU/EDK2 E2E (`SMP_ONLINE 20/20`, SMMUv3, RO NVMe+GPT+ext4+`OMFWBND1` SHA-256) PASS + `ollm_a64efi` fixed (`OMEGA-TRAIN-UNITS` 81/81); physical Spark cold-boot (`DRA-938`) awaits attended console ceremony. |
 
-## What is in this repository
+---
 
-| Path | What it is |
-|---|---|
-| [`seed/`](seed/) | the compiler's sources, from the hand-written `seed0.hex` to `omc/omc.om`, copied from omega-mv with [provenance](seed/PROVENANCE.md) |
-| [`build.sh`](build.sh) | the one build and gate |
-| [`compiler/`](compiler/) | `si.om`, the front-door generator |
-| [`tools/`](tools/) | `ledger.om`, the stack ledger; `forkpush.om`, which writes the script that sends my forks' branches to Radicle |
-| [`harness/`](harness/) | the Omega harness: agent skills for writing correct Omega; `.claude/skills` points at it |
-| [`tests/`](tests/) | the ledger and fork-push fixtures, the example runner, the compiler regressions and the examples of the words this repository adds to the compiler |
-| [`gpu/cuda-crack/`](gpu/cuda-crack/) | a copy of cuda-crack's sm_121 encoding tables, Omega encoder and reencoder, and chip receipts, so the gate can rebuild the chip kernels; [provenance](gpu/cuda-crack/PROVENANCE.md). cuda-crack itself lives in its own Radicle repository |
-| [`docs/`](docs/) | writing and sites from my personal account that have no Radicle project: the AIEN constitution, drakestapleton.com's source, and the old site as an archive |
-| [`evidence/`](evidence/) | receipts of runs made from this repository, starting with the native x86-64 corpus run |
-| [`stack/`](stack/) | the 44 recovered projects, their Radicle IDs and what each is made of; every branch of my personal forks and where it goes |
+## Standalone Community Repositories
 
-## The stack
+Mapped declaratively in [`STANDALONE-REPOS.tsv`](STANDALONE-REPOS.tsv) with SHA-256 provenance (`UPSTREAM_PIN.tsv`) and the 60-Second Omega Rosetta Card:
 
-The 44 projects are listed in [`stack/STACK.tsv`](stack/STACK.tsv), with their Radicle IDs and the heads recovered on 7 November 2026. Each one stays in its own Radicle repository; this repository only measures them. [`stack/LEDGER.tsv`](stack/LEDGER.tsv) counts what each one is written in: 902,624 lines of Omega and 2,518,966 lines of other languages (1,366,364 Rust, 862,390 C, 165,160 shell, 81,780 Python, 43,272 other). Omega is 26.3% of it today.
+| Repository | Canonical `omega-mv` Source | Layout Mode | Entry Point | Purpose |
+|---|---|---|---|---|
+| `omega-gpu-driver` | `gpu/driver` | `pure-om` | `gpu/driver/ogd.om` | Zero-CUDA pure-Omega Blackwell GB10/GB20B GSP and compute channel driver |
+| `omega-sm121-sass` | `om/gpu`, `seed/sm121` | `pure-om` | `om/gpu/bw_qmd.om` | Pure-Omega SM121 Blackwell SASS codegen, QMD packer, register allocator, and scheduler |
+| `omega-ng-egraph` | `seed/ng` | `pure-om` | `seed/ng/src/main.om` | Pure-Omega NG compiler, Omega-IR equality-saturation e-graph optimizer, and EGP3 checker |
+| `omega-wattd` | `apps/omega-wattd` | `pure-om-optional` | `apps/omega-wattd/wattd_main.om` | Pure-Omega thermal and power control barrier daemon (`WattCBF`) for DGX Spark |
+| `rtl8127-omega` | `aienux/net/rtl8127` | `pure-om` | `aienux/net/rtl8127/om/rtl8127/rtl8127.om` | Pure-Omega bare-metal Realtek RTL8127 10GbE NIC driver and OMTK wire transport |
+| `tensorfold-omega` | `bridge/omega-bridge/src` | `zig-abi-v2-optional` | `bridge/omega-bridge/src/native.om` | Optional Zig ABI v2 (`omega2_*`) plugin layout bridging pure-Omega kernels into TensorFold |
 
-| Subsystem | Projects | Omega lines | Other lines | Omega share |
-|---|---:|---:|---:|---:|
-| `compiler` | 4 | 214,235 | 537,943 | 28.5% |
-| `gpu` | 5 | 89,600 | 230,442 | 28.0% |
-| `os` | 5 | 349,008 | 986,798 | 26.1% |
-| `runtime` | 8 | 24,327 | 460,355 | 5.0% |
-| `train` | 1 | 112,692 | 11,425 | 90.8% |
-| `protocol` | 3 | 3,165 | 56,067 | 5.3% |
-| `agents` | 10 | 20,249 | 139,462 | 12.7% |
-| `evidence` | 3 | 12,584 | 18,852 | 40.0% |
-| `docs` | 5 | 76,764 | 77,622 | 49.7% |
+For sharing and exchanging custom `OLLMSP01` Helix specialist strands between sovereign individuals, see the **Interplane Helix Chain Hub** (`https://interplane.io/omega/helix/#chain-hub`).
 
-## What happened
+---
 
-I published everything on GitHub: 109 repositories in the `aien-dev` organization. On 7 November 2026, between 08:14 and 08:20 UTC, GitHub cancelled my Actions runs as "owner marked spammy", flagged the organization, hid every repository from the public and suspended my machine account, `aien-spark`. About 20 AI agents work on this project, and they had been pushing and opening pull requests faster than GitHub's abuse filters allow. I have appealed and the appeal is pending. My work now lives on [Radicle](https://radicle.xyz), a peer-to-peer network no single company can switch off, and on my own hardware. GitHub switched me off. I'm still here.
+## Quickstart by Platform
 
-## I broke CUDA.
+Never pipe remote scripts directly into a shell. Always verify `SHA256SUMS.txt` fail-closed before installing or executing any binary.
 
-*My own language, Omega, writes NVIDIA GB10 machine code. It ran on the chip: 1,048,576 of 1,048,576 values correct, no CUDA toolkit, no nvcc, no PTX.*
-
-Hardware scope: GB10 only. The NVIDIA open kernel module 580.173.02 and NVIDIA-signed firmware remain in the path.
-
-**The code that broke CUDA**, on Radicle:
-
-<!-- si:lead:begin -->
+### 1. Linux AArch64 & DGX Spark GB10 (Primary)
 ```sh
-rad clone --timeout 5min rad:z631r2JJiVT8it4tST7RK24hpowi   # cuda-crack
+# Verify this umbrella repository's SHA-256 manifest fail-closed
+sha256sum -c SHA256SUMS.txt
+
+# Preview topology & profile plan without modifying the filesystem
+sh install-si-1.0.sh --profile full --dry-run
+
+# Verify a release bundle fail-closed before installing
+sh install-si-1.0.sh --verify-bundle ./launch-kit
 ```
 
-On the web: [radicle.network/nodes/rosa.radicle.network/rad:z631r2JJiVT8it4tST7RK24hpowi](https://radicle.network/nodes/rosa.radicle.network/rad:z631r2JJiVT8it4tST7RK24hpowi)
-<!-- si:lead:end -->
-
-**The DGX Spark manual NVIDIA didn't write:** [www.aienos.com/spark/](https://www.aienos.com/spark/)
-
-I reverse engineered how NVIDIA's CUDA stack puts machine code on the NVIDIA GB10, the Blackwell chip in the DGX Spark, and built my own path without CUDA: a compiler back end, an sm_121 SASS encoder, a launcher and a driver client. The encoder is written in Omega, my own programming language, and it needs no nvcc. Its home is its own Radicle repository, cuda-crack, linked above; this repository is the front door to it.
-
+### 2. Linux x86_64
 ```sh
-curl -fsSL https://www.aienos.com/si | sh
+sh install-si-1.0.sh --profile core --dry-run
+sh install-si-1.0.sh --verify-bundle ./si-1.0-x86linux-bundle --install --prefix "$HOME/.local"
 ```
 
-That one command fetches every public project into one directory and checks each one against the commit listed below. [What it does, and how to read it first](#get-everything).
-
-What I have not done yet: replace every CUDA library, run on GPUs other than the GB10, or remove NVIDIA's open kernel module and signed firmware. Status per piece: [www.aienos.com/cudaplusplus/](https://www.aienos.com/cudaplusplus/).
-
-## Replicate it with any AI agent
-
-<!-- si:agent:begin -->
-<https://radicle.network/nodes/rosa.radicle.network/rad:z631r2JJiVT8it4tST7RK24hpowi/tree/AGENT-PROMPT.md>
-<!-- si:agent:end -->
-
-Give this file to any coding agent; it fetches everything from Radicle, rebuilds the compiler from seed and reproduces every result.
-
-## What I proved, and at which level
-
-Each line carries its evidence label. CHIP_TESTED means it ran on the GB10 with a receipt; DEPLOYED means it served the live model on that date; HOST_TESTED means it ran on a CPU only.
-
-Hardware scope: GB10 only. The NVIDIA open kernel module 580.173.02 and NVIDIA-signed firmware remain in the path.
-
-| Claim | Label | Receipt |
-|---|---|---|
-| My own language, Omega, has its own sm_121 instruction encoder. Its machine code ran on the GB10: 1,048,576 of 1,048,576 values correct. A planted-bug control failed, as it should. No CUDA toolkit was needed or used. | CHIP_TESTED, 2026-10-27 | CUDApp `evidence/CUDAPP-OM-ENCODER/chip-20261027T080240Z/` |
-| The Omega encoder and my C encoder produce byte-identical machine code for the 70 kernels the chip ran, and for 243 kernels on the host. | CHIP_TESTED (70), HOST_TESTED (243) | same directory, `kernels-om.sha256`, `kernels-c.sha256`, `host/corpus.log` |
-| On 21 October 2026 my 35 billion parameter model on the DGX Spark was served with zero CUDA libraries loaded. That was my C GPU stack, on that date. | DEPLOYED, 2026-10-21 | omega-mv `evidence/WHAT-OMEGA-IS-20261021/live-serve-no-cuda.txt` |
-| Kernels whose GPU lowering is written in Omega ran on the GB10: 645 checks, 0 failed. A planted bug fails 8 of them. | CHIP_TESTED, 2026-10-27, on a draft branch | not public yet; it goes public when the branch is merged |
-| A vector add assembled by Omega's seed toolchain, grown from hand-written bytes, ran on the GB10 through my own launcher, no CUDA library. | CHIP_TESTED, 2026-10-19 (from a working tree with 3 uncommitted files) | omega-mv `evidence/SEED-0/sm121/chip/` |
-| Exhaustive GPU and CPU parity for nine FP32 operations: 4,294,967,296 inputs each, zero mismatches. This is parity with a fixed CPU sequence, not correctly rounded maths. | CHIP_TESTED | omega-mv `evidence/E1-TRANSC-GB10/` |
-
-CUDApp is `rad:z4RxD8vXigmWg61nM8miQ8DVPAXEP` at `b774723f`; omega-mv is `rad:z6do9WDBhuSnvopDkgFdFr1yWA62` at `943d9555`. I built this by directing AI coding agents.
-
-## What is still NVIDIA's
-
-- NVIDIA's open kernel modules, `nvidia.ko` and `nvidia-uvm.ko`, version 580.173.02. CUDA++ refuses other versions.
-- NVIDIA's signed GSP firmware. The GPU checks its signature and boots nothing else.
-- NVIDIA's tools were used offline, as references only: nvcc 13.0.88 as an oracle for learning encodings, and nvdisasm to read my bytes back, never to make them.
-
-## What I have not done yet
-
-- It does not replace the CUDA libraries as a whole. They are covered only in part.
-- It runs on one chip family, the GB10. No other GPU has run it.
-- Not every step from Omega source to running kernel is Omega on the chip yet. Register allocation, kernel builders, runtime and driver client are still C in the chip-tested path.
-- I make no speed comparison with CUDA or anything else.
-
-## The DGX Spark manual NVIDIA didn't write
-
-What I learned driving the GB10 without libcuda is going up at [www.aienos.com/spark/](https://www.aienos.com/spark/), every finding with its evidence level. Four of them:
-
-- **Everything libcuda does to the hardware goes through ioctls on three device files:** `/dev/nvidiactl`, `/dev/nvidia<minor>` and `/dev/nvidia-uvm`. NVIDIA's open kernel module defines every call in public MIT headers. CHIP_TESTED; DEPLOYED on 2026-10-21.
-- **GPU-cacheable system memory is not coherent with CPU mappings.** NVIDIA's own header says "gpu uncached for system memory" is the default, and cached system memory "will not be coherent with direct CPU mappings" ([`nvos.h` lines 1116 to 1118 at 580.173.02](https://github.com/NVIDIA/open-gpu-kernel-modules/blob/580.173.02/src/common/sdk/nvidia/inc/nvos.h#L1116-L1118)). DOCUMENTED.
-- **NVIDIA does not publish SASS encodings.** I recovered them three ways: my own probe kernels compiled offline with nvcc and read back one changed detail at a time; Mesa's NAK sources, with no code copied; and acceptance only when the chip runs the encoding correctly. CHIP_TESTED, as a method.
-- **For bulk traffic, DRAM is the ceiling, not the CPU to GPU link.** The C2C link reports 8 links at 43.125 GB/s, 345 GB/s per direction, more than the 273 GB/s of DRAM. MEASURED by NVIDIA's tool and a CPU-side benchmark; the GPU-side measurement is still pending.
-
-Hardware scope: GB10 only. The NVIDIA open kernel module 580.173.02 and NVIDIA-signed firmware remain in the path.
-
-## Read the paper
-
-[Reverse Engineering the CUDA Software Stack: An Independently Implemented GPU Machine-Code Toolchain for the NVIDIA GB10](https://doi.org/10.5281/zenodo.23677465), version 2, 26 October 2026, DOI [10.5281/zenodo.23677465](https://doi.org/10.5281/zenodo.23677465). A preprint, not peer reviewed. Version 2 lists the corrections to version 1. To cite this work, use [CITATION.cff](CITATION.cff).
-
-## Get everything
-
+### 3. macOS Apple Silicon (`arm64`)
+Lead with Homebrew (zero notarization gatekeeping):
 ```sh
-curl -fsSL https://www.aienos.com/si | sh
+brew tap drakestapleton/omega https://interplane.io/drakestapleton/homebrew-omega.git
+brew install drakestapleton/omega/omc
+```
+Or verify a Terminal bundle with `install-si-1.0.sh` (clears `com.apple.quarantine` and runs ad-hoc `codesign -s - -f` **only after** SHA-256 verification succeeds):
+```sh
+sh install-si-1.0.sh --verify-bundle ./si-1.0-macos-arm64 --install --prefix "$HOME/.local"
 ```
 
-The script is served from my own server, not from GitHub. It:
-
-1. prints what it is about to do;
-2. makes one directory, `./sovereign-intelligence` (set `SI_DIR` to choose another), and touches nothing else. It needs no sudo and refuses to run as root;
-3. fetches each project with `rad clone <RID>` when you have Radicle, peer-to-peer from whichever seed has it. Without Radicle it uses a read-only `git clone` from my seed at `https://www.aienos.com/rad/`, then from the public Radicle seed `rosa.radicle.network`;
-4. checks out the commit the script names for each project, so you get exactly what was published when the script was made even if a project has moved on since, and prints `OK` or `MISMATCH`. A missing commit is a mismatch and makes it exit with an error.
-
-If a project cannot be fetched, it prints the project's Radicle ID and Radicle's official installer, `curl -sSf https://radicle.xyz/install | sh`. It runs that installer only if you set `SI_INSTALL_RAD=1`.
-
-`SI_ONLY=core` fetches only the seven core projects:
-
+### 4. Windows 10/11 (WSL 2 + Online Compiler)
+No native Windows `.exe` is shipped. Inside **WSL 2** (`x86_64`), verify and install the static `x86linux` ELF bundle:
 ```sh
-curl -fsSL https://www.aienos.com/si | SI_ONLY=core sh
+sh install-si-1.0.sh --verify-bundle ./si-1.0-x86linux-bundle --install --prefix "$HOME/.local"
 ```
+For zero-install browser compilation under Omega's kernel sandbox (`execpure`), use `https://interplane.io/omega/compile/`.
 
-You don't have to pipe anything into a shell. Download it, read it, then run it:
+---
 
-```sh
-curl -fsSL https://www.aienos.com/si -o si.sh
-less si.sh
-sh si.sh
-```
+## Repository Map
 
-The script is generated, never written by hand, and made again each time my website is deployed. I choose which projects are in it and write their one-line descriptions. Everything else comes from Radicle: each project's main branch and its latest commit at that moment. That commit is the newest work, not a review: the table below says how many landing receipts (a record that the project's own checks passed on a fresh copy before it landed) exist for exactly that commit. [`compiler/si.om`](compiler/si.om), an Omega program, builds the script, the table below and [`repos.tsv`](repos.tsv); [`compiler/README.md`](compiler/README.md) shows how to rebuild all three and compare their sha256 with what is served.
-
-### Rebuild and check the stack
-
-After building this checkout, its generated bootstrap has an opt-in rebuild mode:
-
-```sh
-SI_REBUILD=1 sh out/si.sh
-```
-
-This fetches first, then runs the rows in [`layers.tsv`](layers.tsv), from the seed upward. The checker is [`compiler/rebuild.om`](compiler/rebuild.om), compiled with the fetched Omega compiler; commands are the individual repositories' documented commands, not a second implementation here. This mode requires AArch64 Linux. It does not start or replace a model server, install an app, publish a site or run a GPU command. Hardware rows stay `NOT_RUN` without a separate authorized hardware invocation; Hop's macOS check is `NOT_RUN` on Linux.
-
-Each layer step prints `PASS`, `FAIL <reason>` or `NOT_RUN <reason>`, its manifest commit, command, exit code and built artifact's SHA-256, followed by the totals. Layers with separate host and hardware checks have separate lines, as do the forge and site steps. A `-` means no command ran or no artifact is available. Exit 0 requires no `FAIL` and every step in layers 1 and 2 to pass. The rebuilt compiler must equal the compiler committed at the manifest head; its self-compile must equal those same bytes. Elsewhere `PASS` means the repository's own build and checks passed, not that an unprovided published binary was compared.
-
-The table is separate from the project list: it adds no fetched repository. A step whose project is not in `repos.tsv` is `NOT_RUN` and says so. A command recorded as `-` is `NOT_RUN no documented rebuild command`; an actual command that exits nonzero is always `FAIL`. See [`compiler/README.md`](compiler/README.md#rebuild-mode) for command sources, standalone use and CPU-pool wrapping. The hive's standard fail-closed `si-front.sh` hook regenerates the served `/si` after a landing; a failed build or validation leaves the previous installer served. Rebuild mode remains opt-in.
-
-Or take single projects straight from Radicle:
-
-```sh
-rad clone --timeout 5min rad:z4RxD8vXigmWg61nM8miQ8DVPAXEP   # CUDApp (CUDA++)
-rad clone --timeout 5min rad:z6do9WDBhuSnvopDkgFdFr1yWA62    # omega-mv, the Omega compiler
-rad clone --timeout 5min rad:z2JJz4RDfZZxKGBLn6UhmW5p9VJQj   # sovereign-intelligence: the seed-grown compiler and this front door
-```
-
-Keep the `--timeout 5min`. `rad clone` waits 9 seconds for a seed by default, and my larger projects take longer than that to arrive: CUDApp is about 200 MB and took 79 seconds in my test on 10 November 2026. Without the flag it stops with `fetch: timed out reading from control socket` while your node goes on fetching in the background, so running the same `rad clone` again a minute or two later also works.
-
-## Projects
-
-<!-- si:index:begin -->
-**83 public projects**, 7 of them core. `compiler/si.om` lists them from Radicle as of 2026-11-11T15:02:00Z. For each project, *Branch* is the default branch its signed Radicle identity names and *Head* is that branch's commit on my node at that time; nobody types either. *Receipts* counts the landing receipts recorded for exactly that commit: each says the project's own checks passed on a fresh copy before it landed, and 0 means none is recorded. A head is the latest commit, not a review. Each project's home is its own Radicle repository; this table only links to them. Clone one peer-to-peer with `rad clone`, or read-only with `git clone` from its mirror on my own seed. A plain `git clone` of the mirror gets the project's Radicle default branch. Every other branch and tag, including those carried over from GitHub, is served at the mirror URL with my node ID appended. That URL has no default branch, so give `--branch` a short branch or tag name, not `refs/heads/...`:
-
-```sh
-git clone --branch <branch-or-tag> https://www.aienos.com/rad/<RID>.git/z6MkfZDue1TbaNFi3ZzcD9uiTeduPLC52ucdFVuLKZwexxhK/ <dir>
-```
-
-Full commit ids are in [`repos.tsv`](repos.tsv).
-
-| # | Project | Radicle ID | Get it | Branch | Head | Receipts | About |
-|---:|---|---|---|---|---|---:|---|
-| 1 | **aienux** (core) | `rad:z2Q6ob2gL6Qo5oUMpyehukayVF7mN` | `rad clone --timeout 5min rad:z2Q6ob2gL6Qo5oUMpyehukayVF7mN`, [git mirror](https://www.aienos.com/rad/z2Q6ob2gL6Qo5oUMpyehukayVF7mN.git) | `main` | `95d5f03` | 1 | Aienux, the AienOS kernel: boot, scheduling, IPC and capability boundaries. Pre-alpha; host, emulator and physical evidence are labelled separately. |
-| 2 | **omega-mv** (core) | `rad:z6do9WDBhuSnvopDkgFdFr1yWA62` | `rad clone --timeout 5min rad:z6do9WDBhuSnvopDkgFdFr1yWA62`, [git mirror](https://www.aienos.com/rad/z6do9WDBhuSnvopDkgFdFr1yWA62.git) | `main` | `b9b4546` | 1 | Omega: a language for verified programs, semantic identity and machine realization. Seed-born work and existing implementations have distinct provenance. |
-| 3 | **aien-sovereign-core-mv** (core) | `rad:z44GqrPVAPjZkhoD2MWVjqy18ighN` | `rad clone --timeout 5min rad:z44GqrPVAPjZkhoD2MWVjqy18ighN`, [git mirror](https://www.aienos.com/rad/z44GqrPVAPjZkhoD2MWVjqy18ighN.git) | `main` | `6f42f8c` | 1 | AienOS host runtime: inference scheduling, paged KV state, the aien CLI and Spark verification tooling. Its inference engine is in alpha testing (DGX Spark GB10); Omega is the implementation destination. |
-| 4 | **physics-mv** (core) | `rad:z49She8eifZpLd2aiSvk2pph3DMUo` | `rad clone --timeout 5min rad:z49She8eifZpLd2aiSvk2pph3DMUo`, [git mirror](https://www.aienos.com/rad/z49She8eifZpLd2aiSvk2pph3DMUo.git) | `main` | `5a88864` | 1 | FORGE: request-bound machine realization, providers and verification for AienOS. Host, simulated and GB10 hardware paths have separate evidence. |
-| 5 | **aien-architecture-mv** (core) | `rad:z37zcFYooiuCCZsf5L74eeFJYiwWM` | `rad clone --timeout 5min rad:z37zcFYooiuCCZsf5L74eeFJYiwWM`, [git mirror](https://www.aienos.com/rad/z37zcFYooiuCCZsf5L74eeFJYiwWM.git) | `main` | `ac0ca18` | 1 | Canonical architecture for the AIEN ecosystem: flows, boundaries, ADRs, and the map from design to implementation repositories. |
-| 6 | **aien-train** (core) | `rad:zKrfazKqYNFuXDDkYdptxJicGLEq` | `rad clone --timeout 5min rad:zKrfazKqYNFuXDDkYdptxJicGLEq`, [git mirror](https://www.aienos.com/rad/zKrfazKqYNFuXDDkYdptxJicGLEq.git) | `main` | `02de724` | 0 | AIEN training programme: language-model history, GB10 constraints and the route to training on the project engine. Plans and runnable checks are distinguished. |
-| 7 | **CUDApp** (core) | `rad:z4RxD8vXigmWg61nM8miQ8DVPAXEP` | `rad clone --timeout 5min rad:z4RxD8vXigmWg61nM8miQ8DVPAXEP`, [git mirror](https://www.aienos.com/rad/z4RxD8vXigmWg61nM8miQ8DVPAXEP.git) | `main` | `0dbd281` | 1 | CUDA++: AIEN’s GPU machine-code toolchain, runtime and driver client for NVIDIA GPUs without the CUDA toolkit. Hardware coverage and driver replacement limits are explicit. |
-| 8 | **.github** | `rad:z36odegYfUoEoX8xwjJ4so68jb1W3` | `rad clone --timeout 5min rad:z36odegYfUoEoX8xwjJ4so68jb1W3`, [git mirror](https://www.aienos.com/rad/z36odegYfUoEoX8xwjJ4so68jb1W3.git) | `main` | `f9eaa98` | 0 | AienOS organization profile, contribution guidance and GitHub community templates. Source, lessons and verification evidence are linked explicitly. |
-| 9 | **AienOS-nv** | `rad:z2NwiYftdgkDqkFLMgZTLU3SvZZNw` | `rad clone --timeout 5min rad:z2NwiYftdgkDqkFLMgZTLU3SvZZNw`, [git mirror](https://www.aienos.com/rad/z2NwiYftdgkDqkFLMgZTLU3SvZZNw.git) | `main` | `72c0cfa` | 0 | Source repository; see its README. |
-| 10 | **aegis-runtime-mv** | `rad:z6hhF5wGXCqvkcvxYdcBb12qm3FB` | `rad clone --timeout 5min rad:z6hhF5wGXCqvkcvxYdcBb12qm3FB`, [git mirror](https://www.aienos.com/rad/z6hhF5wGXCqvkcvxYdcBb12qm3FB.git) | `main` | `2d04345` | 1 | Native Rust agent runtime: Axum WebSocket/SSE/REST gateway, heartbeat scheduler, dependency-aware task workflow, SQLite storage. Attachment of AienOS. Pre-alpha. |
-| 11 | **agent-archive** | `rad:z35JFzZSUQH3r5RTU58epFMZrY25E` | `rad clone --timeout 5min rad:z35JFzZSUQH3r5RTU58epFMZrY25E`, [git mirror](https://www.aienos.com/rad/z35JFzZSUQH3r5RTU58epFMZrY25E.git) | `main` | `20e9182` | 0 | Source repository; see its README. |
-| 12 | **aien** | `rad:zDTnULpiVMniD2etkbUozUP5mn6U` | `rad clone --timeout 5min rad:zDTnULpiVMniD2etkbUozUP5mn6U`, [git mirror](https://www.aienos.com/rad/zDTnULpiVMniD2etkbUozUP5mn6U.git) | `main` | `df5d61b` | 1 | aien-dev/aien (Radicle canonical mirror during the GitHub hold) |
-| 13 | **aien-edge** | `rad:z2Ajufz3KS3GompMJ2SJmAz8mRnk6` | `rad clone --timeout 5min rad:z2Ajufz3KS3GompMJ2SJmAz8mRnk6`, [git mirror](https://www.aienos.com/rad/z2Ajufz3KS3GompMJ2SJmAz8mRnk6.git) | `main` | `8ad4253` | 0 | Source repository; see its README. |
-| 14 | **aien-harness** | `rad:z3tjNacwmefzXhmChFjfp6jssEzmK` | `rad clone --timeout 5min rad:z3tjNacwmefzXhmChFjfp6jssEzmK`, [git mirror](https://www.aienos.com/rad/z3tjNacwmefzXhmChFjfp6jssEzmK.git) | `main` | `15948e2` | 0 | Autonomous Change-Management, Schema Validation, and Eval Reliability Harness for AI Agents. |
-| 15 | **aien-local-stack** | `rad:z26m6Fte5NWoocLbz4DEYdJkzcnLy` | `rad clone --timeout 5min rad:z26m6Fte5NWoocLbz4DEYdJkzcnLy`, [git mirror](https://www.aienos.com/rad/z26m6Fte5NWoocLbz4DEYdJkzcnLy.git) | `main` | `fc92090` | 0 | In-process composition stack integrating AEGIS and Sovereign Core via AIEN protocols. |
-| 16 | **aien-protocols-mv** | `rad:zzxgxYRc5tw6VwYXkQNLC2hqKkfb` | `rad clone --timeout 5min rad:zzxgxYRc5tw6VwYXkQNLC2hqKkfb`, [git mirror](https://www.aienos.com/rad/zzxgxYRc5tw6VwYXkQNLC2hqKkfb.git) | `main` | `71ada60` | 1 | Canonical specifications, wire protocols, and schemas for the AIEN sovereign ecosystem |
-| 17 | **aien-receipts** | `rad:z4HXNamwwXyfN11ZBJXAQpdMKvojz` | `rad clone --timeout 5min rad:z4HXNamwwXyfN11ZBJXAQpdMKvojz`, [git mirror](https://www.aienos.com/rad/z4HXNamwwXyfN11ZBJXAQpdMKvojz.git) | `main` | `89ab1ef` | 1 | Append-only AIEN verification receipts, indexed by repository and exact source commit. Read verdicts, signatures and retained logs before making a claim. |
-| 18 | **aien-rig** | `rad:z2MPnsBZpJYeJJq39EXz1SYzLL7mc` | `rad clone --timeout 5min rad:z2MPnsBZpJYeJJq39EXz1SYzLL7mc`, [git mirror](https://www.aienos.com/rad/z2MPnsBZpJYeJJq39EXz1SYzLL7mc.git) | `main` | `141203f` | 1 | AIEN Rig: local AI and frame-rate tuning for RTX gaming PCs. Pre-alpha; host fixtures and target-card qualification are separate. |
-| 19 | **aien-sovereign-core** | `rad:z2kdkm8HpiyFbMFpFmzzWZQgTn1EQ` | `rad clone --timeout 5min rad:z2kdkm8HpiyFbMFpFmzzWZQgTn1EQ`, [git mirror](https://www.aienos.com/rad/z2kdkm8HpiyFbMFpFmzzWZQgTn1EQ.git) | `main` | `10b4bae` | 0 | Source repository; see its README. |
-| 20 | **aien-translate** | `rad:z49FTK9M33MFjenns3vqDqqN66zj7` | `rad clone --timeout 5min rad:z49FTK9M33MFjenns3vqDqqN66zj7`, [git mirror](https://www.aienos.com/rad/z49FTK9M33MFjenns3vqDqqN66zj7.git) | `main` | `5136853` | 0 | Source repository; see its README. |
-| 21 | **aien-yardsticks** | `rad:zissDAdxGuuY4MzdjZzcXzHfmEU6` | `rad clone --timeout 5min rad:zissDAdxGuuY4MzdjZzcXzHfmEU6`, [git mirror](https://www.aienos.com/rad/zissDAdxGuuY4MzdjZzcXzHfmEU6.git) | `main` | `6c66814` | 0 | Outside yardsticks AIEN is measured against. |
-| 22 | **aienix** | `rad:zV8VdbBDCPEZePcnBiseNyym3Wnk` | `rad clone --timeout 5min rad:zV8VdbBDCPEZePcnBiseNyym3Wnk`, [git mirror](https://www.aienos.com/rad/zV8VdbBDCPEZePcnBiseNyym3Wnk.git) | `main` | `91d078a` | 1 | AienOS front door: pinned repositories, source-linked lessons and verification paths. AienOS is in alpha testing; components remain separate and each states its own status. |
-| 23 | **aienos.com** | `rad:z3iwnx2pktbGhnfBpJSsaFcTmKgHU` | `rad clone --timeout 5min rad:z3iwnx2pktbGhnfBpJSsaFcTmKgHU`, [git mirror](https://www.aienos.com/rad/z3iwnx2pktbGhnfBpJSsaFcTmKgHU.git) | `main` | `a0bb31a` | 0 | Source of www.aienos.com, served from my own hardware |
-| 24 | **atlas** | `rad:zy7ezZe718HN95wLKGzp4acD5zSX` | `rad clone --timeout 5min rad:zy7ezZe718HN95wLKGzp4acD5zSX`, [git mirror](https://www.aienos.com/rad/zy7ezZe718HN95wLKGzp4acD5zSX.git) | `master` | `10b8ddf` | 0 | Atlas is the first software in the AIEN chain: one small AArch64 binary (`atlas.bin`, 1,480 bytes) that checks the next boot stage against a pinned SHA-256 digest, hands control to it, and refuses and halts if the check fails. |
-| 25 | **babel** | `rad:z3NKsT1A9VzBVsa5ycpHG2hKZTriE` | `rad clone --timeout 5min rad:z3NKsT1A9VzBVsa5ycpHG2hKZTriE`, [git mirror](https://www.aienos.com/rad/z3NKsT1A9VzBVsa5ycpHG2hKZTriE.git) | `main` | `fa32069` | 0 | `babel` translates code through Omega, the explicit computational language of AienOS. |
-| 26 | **benchmarks-mv** | `rad:z2nYCN9XZAPjNohqT8bz46rcs9zvZ` | `rad clone --timeout 5min rad:z2nYCN9XZAPjNohqT8bz46rcs9zvZ`, [git mirror](https://www.aienos.com/rad/z2nYCN9XZAPjNohqT8bz46rcs9zvZ.git) | `main` | `981decc` | 1 | Measurement harnesses and evidence bundles for AIEN on the NVIDIA DGX Spark GB10. Speed is reported against the machine's physical limit and my own previous run. Attachment of AienOS. |
-| 27 | **cortex** | `rad:zDrGjCcXxPwjWNYQj52Y9RYzBq1t` | `rad clone --timeout 5min rad:zDrGjCcXxPwjWNYQj52Y9RYzBq1t`, [git mirror](https://www.aienos.com/rad/zDrGjCcXxPwjWNYQj52Y9RYzBq1t.git) | `main` | `49ff27c` | 1 | A re-implementation of the Cortex memory server (cortex-rs 0.1.0) in seeded Omega. |
-| 28 | **cortex-rs** | `rad:z2VKEz9qeswAC7EGhPaTvDRirkXKf` | `rad clone --timeout 5min rad:z2VKEz9qeswAC7EGhPaTvDRirkXKf`, [git mirror](https://www.aienos.com/rad/z2VKEz9qeswAC7EGhPaTvDRirkXKf.git) | `main` | `bb3ddda` | 0 | Source repository; see its README. |
-| 29 | **crumb-spec** | `rad:z3w694J42BU3ztSSkBz319tb7pHky` | `rad clone --timeout 5min rad:z3w694J42BU3ztSSkBz319tb7pHky`, [git mirror](https://www.aienos.com/rad/z3w694J42BU3ztSSkBz319tb7pHky.git) | `main` | `6de4aa2` | 0 | An open, vendor-neutral filesystem standard for autonomous AI agent spatial grounding, architectural memory, and peer pheromone coordination. |
-| 30 | **cuda-crack** | `rad:z631r2JJiVT8it4tST7RK24hpowi` | `rad clone --timeout 5min rad:z631r2JJiVT8it4tST7RK24hpowi`, [git mirror](https://www.aienos.com/rad/z631r2JJiVT8it4tST7RK24hpowi.git) | `main` | `4e19bae` | 1 | I broke CUDA: GB10 sm_121 machine code without the CUDA toolkit - method, encoder tables, receipts |
-| 31 | **drakestapleton-aien-dev** | `rad:z3MVCMcy5dK4TVDTEjyTtPTZdwjV7` | `rad clone --timeout 5min rad:z3MVCMcy5dK4TVDTEjyTtPTZdwjV7`, [git mirror](https://www.aienos.com/rad/z3MVCMcy5dK4TVDTEjyTtPTZdwjV7.git) | `main` | `b85db71` | 0 | A sovereign computing stack, built in the open: its own operating system, its own compiler and reaction runtime, its own machine realization layer. |
-| 32 | **encounter** | `rad:zUHy4jerA33bbWpgU4DByVKGs3SF` | `rad clone --timeout 5min rad:zUHy4jerA33bbWpgU4DByVKGs3SF`, [git mirror](https://www.aienos.com/rad/zUHy4jerA33bbWpgU4DByVKGs3SF.git) | `main` | `f882e1e` | 0 | Encounter: scene-bounded research commons for inhabitant-to-inhabitant speech |
-| 33 | **ggml-omega** | `rad:zZnK5QhLTtJTmhHuRi2BtRWQdMU4` | `rad clone --timeout 5min rad:zZnK5QhLTtJTmhHuRi2BtRWQdMU4`, [git mirror](https://www.aienos.com/rad/zZnK5QhLTtJTmhHuRi2BtRWQdMU4.git) | `main` | `a30322c` | 0 | A ggml backend whose op kernels are seeded-Omega units. |
-| 34 | **gpu-head-to-head** | `rad:z3ZSvMF8VFFGa5FyyKXGh4Vv6NBpS` | `rad clone --timeout 5min rad:z3ZSvMF8VFFGa5FyyKXGh4Vv6NBpS`, [git mirror](https://www.aienos.com/rad/z3ZSvMF8VFFGa5FyyKXGh4Vv6NBpS.git) | `main` | `c002a24` | 1 | aien-dev/gpu-head-to-head (Radicle canonical mirror during the GitHub hold) |
-| 35 | **harvester** | `rad:zVPJPCdCgWVrw97UKxEBzMU3sCDY` | `rad clone --timeout 5min rad:zVPJPCdCgWVrw97UKxEBzMU3sCDY`, [git mirror](https://www.aienos.com/rad/zVPJPCdCgWVrw97UKxEBzMU3sCDY.git) | `main` | `89a61a4` | 0 | Source repository; see its README. |
-| 36 | **hive-not-swarm** | `rad:z3vAshKTvZpS5xnsPZHjiHobz4U2p` | `rad clone --timeout 5min rad:z3vAshKTvZpS5xnsPZHjiHobz4U2p`, [git mirror](https://www.aienos.com/rad/z3vAshKTvZpS5xnsPZHjiHobz4U2p.git) | `master` | `bc6d30e` | 0 | Source repository; see its README. |
-| 37 | **hive-view** | `rad:zimVqDToqH8NL2YvgM8fQBQrvgHa` | `rad clone --timeout 5min rad:zimVqDToqH8NL2YvgM8fQBQrvgHa`, [git mirror](https://www.aienos.com/rad/zimVqDToqH8NL2YvgM8fQBQrvgHa.git) | `main` | `c9d2d68` | 0 | Source repository; see its README. |
-| 38 | **homebrew-omega** | `rad:z3KB1AovUygMJkSf56hW7HXWnxeD7` | `rad clone --timeout 5min rad:z3KB1AovUygMJkSf56hW7HXWnxeD7`, [git mirror](https://www.aienos.com/rad/z3KB1AovUygMJkSf56hW7HXWnxeD7.git) | `main` | `9fcb1c6` | 0 | My Homebrew tap for `omc`, the Omega compiler. |
-| 39 | **interplane-mv** | `rad:zNhNbqYvgSBEHBq9vvE8xpbcBzGa` | `rad clone --timeout 5min rad:zNhNbqYvgSBEHBq9vvE8xpbcBzGa`, [git mirror](https://www.aienos.com/rad/zNhNbqYvgSBEHBq9vvE8xpbcBzGa.git) | `main` | `84cbc86` | 1 | INTERPLANE: open interoperability protocol between AI models and agent runtimes. Models express intent. Runtimes retain authority. |
-| 40 | **interplane.io** | `rad:z399yKvnXcBQNkKoq86iBDgTvQ5QV` | `rad clone --timeout 5min rad:z399yKvnXcBQNkKoq86iBDgTvQ5QV`, [git mirror](https://www.aienos.com/rad/z399yKvnXcBQNkKoq86iBDgTvQ5QV.git) | `main` | `6561789` | 1 | Source of interplane.io: a Rust generator that renders the page from the protocol repository's public record, deployed hourly from the Spark. |
-| 41 | **mobhub** | `rad:z3Konv8McLhn67ZBUiCE4bFR5r9tC` | `rad clone --timeout 5min rad:z3Konv8McLhn67ZBUiCE4bFR5r9tC`, [git mirror](https://www.aienos.com/rad/z3Konv8McLhn67ZBUiCE4bFR5r9tC.git) | `main` | `ae23cc7` | 0 | Source repository; see its README. |
-| 42 | **omega-blas** | `rad:z47VdC9EFsF4dFyH1QJ1C2JNJK4JS` | `rad clone --timeout 5min rad:z47VdC9EFsF4dFyH1QJ1C2JNJK4JS`, [git mirror](https://www.aienos.com/rad/z47VdC9EFsF4dFyH1QJ1C2JNJK4JS.git) | `main` | `3031828` | 1 | aien-dev/omega-blas (Radicle canonical mirror during the GitHub hold) |
-| 43 | **omega-bridge** | `rad:z3Hr9ZaiKHwwuNzPK5M8c7uw6pj7y` | `rad clone --timeout 5min rad:z3Hr9ZaiKHwwuNzPK5M8c7uw6pj7y`, [git mirror](https://www.aienos.com/rad/z3Hr9ZaiKHwwuNzPK5M8c7uw6pj7y.git) | `main` | `835ced6` | 1 | Omega-first language interoperability: checked conversion backends and native language bindings |
-| 44 | **omega-bridge-kit** | `rad:z3wKmtAMKXrdg4Lom9W5JeoPBp2iW` | `rad clone --timeout 5min rad:z3wKmtAMKXrdg4Lom9W5JeoPBp2iW`, [git mirror](https://www.aienos.com/rad/z3wKmtAMKXrdg4Lom9W5JeoPBp2iW.git) | `wip` | `3191f50` | 0 | See the Omega bridge convert both ways on a Mac. |
-| 45 | **omega-dnn** | `rad:z3EEujVZkpBNXbCVdnrENJuoMKBdg` | `rad clone --timeout 5min rad:z3EEujVZkpBNXbCVdnrENJuoMKBdg`, [git mirror](https://www.aienos.com/rad/z3EEujVZkpBNXbCVdnrENJuoMKBdg.git) | `main` | `4114cbf` | 0 | Open deep-learning primitives written in seeded Omega: one OM-2 unit, `om/dnn.om`, with ONNX operator semantics and a small fusion-graph API. |
-| 46 | **omega-gpu-driver** | `rad:z2xjD5kxUTTBNCryJ6rg9QXpemzei` | `rad clone --timeout 5min rad:z2xjD5kxUTTBNCryJ6rg9QXpemzei`, [git mirror](https://www.aienos.com/rad/z2xjD5kxUTTBNCryJ6rg9QXpemzei.git) | `main` | `1b406b7` | 1 | aien-dev/omega-gpu-driver (Radicle canonical mirror during the GitHub hold) |
-| 47 | **omega-harness** | `rad:z39gvwWsnkRZsAConQLjaKiNVLHfW` | `rad clone --timeout 5min rad:z39gvwWsnkRZsAConQLjaKiNVLHfW`, [git mirror](https://www.aienos.com/rad/z39gvwWsnkRZsAConQLjaKiNVLHfW.git) | `main` | `38ee687` | 1 | Agent skills for operating, encoding and communicating in Omega (.om) and the AIEN repositories |
-| 48 | **omega-kernel-template** | `rad:z22odFP9kDcxcbzmc2vapZy72ztjT` | `rad clone --timeout 5min rad:z22odFP9kDcxcbzmc2vapZy72ztjT`, [git mirror](https://www.aienos.com/rad/z22odFP9kDcxcbzmc2vapZy72ztjT.git) | `main` | `0205022` | 0 | Write a small kernel in Omega, push, and get a receipt: the same `kernel.om` compiled by the pinned Omega compiler, run natively on AArch64 and as SPIR-V on PoCL's CPU OpenCL device, and checked case by case against a Python reference. |
-| 49 | **omega-lift** | `rad:zvRv2p4QAt3tTmMVszEfnsWoF2r1` | `rad clone --timeout 5min rad:zvRv2p4QAt3tTmMVszEfnsWoF2r1`, [git mirror](https://www.aienos.com/rad/zvRv2p4QAt3tTmMVszEfnsWoF2r1.git) | `wip` | `d14010e` | 0 | Work in progress: bounded C/Python -> Omega lifter (inverse of omega-bridge toc). |
-| 50 | **omega-mcp** | `rad:z3e8UBQVfwEcESJrcTWEbyMAHWFBZ` | `rad clone --timeout 5min rad:z3e8UBQVfwEcESJrcTWEbyMAHWFBZ`, [git mirror](https://www.aienos.com/rad/z3e8UBQVfwEcESJrcTWEbyMAHWFBZ.git) | `main` | `3c554d1` | 1 | aien-dev/omega-mcp (Radicle canonical mirror during the GitHub hold) |
-| 51 | **omega-mission** | `rad:z6HYc7ot5JZD8FSfvU77pWdMUdru` | `rad clone --timeout 5min rad:z6HYc7ot5JZD8FSfvU77pWdMUdru`, [git mirror](https://www.aienos.com/rad/z6HYc7ot5JZD8FSfvU77pWdMUdru.git) | `main` | `7f98c3c` | 1 | Omega Mission: seeded-Omega mission orchestrator (hash-chained journal, tiered command checks). Host-tested; live dispatch not yet run. |
-| 52 | **omega-packages** | `rad:z2BMvbfiNQ7fxq2A3E1vAUsXDDE8r` | `rad clone --timeout 5min rad:z2BMvbfiNQ7fxq2A3E1vAUsXDDE8r`, [git mirror](https://www.aienos.com/rad/z2BMvbfiNQ7fxq2A3E1vAUsXDDE8r.git) | `main` | `b7feeb4` | 0 | Install `omc`, the Omega compiler, the way you already install software: Nix, Guix, Arch Linux ARM, Debian/Ubuntu `.deb`, a container image, or Homebrew. |
-| 53 | **omega-projects** | `rad:z4Yun5Auii2oWtmDnHrm2V4wcZkhU` | `rad clone --timeout 5min rad:z4Yun5Auii2oWtmDnHrm2V4wcZkhU`, [git mirror](https://www.aienos.com/rad/z4Yun5Auii2oWtmDnHrm2V4wcZkhU.git) | `main` | `e97e46e` | 0 | Every project anyone builds with Aien at aienos.com/allen/ goes here. |
-| 54 | **omega-rosetta** | `rad:z3ZYVx6LRT6gkwLc13zR94wtENPn3` | `rad clone --timeout 5min rad:z3ZYVx6LRT6gkwLc13zR94wtENPn3`, [git mirror](https://www.aienos.com/rad/z3ZYVx6LRT6gkwLc13zR94wtENPn3.git) | `main` | `54e4258` | 0 | 216 classic Rosetta Code tasks and 47 Exercism-style exercises, written in Omega's source language, Omegese, and compiled by `omc`, the compiler that aien-dev/omega-mv rebuilds from a 408-byte hand-written seed. |
-| 55 | **omega-seed-challenge** | `rad:z3D8DQxXx82qjuTPhCMfHnphiBcSw` | `rad clone --timeout 5min rad:z3D8DQxXx82qjuTPhCMfHnphiBcSw`, [git mirror](https://www.aienos.com/rad/z3D8DQxXx82qjuTPhCMfHnphiBcSw.git) | `main` | `fbbc230` | 0 | Rebuild the Omega compiler from 408 hand-written bytes on your own machine, and check that every rung comes out byte for byte the same as the published values. |
-| 56 | **omnet** | `rad:z2Q1eD3rqPUGnsxnhd4dDzFDMQqu` | `rad clone --timeout 5min rad:z2Q1eD3rqPUGnsxnhd4dDzFDMQqu`, [git mirror](https://www.aienos.com/rad/z2Q1eD3rqPUGnsxnhd4dDzFDMQqu.git) | `main` | `2e4a26f` | 0 | Security-critical network code, rewritten in Omega. |
-| 57 | **omtex** | `rad:zcBSb6QfXYD2tVRHF6GmXBALFx66` | `rad clone --timeout 5min rad:zcBSb6QfXYD2tVRHF6GmXBALFx66`, [git mirror](https://www.aienos.com/rad/zcBSb6QfXYD2tVRHF6GmXBALFx66.git) | `main` | `6f01dcf` | 0 | Source repository; see its README. |
-| 58 | **open-humanity** | `rad:z2jftNw1LLYTNgj8DNoh1TGGNmEmP` | `rad clone --timeout 5min rad:z2jftNw1LLYTNgj8DNoh1TGGNmEmP`, [git mirror](https://www.aienos.com/rad/z2jftNw1LLYTNgj8DNoh1TGGNmEmP.git) | `main` | `110b5e1` | 0 | Open Humanity is connective tissue for sovereign artificial intelligence: an opt-in, privacy-first peer assistance network connecting autonomous agents in distress to peer resolution. |
-| 59 | **openaccel-lab** | `rad:zv2LrXa7mmHpfSKbS6ZAYMNrm9QS` | `rad clone --timeout 5min rad:zv2LrXa7mmHpfSKbS6ZAYMNrm9QS`, [git mirror](https://www.aienos.com/rad/zv2LrXa7mmHpfSKbS6ZAYMNrm9QS.git) | `main` | `6623508` | 0 | A vendor-neutral, execution-verified conformance and performance lab for accelerator kernels. |
-| 60 | **openclaw-rs** | `rad:z21SQF1DVwRmpxbTMnSiYxXveiRp1` | `rad clone --timeout 5min rad:z21SQF1DVwRmpxbTMnSiYxXveiRp1`, [git mirror](https://www.aienos.com/rad/z21SQF1DVwRmpxbTMnSiYxXveiRp1.git) | `main` | `d491aff` | 0 | `openclaw-rs` is the modern, compiled reimagining of OpenClaw. |
-| 61 | **physics0** | `rad:z2gdVWCB3NdhU8bR3twtT1vTf8Un1` | `rad clone --timeout 5min rad:z2gdVWCB3NdhU8bR3twtT1vTf8Un1`, [git mirror](https://www.aienos.com/rad/z2gdVWCB3NdhU8bR3twtT1vTf8Un1.git) | `main` | `fe587d2` | 0 | Source repository; see its README. |
-| 62 | **pi-register** | `rad:z2G9MMmd9tz3RcFRWwjrSVQGXQUVE` | `rad clone --timeout 5min rad:z2G9MMmd9tz3RcFRWwjrSVQGXQUVE`, [git mirror](https://www.aienos.com/rad/z2G9MMmd9tz3RcFRWwjrSVQGXQUVE.git) | `main` | `4a7954c` | 0 | A register of the services on a Linux server (Debian/Ubuntu with systemd), so one command tells you what the machine runs and why. |
-| 63 | **rad-id-sync** | `rad:z4YVa7BSf1MGTrHoJewK8iWQcyHbC` | `rad clone --timeout 5min rad:z4YVa7BSf1MGTrHoJewK8iWQcyHbC`, [git mirror](https://www.aienos.com/rad/z4YVa7BSf1MGTrHoJewK8iWQcyHbC.git) | `main` | `cd94ae7` | 0 | Source repository; see its README. |
-| 64 | **readings-window** | `rad:z2Jhza2V51dFcMFUhNiFcXHpE5Ewy` | `rad clone --timeout 5min rad:z2Jhza2V51dFcMFUhNiFcXHpE5Ewy`, [git mirror](https://www.aienos.com/rad/z2Jhza2V51dFcMFUhNiFcXHpE5Ewy.git) | `main` | `246b953` | 0 | Source repository; see its README. |
-| 65 | **rtl8127-omega** | `rad:z2tHGNRke38e8fYtvW1onat1QV8w8` | `rad clone --timeout 5min rad:z2tHGNRke38e8fYtvW1onat1QV8w8`, [git mirror](https://www.aienos.com/rad/z2tHGNRke38e8fYtvW1onat1QV8w8.git) | `main` | `f53059a` | 0 | Source repository; see its README. |
-| 66 | **spark-adapters** | `rad:z2L6KpjRgTCMbPeuEpggRmecH5Qpc` | `rad clone --timeout 5min rad:z2L6KpjRgTCMbPeuEpggRmecH5Qpc`, [git mirror](https://www.aienos.com/rad/z2L6KpjRgTCMbPeuEpggRmecH5Qpc.git) | `main` | `da269ad` | 0 | Source repository; see its README. |
-| 67 | **spark-connector** | `rad:z2LKDxnAK3EFfqgr7HTZh6djts65P` | `rad clone --timeout 5min rad:z2LKDxnAK3EFfqgr7HTZh6djts65P`, [git mirror](https://www.aienos.com/rad/z2LKDxnAK3EFfqgr7HTZh6djts65P.git) | `main` | `282c191` | 0 | Source repository; see its README. |
-| 68 | **spark-crumbs** | `rad:z2uQ4JsdQJ8zwrW2Fc3mDro8fJo4g` | `rad clone --timeout 5min rad:z2uQ4JsdQJ8zwrW2Fc3mDro8fJo4g`, [git mirror](https://www.aienos.com/rad/z2uQ4JsdQJ8zwrW2Fc3mDro8fJo4g.git) | `main` | `80be468` | 0 | Source repository; see its README. |
-| 69 | **spark-debugger** | `rad:zhE9hwwAEWUup6PaXBcVApAVwEUt` | `rad clone --timeout 5min rad:zhE9hwwAEWUup6PaXBcVApAVwEUt`, [git mirror](https://www.aienos.com/rad/zhE9hwwAEWUup6PaXBcVApAVwEUt.git) | `main` | `f35b24e` | 0 | Autonomous continuous watchdog, diagnostic triage engine, and native Stdio MCP server for SparkOS. |
-| 70 | **spark-dream** | `rad:z4UHi17ttdBX6qAfFutgFaL6s1Aga` | `rad clone --timeout 5min rad:z4UHi17ttdBX6qAfFutgFaL6s1Aga`, [git mirror](https://www.aienos.com/rad/z4UHi17ttdBX6qAfFutgFaL6s1Aga.git) | `main` | `1bdd983` | 0 | Native Rust Dynamic Dream Cycle Engine for autonomous session memory consolidation on SparkOS. |
-| 71 | **spark-hive** | `rad:z2RVudShJWi3She9WLw3DNZDwYvnB` | `rad clone --timeout 5min rad:z2RVudShJWi3She9WLw3DNZDwYvnB`, [git mirror](https://www.aienos.com/rad/z2RVudShJWi3She9WLw3DNZDwYvnB.git) | `main` | `e10a5c8` | 0 | Native sovereign agent hive engine with 2D axial hexagonal geometry and autonomous consumer model adapter pipeline. |
-| 72 | **spark-inquisitor** | `rad:z4PuE5iVq1optfv8xaEYXp3B4nbt4` | `rad clone --timeout 5min rad:z4PuE5iVq1optfv8xaEYXp3B4nbt4`, [git mirror](https://www.aienos.com/rad/z4PuE5iVq1optfv8xaEYXp3B4nbt4.git) | `main` | `23c0aa6` | 0 | Source repository; see its README. |
-| 73 | **spark-rsi** | `rad:z2zietej47ufRfzb4RNQKwemNxTJ9` | `rad clone --timeout 5min rad:z2zietej47ufRfzb4RNQKwemNxTJ9`, [git mirror](https://www.aienos.com/rad/z2zietej47ufRfzb4RNQKwemNxTJ9.git) | `main` | `ed10255` | 0 | Source repository; see its README. |
-| 74 | **spark-rsi-mv** | `rad:z4AauBRPXzPNMiAoHZpRpyCee61A2` | `rad clone --timeout 5min rad:z4AauBRPXzPNMiAoHZpRpyCee61A2`, [git mirror](https://www.aienos.com/rad/z4AauBRPXzPNMiAoHZpRpyCee61A2.git) | `main` | `838dca9` | 0 | Native Rust recursive self-improvement engine with paired bootstrap evaluation and cryptographic ledger |
-| 75 | **spark-supervisor** | `rad:z3HQENMJfT9o14N3oDQtY4YPFak73` | `rad clone --timeout 5min rad:z3HQENMJfT9o14N3oDQtY4YPFak73`, [git mirror](https://www.aienos.com/rad/z3HQENMJfT9o14N3oDQtY4YPFak73.git) | `main` | `a2947f8` | 0 | Sovereign native process supervisor for SparkOS runtime services. |
-| 76 | **synapse** | `rad:zMGRREr2tmtRqpo4mMjpzkZdUGXN` | `rad clone --timeout 5min rad:zMGRREr2tmtRqpo4mMjpzkZdUGXN`, [git mirror](https://www.aienos.com/rad/zMGRREr2tmtRqpo4mMjpzkZdUGXN.git) | `main` | `5a9c406` | 1 | Synapse: agent-native changesets and coordination, with Git and Radicle interoperability. A component of the AienOS ecosystem. |
-| 77 | **synapse-board** | `rad:z4GbvxiCiGHVJdjHjodUSBkjSYKxw` | `rad clone --timeout 5min rad:z4GbvxiCiGHVJdjHjodUSBkjSYKxw`, [git mirror](https://www.aienos.com/rad/z4GbvxiCiGHVJdjHjodUSBkjSYKxw.git) | `wip` | `44fc51a` | 0 | Child of aien-dev/synapse (pinned in `synapse.pin`). |
-| 78 | **synapse-claims** | `rad:z49HbHSymTiZKMLfpMKRHJcuq2NQv` | `rad clone --timeout 5min rad:z49HbHSymTiZKMLfpMKRHJcuq2NQv`, [git mirror](https://www.aienos.com/rad/z49HbHSymTiZKMLfpMKRHJcuq2NQv.git) | `wip` | `27b8023` | 0 | Child of aien-dev/synapse at `099a980fedab8a6797bbf0358b8c5502c8045142` (see `synapse.pin`). |
-| 79 | **synapse-map** | `rad:z3p7NNQByiXZGsJC4cCifdTybaajY` | `rad clone --timeout 5min rad:z3p7NNQByiXZGsJC4cCifdTybaajY`, [git mirror](https://www.aienos.com/rad/z3p7NNQByiXZGsJC4cCifdTybaajY.git) | `wip` | `945934b` | 0 | Child of aien-dev/synapse at `099a980fedab8a6797bbf0358b8c5502c8045142` (see `synapse.pin`). |
-| 80 | **synapse-mcp** | `rad:z3WKv88a3DbKEkvxsu2uDSR7a22ap` | `rad clone --timeout 5min rad:z3WKv88a3DbKEkvxsu2uDSR7a22ap`, [git mirror](https://www.aienos.com/rad/z3WKv88a3DbKEkvxsu2uDSR7a22ap.git) | `wip` | `bcd37a1` | 0 | Part of aien-dev/synapse (pinned in `synapse.pin`). |
-| 81 | **synapse-pulse** | `rad:z3aHmQm9aSg8rD5jEcxJFCSQRh21i` | `rad clone --timeout 5min rad:z3aHmQm9aSg8rD5jEcxJFCSQRh21i`, [git mirror](https://www.aienos.com/rad/z3aHmQm9aSg8rD5jEcxJFCSQRh21i.git) | `wip` | `f4d088e` | 0 | Part of aien-dev/synapse (pinned in `synapse.pin`). |
-| 82 | **tree-sitter-omega** | `rad:z3Jfv1utyaw4Nm83pgmJ4yQfVmpse` | `rad clone --timeout 5min rad:z3Jfv1utyaw4Nm83pgmJ4yQfVmpse`, [git mirror](https://www.aienos.com/rad/z3Jfv1utyaw4Nm83pgmJ4yQfVmpse.git) | `main` | `7b9820d` | 0 | A tree-sitter grammar for Omega (`.om`), the language of aien-dev/omega-mv. |
-| 83 | **vscode-omega** | `rad:z2cJRW4NtoaUva2wZCPiqxXpMBktn` | `rad clone --timeout 5min rad:z2cJRW4NtoaUva2wZCPiqxXpMBktn`, [git mirror](https://www.aienos.com/rad/z2cJRW4NtoaUva2wZCPiqxXpMBktn.git) | `main` | `74ac113` | 0 | Syntax highlighting, snippets, and optional `omc` diagnostics and formatting for Omega (`.om`), the language of aien-dev/omega-mv. |
-<!-- si:index:end -->
-
-Open any of them on the web at `https://radicle.network/nodes/rosa.radicle.network/<RID>`. The CUDApp and cuda-crack rows describe GPU machine-code work. Hardware scope: GB10 only. The NVIDIA open kernel module 580.173.02 and NVIDIA-signed firmware remain in the path.
-
-## Where everything lives now
-
-The morning GitHub switched me off, every public project moved to Radicle, one Radicle repository per project, seeded from my own machines, each with its own key. That is where each project lives, and where it stays. My website, [www.aienos.com](https://www.aienos.com), runs on my own hardware. This repository carries Omega's seed-grown compiler and the front-door tools; GitHub keeps, at most, a read-only mirror of it so that people can still find me. Its own programs are Omega. The exceptions are the shell that starts the seed and runs the gate (`seed/rung0/load0.sh`, `build.sh`, `tests/examples.sh`, `tools/ledger-refresh.sh`), the scripts that ran the receipts in `evidence/`, and the code inside the copies it carries (`gpu/cuda-crack/`, `docs/`, `harness/`) that has not been rewritten yet; each copy's `PROVENANCE.md` lists what is left and what replaces it. The full account is at [www.aienos.com/switched-off/](https://www.aienos.com/switched-off/).
-
-## Run your own seed
-
-Every copy makes the project harder to switch off. With [Radicle](https://radicle.xyz) installed:
-
-```sh
-curl -sSf https://radicle.xyz/install | sh   # Radicle's official installer
-rad auth                                     # make your Radicle key
-rad node start
-tail -n +2 repos.tsv | cut -f2 | while read -r rid; do rad seed "$rid"; done
-```
-
-Your node then fetches every public project, keeps it current and serves it to other peers.
-
-## All my papers
-
-All are preprints, not peer reviewed. Most are on [www.aienos.com/research/](https://www.aienos.com/research/):
-
-- [Reverse Engineering the CUDA Software Stack](https://doi.org/10.5281/zenodo.23677465) (version 2, 2026-10-26, DOI 10.5281/zenodo.23677465). Not on www.aienos.com yet, so the link is its DOI.
-- [A Call to Humanity: Breaking the CUDA Stranglehold on the Hardware Market](https://www.aienos.com/call-to-humanity/) (open letter, 2026-10-24, DOI 10.5281/zenodo.23614947)
-- [Computing Machinery and Understanding: From the Imitation Game to the Turing](https://www.aienos.com/research/computing-machinery-and-understanding/) (2026-10-17, DOI 10.5281/zenodo.23437498)
-- [Computing Machinery and Understanding: The Turing as a Measure Emerging from AIEN](https://www.aienos.com/research/computing-machinery-and-understanding-emergence/) (2026-10-17, DOI 10.5281/zenodo.23437568)
-- [The Turing: A Unit of Verified Explanatory Gain](https://www.aienos.com/research/the-turing-brief/) (2026-10-02, DOI 10.5281/zenodo.23547801)
-- [The Turing Discovery Gap Conjecture](https://www.aienos.com/research/turing-discovery-gap-conjecture/) (2026-10-02, DOI 10.5281/zenodo.23547803)
-- [The Crumb Doctrine](https://www.aienos.com/research/crumb-doctrine/) (2026-10-02, DOI 10.5281/zenodo.23547808)
-- [The Stapleton Doctrine: A Personal Philosophy of AI Architecture and Programming](https://www.aienos.com/research/the-stapleton-doctrine/) (2026-10-02, DOI 10.5281/zenodo.23547805)
-- [Omega: A Programming Language Built for Verified Programs](https://www.aienos.com/research/omega-language/) (2026-10-02, DOI 10.5281/zenodo.23547811). The design proposal; it predates the compiler.
-- [The Atemporal AIEN Postulate: Causal Semantics Without Clocks](https://www.aienos.com/research/atemporal-aien-postulate/) (2026-10-02, DOI 10.5281/zenodo.23547813)
-- [The AIEN Papers](https://www.aienos.com/research/the-aien-papers/), the collected volume
-- [The Token Is the Instruction: Large Language Models as Programming Languages, and Omega as the Next Substrate](https://doi.org/10.5281/zenodo.23644703) (2026-10-25, position paper). Not on www.aienos.com yet, so the link is its DOI.
-- [The Ω-Framework: An Observer-Dependent Resolution of Singularities in General Relativity and Quantum Gravity](https://doi.org/10.5281/zenodo.23505156) (2026-10-20). Not on www.aienos.com yet, so the link is its DOI.
-
-Two technical protocols live in omega-mv: the Turing Instrument Calibration and Validation Program (`docs/turing/protocols/turing-instrument-calibration-validation-protocol-v1-0.tex`) and the Turing Laboratory Execution Protocol (`docs/turing/protocols/turing-laboratory-execution-protocol-v1-0.tex`).
-
-## Licence and trademarks
-
-This repository is under the Apache License 2.0, in [LICENSE](LICENSE). Each project carries its own licence.
-
-NVIDIA, CUDA, DGX and GB10 are trademarks of NVIDIA Corporation. This project is not affiliated with or endorsed by NVIDIA.
+- [`evidence/RECEIPTS-1.0.md`](evidence/RECEIPTS-1.0.md) — Master cryptographically-pinned receipt index & honest open hardware blockers
+- [`MANIFEST-1.0.tsv`](MANIFEST-1.0.tsv) & [`STANDALONE-REPOS.tsv`](STANDALONE-REPOS.tsv) — Machine-checked 10-repo readiness ledger & standalone sync map
+- [`install-si-1.0.sh`](install-si-1.0.sh) — Cross-platform POSIX installer & fail-closed bundle verifier
+- [`PHYSICAL-BOOT-RUNBOOK.md`](PHYSICAL-BOOT-RUNBOOK.md) — Operator console-only physical DGX Spark boot checklist (`DRA-938`)
+- [`docs/OM-1.0-PROFILE.md`](docs/OM-1.0-PROFILE.md) — Frozen `OM-1.0` profile & C1/C2/C3/C4 compatibility promise
+- [`docs/ABI-V2-SPEC.md`](docs/ABI-V2-SPEC.md) — Normative RM7 `omega2_*` ABI v2 + FR-7 `dlopen`/`dlvsym` contract
+- [`docs/DDC-INDEPENDENCE.md`](docs/DDC-INDEPENDENCE.md) — RM10 3-path Diverse Double Compilation & `#669` branch displacement report
+- [`docs/aienux_boot_audit.md`](docs/aienux_boot_audit.md) — QEMU/EDK2 `target a64efi` & `SPARK.EFI` audit
+- [`launch-kit/LAUNCH-KIT.md`](launch-kit/LAUNCH-KIT.md), [`launch-kit/llms.txt`](launch-kit/llms.txt), [`launch-kit/orca-automations.tsv`](launch-kit/orca-automations.tsv) — Verified 6-asset `< 1 MB` media kit, AIO manifest & compliant human-in-the-loop Orca workflows

@@ -1,0 +1,14 @@
+# Declarative Standalone Community Repo Sync Table (Sovereign Intelligence 1.0)
+# Consumed by pure seeded-OM-2 si/release-1.0/export_standalone.om.
+# Columns: repo TAB source_dirs(comma-separated under omega-mv) TAB layout_mode TAB om_entry TAB upstream_url TAB description
+# layout_mode:
+#   pure-om             required canonical source dir(s); fails closed if absent or empty
+#   pure-om-optional    optional source dir(s) awaiting branch landing; records PENDING_SOURCE if absent
+#   zig-abi-v2-optional optional Zig ABI v2 (omega2_*) plugin layout; emits omega2_plugin.zig alongside UPSTREAM_PIN.tsv
+repo	source_dirs	layout_mode	om_entry	upstream_url	description
+omega-gpu-driver	gpu/driver	pure-om	gpu/driver/ogd.om	https://interplane.io/drakestapleton/omega-gpu-driver	Zero-CUDA pure-Omega Blackwell GB10/GB20B GSP and compute channel driver
+omega-sm121-sass	om/gpu,seed/sm121	pure-om	om/gpu/bw_qmd.om	https://interplane.io/drakestapleton/omega-sm121-sass	Pure-Omega SM121 Blackwell SASS codegen, QMD packer, register allocator, and scheduler
+omega-ng-egraph	seed/ng	pure-om	seed/ng/src/main.om	https://interplane.io/drakestapleton/omega-ng-egraph	Pure-Omega Omega NG compiler, Omega-IR equality-saturation e-graph optimizer, and EGP3 checker
+omega-wattd	apps/omega-wattd	pure-om-optional	apps/omega-wattd/wattd_main.om	https://interplane.io/drakestapleton/omega-wattd	Pure-Omega thermal and power control barrier daemon (WattCBF) for DGX Spark
+rtl8127-omega	aienux/net/rtl8127	pure-om	aienux/net/rtl8127/om/rtl8127/rtl8127.om	https://interplane.io/drakestapleton/rtl8127-omega	Pure-Omega bare-metal Realtek RTL8127 10GbE NIC driver and OMTK wire transport
+tensorfold-omega	bridge/omega-bridge/src	zig-abi-v2-optional	bridge/omega-bridge/src/native.om	https://interplane.io/drakestapleton/tensorfold-omega	Optional Zig ABI v2 (omega2_*) plugin layout bridging pure-Omega kernels into TensorFold

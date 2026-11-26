@@ -1,0 +1,16 @@
+# Sovereign Intelligence 1.0 Readiness Ledger (2026-11-26 — Unified Stage)
+# Checked by pure seeded-OM-2 si/release-1.0/si_release_gate.om against seed/out/omc.sha256.
+# Policy: Big-Bang 1.0 HOLD until all 10 required repositories have exact 40-hex commit SHAs,
+# matching unified omc SHA-256 pins (85b84c6d...), honest exercised/qualified evidence, and zero FAIL,
+# MISSING_IMPLEMENTATION, or unwaived NOT_RUN / BLOCKED_* blockers.
+repo	commit_sha	omc_sha256	evidence_class	verdict	waiver	blocker_detail
+omega-mv	0cc2aff79d4818f9d87711b5b062f3cf908be687	85b84c6de85083e4d9d2368015c1ddcab3d863aada922be0e63d774dddf23134	EXERCISED_HOST	BLOCKED_OPERATOR	-	stage/si-1.0-unified full-stack verified; main merge and Spark operator gate wiring pending
+omega-helix	a909888a63155016a14c180fcebbb098aad3c09e	85b84c6de85083e4d9d2368015c1ddcab3d863aada922be0e63d774dddf23134	EXERCISED_HOST	NOT_RUN	-	feat/spclip-dynamic-edit macOS + unified omc 85b84c6d re-qualification pending merge
+omega-seats	d1c62a5cf1b9a72091671490d1eba4c5953b2aa0	85b84c6de85083e4d9d2368015c1ddcab3d863aada922be0e63d774dddf23134	EXERCISED_HOST	NOT_RUN	-	SCM_RIGHTS verified on omc 85b84c6d (HOST_VERIFIED + qemu-x86_64); Interplane mirror publication pending
+omega-wattd	PENDING_STANDALONE_EXPORT	85b84c6de85083e4d9d2368015c1ddcab3d863aada922be0e63d774dddf23134	EXERCISED_HOST	NOT_RUN	-	95c4e9e0c merged into stage/si-1.0-unified (13/13 gate + WattCBF 0 sorry); standalone export pending
+omega-gpu-driver	2d01d74c56e09b5f712b3cdc44fc02d603e9d9d9	85b84c6de85083e4d9d2368015c1ddcab3d863aada922be0e63d774dddf23134	EXERCISED_EMULATED	BLOCKED_HARDWARE	-	DRA-938 attended physical DGX Spark GSP cold-boot pending (PHYSICAL_SILICON=NOT_RUN)
+omega-sm121-sass	PENDING_STANDALONE_EXPORT	85b84c6de85083e4d9d2368015c1ddcab3d863aada922be0e63d774dddf23134	EXERCISED_HOST	NOT_RUN	-	TMA/FA2/Antibody #17 verified in stage/si-1.0-unified; standalone export pending
+omega-ng-egraph	PENDING_STANDALONE_EXPORT	85b84c6de85083e4d9d2368015c1ddcab3d863aada922be0e63d774dddf23134	EXERCISED_HOST	NOT_RUN	-	NG beyond-C + infix + RM3 + multi-target verified in stage/si-1.0-unified; standalone export pending
+rtl8127-omega	f53059a181a282361809446029da26d9ea3745e7	85b84c6de85083e4d9d2368015c1ddcab3d863aada922be0e63d774dddf23134	EXERCISED_HOST	BLOCKED_HARDWARE	-	DRA-938 bare-metal RTL8127 OMTK v1 silicon exercise pending (PHYSICAL_SILICON=NOT_RUN)
+aienux	47063db58b485cf28518c3524a1f2bf8f3824c0f	85b84c6de85083e4d9d2368015c1ddcab3d863aada922be0e63d774dddf23134	EXERCISED_EMULATED	BLOCKED_HARDWARE	-	DRA-938 attended physical DGX Spark SPARK.EFI Window 0 boot pending (PHYSICAL_SILICON=NOT_RUN)
+sovereign-intelligence	6e44b5cfc22cf2b9ba2c3a185d4f51c0db1d69cd	85b84c6de85083e4d9d2368015c1ddcab3d863aada922be0e63d774dddf23134	IMPLEMENTED	NOT_RUN	-	Big-Bang 1.0 umbrella assembly held until all upstream repos pass
