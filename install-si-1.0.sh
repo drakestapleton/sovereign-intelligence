@@ -12,10 +12,12 @@ SIM_ARCH=""
 SIM_GPU=""
 DRY_RUN=0
 DO_INSTALL=0
+JSON_OUT=0
 BUNDLE_DIR=""
 PREFIX="${HOME:-/tmp}/.local"
 PROFILE="core"
-REPO_BASE="${SI_REPO_BASE:-https://interplane.io/omega}"
+REPO_BASE="${SI_REPO_BASE:-https://interplane.io/drakestapleton}"
+OMEGA_WEB_BASE="${SI_OMEGA_BASE:-https://interplane.io/omega}"
 
 usage() {
     cat <<'EOF'
@@ -27,6 +29,7 @@ Options:
   --verify-bundle <dir>         Verify <dir>/SHA256SUMS.txt fail-closed before any action
   --install                     Install verified bundle artifacts into --prefix
   --dry-run                     Print resolved topology, plan, and verification steps only
+  --json                        Emit machine-readable JSON status & next commands (AI-friendly)
   --sim-os linux|darwin|wsl2    Simulate host OS for cross-platform testing
   --sim-arch aarch64|arm64|x86_64  Simulate host CPU architecture
   --sim-gpu gb10|none           Simulate GB10 SM121 presence on linux-aarch64
@@ -62,6 +65,10 @@ while [ $# -gt 0 ]; do
             ;;
         --dry-run)
             DRY_RUN=1
+            shift
+            ;;
+        --json)
+            JSON_OUT=1
             shift
             ;;
         --sim-os)
@@ -313,13 +320,34 @@ install_verified_bundle() {
 
 profile_components() {
     case "$PROFILE:$TOPOLOGY" in
-        core:linux-aarch64-gb10)  printf 'omc,si,om-route,omega-gpu-driver,omega-sm121-sass' ;;
+        core:linux-aarch64-gb10)  printf 'omc,si,om-route,omega-helix,omega-gpu-driver,omega-sm121-sass' ;;
         studio:linux-aarch64-gb10) printf 'omc,si,om-route,omega-helix,omega-gpu-driver,omega-sm121-sass' ;;
         full:linux-aarch64-gb10)  printf 'omc,si,om-route,omega-helix,omega-gpu-driver,omega-sm121-sass,omega-ng-egraph,omega-wattd,rtl8127-omega' ;;
-        core:*)                   printf 'omc,si,om-route' ;;
+        core:*)                   printf 'omc,si,om-route,omega-helix' ;;
         studio:*)                 printf 'omc,si,om-route,omega-helix' ;;
         full:*)                   printf 'omc,si,om-route,omega-helix,omega-ng-egraph,omega-seats' ;;
     esac
+}
+
+find_bin_path() {
+    name="$1"
+    if [ -x "$PREFIX/bin/$name" ]; then
+        printf '%s' "$PREFIX/bin/$name"
+        return 0
+    fi
+    if found=$(command -v "$name" 2>/dev/null); then
+        printf '%s' "$found"
+        return 0
+    fi
+    if [ -x "${HOME:-/tmp}/.local/bin/$name" ]; then
+        printf '%s' "${HOME:-/tmp}/.local/bin/$name"
+        return 0
+    fi
+    return 1
+}
+
+json_escape() {
+    printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
 }
 
 print_topology_guidance() {
@@ -327,29 +355,32 @@ print_topology_guidance() {
         linux-aarch64-gb10)
             printf 'RUNTIME=pure-omega-aarch64-sm121\n'
             printf 'INSTALL_PATH=native-elf-and-zero-cuda-gb10\n'
+            printf 'OMC_DOWNLOAD_PAGE=%s/\n' "$OMEGA_WEB_BASE"
             printf 'NOTES=DGX Spark GB10 detected; pure seeded Omega native ELF plus SM121 GPU compute (zero external GPU toolkit required)\n'
             ;;
         linux-aarch64)
             printf 'RUNTIME=pure-omega-aarch64-elf\n'
             printf 'INSTALL_PATH=native-static-elf\n'
+            printf 'OMC_DOWNLOAD_PAGE=%s/\n' "$OMEGA_WEB_BASE"
             printf 'NOTES=Native Linux AArch64 pure seeded Omega ELF toolchain\n'
             ;;
         linux-x86_64)
             printf 'RUNTIME=pure-omega-x86linux-elf\n'
             printf 'INSTALL_PATH=static-x86linux-elf\n'
+            printf 'OMC_DOWNLOAD_PAGE=%s/\n' "$OMEGA_WEB_BASE"
             printf 'NOTES=Native Linux x86_64 static x86linux omc ELF toolchain\n'
             ;;
         macos-arm64)
             printf 'RUNTIME=pure-omega-a64macos-macho\n'
             printf 'INSTALL_PATH=homebrew-or-verified-terminal-codesign\n'
-            printf 'HOMEBREW_CMD=brew tap omega-si/omega %s/homebrew-omega.git && brew install omega-si/omega/omc\n' "$REPO_BASE"
+            printf 'HOMEBREW_CMD=brew tap drakestapleton/omega %s/homebrew-omega.git && brew install drakestapleton/omega/omc\n' "$REPO_BASE"
             printf 'MACOS_POST_VERIFY=xattr -d com.apple.quarantine <bin> && codesign -s - -f <bin> (run ONLY after archive and binary SHA-256 pass)\n'
             printf 'NOTES=Apple Silicon macOS Mach-O build; zero notarization fees; avoid raw browser archive launches\n'
             ;;
         wsl2-x86_64)
             printf 'RUNTIME=pure-omega-wsl2-x86linux-elf\n'
             printf 'INSTALL_PATH=wsl2-static-x86linux-plus-online-compiler\n'
-            printf 'ONLINE_COMPILER=%s/compile/\n' "$REPO_BASE"
+            printf 'ONLINE_COMPILER=%s/compile/\n' "$OMEGA_WEB_BASE"
             printf 'NOTES=Windows 10/11 via WSL 2 static x86linux ELF verified with sha256sum -c; no native Windows .exe is shipped\n'
             ;;
     esac
@@ -360,6 +391,58 @@ if [ -n "$BUNDLE_DIR" ]; then
 fi
 
 COMPONENTS=$(profile_components)
+OMC_PATH=$(find_bin_path omc || true)
+HELIX_PATH=$(find_bin_path omega-helix || true)
+OMC_INSTALL_CMD=""
+case "$TOPOLOGY" in
+    macos-arm64)
+        OMC_INSTALL_CMD="brew tap drakestapleton/omega ${REPO_BASE}/homebrew-omega.git && brew install drakestapleton/omega/omc"
+        ;;
+    *)
+        OMC_INSTALL_CMD="See ${OMEGA_WEB_BASE}/#downloads for SHA-256 verified static omc archive (or build from omega-mv seed/omega-from-seed.sh)"
+        ;;
+esac
+HELIX_CLONE_CMD="git clone ${REPO_BASE}/omega-helix.git && cd omega-helix && sh install.sh --prefix \"$PREFIX\""
+STRAND_QUICK_CMD="omega-helix forge --name my-strands --mode hybrid --tokenizer bpe --V 300 --T 32 --D 32 --H 4 --L 2 --steps 20 --dataset omega-starter --strand Code:omega-native:1:15 --strand Docs:omega-docs:1:15 --export-hf --export-gguf --json"
+
+MODE_NAME="plan-only"
+ACTION_NAME="plan"
+if [ "$DRY_RUN" -eq 1 ]; then
+    MODE_NAME="dry-run"
+    ACTION_NAME="dry-run"
+elif [ "$DO_INSTALL" -eq 1 ]; then
+    [ -n "$BUNDLE_DIR" ] || die "install_requires_verify_bundle" 2
+    install_verified_bundle "$BUNDLE_DIR" "$PREFIX"
+    MODE_NAME="install"
+    ACTION_NAME="install"
+elif [ -n "$BUNDLE_DIR" ]; then
+    MODE_NAME="verify-only"
+    ACTION_NAME="verify-bundle"
+fi
+
+if [ "$JSON_OUT" -eq 1 ]; then
+    printf '{'
+    printf '"ok":true,'
+    printf '"action":"%s",' "$(json_escape "$ACTION_NAME")"
+    printf '"mode":"%s",' "$(json_escape "$MODE_NAME")"
+    printf '"topology":"%s",' "$(json_escape "$TOPOLOGY")"
+    printf '"profile":"%s",' "$(json_escape "$PROFILE")"
+    printf '"prefix":"%s",' "$(json_escape "$PREFIX")"
+    printf '"components":"%s",' "$(json_escape "$COMPONENTS")"
+    printf '"telemetry":"disabled",'
+    printf '"omc":{"installed":%s,"path":"%s","install_cmd":"%s"},' \
+        "$([ -n "$OMC_PATH" ] && printf true || printf false)" \
+        "$(json_escape "$OMC_PATH")" \
+        "$(json_escape "$OMC_INSTALL_CMD")"
+    printf '"omega_helix":{"installed":%s,"path":"%s","clone_install_cmd":"%s","studio_cmd":"omega-helix studio","agent_cmd":"omega-helix agent --json"},' \
+        "$([ -n "$HELIX_PATH" ] && printf true || printf false)" \
+        "$(json_escape "$HELIX_PATH")" \
+        "$(json_escape "$HELIX_CLONE_CMD")"
+    printf '"verified_files":%s,' "$VERIFIED_COUNT"
+    printf '"strand_quickstart_cmd":"%s"' "$(json_escape "$STRAND_QUICK_CMD")"
+    printf '}\n'
+    exit 0
+fi
 
 printf 'TOPOLOGY=%s\n' "$TOPOLOGY"
 printf 'PROFILE=%s\n' "$PROFILE"
@@ -367,6 +450,8 @@ printf 'PREFIX=%s\n' "$PREFIX"
 printf 'COMPONENTS=%s\n' "$COMPONENTS"
 printf 'TELEMETRY=disabled\n'
 print_topology_guidance
+printf 'OMC_INSTALLED=%s\n' "$([ -n "$OMC_PATH" ] && printf 'yes (%s)' "$OMC_PATH" || printf 'no')"
+printf 'HELIX_INSTALLED=%s\n' "$([ -n "$HELIX_PATH" ] && printf 'yes (%s)' "$HELIX_PATH" || printf 'no')"
 
 if [ -n "$BUNDLE_DIR" ]; then
     printf 'VERIFY=PASS files=%s\n' "$VERIFIED_COUNT"
@@ -379,8 +464,6 @@ if [ "$DRY_RUN" -eq 1 ]; then
 fi
 
 if [ "$DO_INSTALL" -eq 1 ]; then
-    [ -n "$BUNDLE_DIR" ] || die "install_requires_verify_bundle" 2
-    install_verified_bundle "$BUNDLE_DIR" "$PREFIX"
     printf 'MODE=install\n'
     printf 'INSTALL=PASS files=%s prefix=%s\n' "$VERIFIED_COUNT" "$PREFIX"
     printf 'SI_INSTALL PASS action=install\n'
@@ -393,6 +476,10 @@ if [ -n "$BUNDLE_DIR" ]; then
     exit 0
 fi
 
+printf 'NEXT_STEP_OMC=%s\n' "$OMC_INSTALL_CMD"
+printf 'NEXT_STEP_HELIX=%s\n' "$HELIX_CLONE_CMD"
+printf 'NEXT_STEP_STUDIO=omega-helix studio\n'
+printf 'NEXT_STEP_AI_JSON=omega-helix agent --json\n'
 printf 'MODE=plan-only\n'
 printf 'SI_INSTALL PASS action=plan\n'
 exit 0
