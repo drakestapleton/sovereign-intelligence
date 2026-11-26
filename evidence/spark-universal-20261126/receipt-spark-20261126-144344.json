@@ -1,0 +1,826 @@
+{
+  "schema": "omega-spark-bench-receipt-v1",
+  "generated_utc": "2026-11-26T20:43:44Z",
+  "host": {
+    "hostname": "spark-b87b",
+    "kernel": "7.0.0-1019-nvidia",
+    "arch": "aarch64",
+    "cpu_topology": {
+      "total_cores": 20,
+      "cortex_x925_pcores": "5-9,15-19 (10 cores, 1378-3900 MHz, mask 0xf83e0)",
+      "cortex_a725_ecores": "0-4,10-14 (10 cores, 338-2808 MHz, mask 0x07c1f)"
+    },
+    "gpu_driver_state": "aien_gpu.ko active (/dev/aien-gpu); nvidia.ko NOT loaded (/dev/nvidia* absent)",
+    "background_load_disclosure": "Shared Spark host: afl-qemu-trace & headless chrome active on A725 cores (1,3,10,11); all A/B runs interleaved with raw per-run loadavg/thermal/power recorded.",
+    "omega_mv_head": "08ea7813321db8c9b8d41c2a8d79a8824c91ad08",
+    "omc_fixpoint_sha256": "85b84c6de85083e4d9d2368015c1ddcab3d863aada922be0e63d774dddf23134",
+    "omega_mv_evidence_untouched": true,
+    "thermal_actuator_mode": "DRY_RUN_READONLY hw_writes=0 (never passed --apply)"
+  },
+  "gate_verdicts": [
+    {
+      "repo": "omega-play",
+      "commit": "79fcac3c1bc317331d37dfa1fd7db64cad57a1ae",
+      "verdict": "PASS",
+      "notes": "OMC_BIN=... bash gate.sh (15/15 checks, Vulkan layer ABI, DRY_RUN_READONLY hw_writes=0, Lean 4 0-sorry scan; note: reads OMC_BIN not OMEGA_OMC; sched_plan.om hardcodes 0-9/10-19 vs physical Spark interleaved 0-4,10-14 / 5-9,15-19)"
+    },
+    {
+      "repo": "omega-stream",
+      "commit": "EMPTY_REPO (0 commits)",
+      "verdict": "MISSING_IMPLEMENTATION",
+      "notes": "Public GitHub repo https://github.com/drakestapleton/omega-stream.git is empty (isEmpty=true, 0 commits); gate.sh & RGBA8->NV12/P010 kernels NOT_RUN"
+    },
+    {
+      "repo": "omega-spirv",
+      "commit": "4bd57313017fc450eaa65a1ec49f4e69ab7f7be4",
+      "verdict": "PASS",
+      "notes": "OMEGA_OMC=... bash gate.sh (2x deterministic, SPIR-V opt bit-exact passthrough, 3/3 negative controls, Khronos 1.2.0 Vulkan layer manifest)"
+    },
+    {
+      "repo": "omega-intel",
+      "commit": "c49b45e3c07e47bc1b16b246472d9bc3f92290e2",
+      "verdict": "PASS",
+      "notes": "OMEGA_OMC=... bash gate.sh (INTEL_CONNECTOR_SELFTEST PASS checks=6 controls=7 hw=BLOCKED_HARDWARE/NOT_RUN)"
+    },
+    {
+      "repo": "omega-cpu-x86",
+      "commit": "949821d65441079ce6026eb3cfc1d8496334f17d",
+      "verdict": "PASS",
+      "notes": "OMEGA_OMC=... bash gate.sh (x86linux_qual 2x deterministic, EXEC_CLASS=EMULATED checks=12 traps=4/4 hardware=NOT_RUN)"
+    },
+    {
+      "repo": "omega-cpu-arm",
+      "commit": "c67be3501605877b71d783e610c2456664aa184d",
+      "verdict": "PASS",
+      "notes": "OMEGA_OMC=... bash gate.sh (OMEGA-ARM-ENGINE PASS profiles=7 checks=61 controls=12 caught=12, spark_20core, aarch64=HOST_VERIFIED)"
+    },
+    {
+      "repo": "omega-amd",
+      "commit": "2c46309be1a5dd753b16a5581bdfd49621c546dd",
+      "verdict": "PASS",
+      "notes": "OMEGA_OMC=... bash gate.sh (RDNA-PROFILES SELFTEST PASS positive=6 negative=8 units=8 card_objects=19 controls=7 hardware=NOT_RUN)"
+    },
+    {
+      "repo": "omega-tensorfold",
+      "commit": "d675b9cfd988c306a07afd7d47be08d627640c68",
+      "verdict": "PASS",
+      "notes": "OMEGA_OMC=... bash gate.sh (C ABI v2 PASS, 5/5 native Zig 0.13.0 ABI v2 tests PASS, 5/5 1-bit tamper controls PASS)"
+    },
+    {
+      "repo": "omega-llamacpp",
+      "commit": "6db7e93b6f9b070342efa5a35b5f09cac7639b56",
+      "verdict": "PASS",
+      "notes": "OMEGA_OMC=... bash gate.sh (24 kernels, C++17 & CMake -DGGML_OMEGA=ON PASS, Q8 dot bit-exact + 500 random, RMSNorm 0-ULP + 200 random, Arboris zero-drift, Trap 9 & BAD_ARG=32)"
+    },
+    {
+      "repo": "omega-pytorch",
+      "commit": "e8b9d65101714f5cddaf369425e5191d81560a76",
+      "verdict": "PASS",
+      "notes": "OMEGA_OMC=... bash gate.sh (C ABI v2 + Python ctypes + FX backend + Helix egraph_opt->dual_checker 12/12 antibodies PASS; torch_live=NOT_RUN because PyTorch not installed)"
+    }
+  ],
+  "video_1080p60_4k60_ab": {
+    "label": "MEASURED_DGX_SPARK_GRACE_A64",
+    "timestamp_utc": "2026-11-26T19:52:35Z",
+    "nvenc_status": "BLOCKED_HARDWARE/NOT_RUN (aien_gpu.ko active; /dev/nvidia* absent)",
+    "omega_stream_color_kernels_status": "MISSING_IMPLEMENTATION (drakestapleton/omega-stream repo is empty on GitHub: 0 commits)",
+    "profiles": {
+      "1080p60": {
+        "profile": "1080p60",
+        "resolution": "1920x1080",
+        "fps_target": 60,
+        "duration_s": 20,
+        "total_frames": 1200,
+        "scenes": 5,
+        "target_mbps": 12,
+        "mezzanine_mib": 2126.72,
+        "x925_core_slices": [
+          "5,6",
+          "7,8",
+          "9,15",
+          "16,17",
+          "18,19"
+        ],
+        "color_mode": "bt709",
+        "traditional": {
+          "runs": [
+            {
+              "run": 1,
+              "wall_s": 12.6673,
+              "fps": 94.73,
+              "bytes": 29777908,
+              "mbps": 11.911,
+              "loadavg_start": [
+                15.61,
+                10.64,
+                8.31
+              ],
+              "thermal_t0_start_c": 74.6,
+              "thermal_t0_end_c": 74.1,
+              "power": {
+                "samples": 6,
+                "mean_w": 130.0,
+                "min_w": 130.0,
+                "max_w": 130.0,
+                "joules": 1646.77
+              }
+            },
+            {
+              "run": 2,
+              "wall_s": 12.594,
+              "fps": 95.28,
+              "bytes": 29786113,
+              "mbps": 11.914,
+              "loadavg_start": [
+                18.06,
+                11.75,
+                8.76
+              ],
+              "thermal_t0_start_c": 76.7,
+              "thermal_t0_end_c": 76.2,
+              "power": {
+                "samples": 6,
+                "mean_w": 130.0,
+                "min_w": 130.0,
+                "max_w": 130.0,
+                "joules": 1637.3
+              }
+            },
+            {
+              "run": 3,
+              "wall_s": 13.0124,
+              "fps": 92.22,
+              "bytes": 29753182,
+              "mbps": 11.901,
+              "loadavg_start": [
+                20.38,
+                12.8,
+                9.19
+              ],
+              "thermal_t0_start_c": 75.8,
+              "thermal_t0_end_c": 77.6,
+              "power": {
+                "samples": 6,
+                "mean_w": 130.0,
+                "min_w": 130.0,
+                "max_w": 130.0,
+                "joules": 1691.68
+              }
+            }
+          ],
+          "quality": {
+            "frames_checked": 1200,
+            "psnr_avg_db": 31.253693,
+            "psnr_min_frame_db": 24.74,
+            "ssim_all_avg": 0.806438,
+            "ssim_min_frame": 0.706122
+          },
+          "probe": {
+            "width": 1920,
+            "height": 1080,
+            "pix_fmt": "yuv420p",
+            "color_space": "bt709",
+            "color_transfer": "bt709",
+            "color_primaries": "bt709",
+            "bit_rate": "11896468",
+            "nb_frames": "1200"
+          }
+        },
+        "omega_parallel_x925": {
+          "runs": [
+            {
+              "run": 1,
+              "wall_s": 16.2197,
+              "fps": 73.98,
+              "bytes": 31838665,
+              "mbps": 12.735,
+              "loadavg_start": [
+                17.05,
+                11.11,
+                8.49
+              ],
+              "thermal_t0_start_c": 74.1,
+              "thermal_t0_end_c": 76.7,
+              "power": {
+                "samples": 8,
+                "mean_w": 130.0,
+                "min_w": 130.0,
+                "max_w": 130.0,
+                "joules": 2108.58
+              }
+            },
+            {
+              "run": 2,
+              "wall_s": 16.3308,
+              "fps": 73.48,
+              "bytes": 31831782,
+              "mbps": 12.733,
+              "loadavg_start": [
+                18.39,
+                12.03,
+                8.89
+              ],
+              "thermal_t0_start_c": 76.2,
+              "thermal_t0_end_c": 75.8,
+              "power": {
+                "samples": 8,
+                "mean_w": 130.0,
+                "min_w": 130.0,
+                "max_w": 130.0,
+                "joules": 2123.08
+              }
+            },
+            {
+              "run": 3,
+              "wall_s": 16.2387,
+              "fps": 73.9,
+              "bytes": 31855405,
+              "mbps": 12.742,
+              "loadavg_start": [
+                19.16,
+                12.88,
+                9.27
+              ],
+              "thermal_t0_start_c": 77.6,
+              "thermal_t0_end_c": 79.3,
+              "power": {
+                "samples": 8,
+                "mean_w": 126.25,
+                "min_w": 100.0,
+                "max_w": 130.0,
+                "joules": 2050.2
+              }
+            }
+          ],
+          "quality": {
+            "frames_checked": 1200,
+            "psnr_avg_db": 35.15667,
+            "psnr_min_frame_db": 33.24,
+            "ssim_all_avg": 0.817423,
+            "ssim_min_frame": 0.693465
+          },
+          "probe": {
+            "width": 1920,
+            "height": 1080,
+            "pix_fmt": "yuv420p",
+            "color_space": "bt709",
+            "color_transfer": "bt709",
+            "color_primaries": "bt709",
+            "bit_rate": "12734377",
+            "nb_frames": "1200"
+          }
+        }
+      },
+      "4k60": {
+        "profile": "4k60",
+        "resolution": "3840x2160",
+        "fps_target": 60,
+        "duration_s": 12,
+        "total_frames": 720,
+        "scenes": 4,
+        "target_mbps": 68,
+        "mezzanine_mib": 5089.87,
+        "x925_core_slices": [
+          "5,6,7",
+          "8,9",
+          "15,16,17",
+          "18,19"
+        ],
+        "color_mode": "bt2020",
+        "traditional": {
+          "runs": [
+            {
+              "run": 1,
+              "wall_s": 34.8776,
+              "fps": 20.64,
+              "bytes": 105667810,
+              "mbps": 70.445,
+              "loadavg_start": [
+                18.11,
+                14.96,
+                10.53
+              ],
+              "thermal_t0_start_c": 62.1,
+              "thermal_t0_end_c": 78.9,
+              "power": {
+                "samples": 17,
+                "mean_w": 132.35,
+                "min_w": 130.0,
+                "max_w": 140.0,
+                "joules": 4616.18
+              }
+            },
+            {
+              "run": 2,
+              "wall_s": 34.9079,
+              "fps": 20.63,
+              "bytes": 105923984,
+              "mbps": 70.616,
+              "loadavg_start": [
+                17.9,
+                15.95,
+                11.28
+              ],
+              "thermal_t0_start_c": 60.5,
+              "thermal_t0_end_c": 76.8,
+              "power": {
+                "samples": 18,
+                "mean_w": 82.78,
+                "min_w": 80.0,
+                "max_w": 130.0,
+                "joules": 2889.65
+              }
+            },
+            {
+              "run": 3,
+              "wall_s": 35.1028,
+              "fps": 20.51,
+              "bytes": 105687229,
+              "mbps": 70.458,
+              "loadavg_start": [
+                18.58,
+                16.89,
+                12.06
+              ],
+              "thermal_t0_start_c": 62.3,
+              "thermal_t0_end_c": 80.2,
+              "power": {
+                "samples": 18,
+                "mean_w": 134.44,
+                "min_w": 130.0,
+                "max_w": 140.0,
+                "joules": 4719.41
+              }
+            }
+          ],
+          "quality": {
+            "frames_checked": 720,
+            "psnr_avg_db": 31.621891,
+            "psnr_min_frame_db": 24.77,
+            "ssim_all_avg": 0.801041,
+            "ssim_min_frame": 0.662087
+          },
+          "probe": {
+            "width": 3840,
+            "height": 2160,
+            "pix_fmt": "yuv420p",
+            "color_space": "bt709",
+            "color_transfer": "bt709",
+            "color_primaries": "bt709",
+            "bit_rate": "70453834",
+            "nb_frames": "720"
+          }
+        },
+        "omega_parallel_x925": {
+          "runs": [
+            {
+              "run": 1,
+              "wall_s": 51.655,
+              "fps": 13.94,
+              "bytes": 109188296,
+              "mbps": 72.792,
+              "loadavg_start": [
+                19.19,
+                15.62,
+                10.92
+              ],
+              "thermal_t0_start_c": 78.9,
+              "thermal_t0_end_c": 60.5,
+              "power": {
+                "samples": 26,
+                "mean_w": 120.38,
+                "min_w": 80.0,
+                "max_w": 130.0,
+                "joules": 6218.49
+              }
+            },
+            {
+              "run": 2,
+              "wall_s": 51.5403,
+              "fps": 13.97,
+              "bytes": 109392233,
+              "mbps": 72.928,
+              "loadavg_start": [
+                18.34,
+                16.28,
+                11.57
+              ],
+              "thermal_t0_start_c": 76.8,
+              "thermal_t0_end_c": 62.3,
+              "power": {
+                "samples": 26,
+                "mean_w": 134.23,
+                "min_w": 130.0,
+                "max_w": 140.0,
+                "joules": 6918.37
+              }
+            },
+            {
+              "run": 3,
+              "wall_s": 51.6207,
+              "fps": 13.95,
+              "bytes": 109189003,
+              "mbps": 72.793,
+              "loadavg_start": [
+                17.44,
+                16.77,
+                12.2
+              ],
+              "thermal_t0_start_c": 80.2,
+              "thermal_t0_end_c": 61.0,
+              "power": {
+                "samples": 26,
+                "mean_w": 125.38,
+                "min_w": 80.0,
+                "max_w": 140.0,
+                "joules": 6472.47
+              }
+            }
+          ],
+          "quality": {
+            "frames_checked": 720,
+            "psnr_avg_db": 35.793456,
+            "psnr_min_frame_db": 33.58,
+            "ssim_all_avg": 0.812891,
+            "ssim_min_frame": 0.688462
+          },
+          "probe": {
+            "width": 3840,
+            "height": 2160,
+            "pix_fmt": "yuv420p",
+            "color_space": "bt2020nc",
+            "color_transfer": "bt2020-10",
+            "color_primaries": "bt2020",
+            "bit_rate": "72789807",
+            "nb_frames": "720"
+          }
+        }
+      }
+    }
+  },
+  "video_5min_4k30_showdown": {
+    "label": "MEASURED_DGX_SPARK_GRACE_A64",
+    "timestamp_utc": "2026-11-26T20:35:13Z",
+    "timeline": {
+      "resolution": "3840x2160",
+      "fps": 30,
+      "duration_s": 300.0,
+      "total_frames": 9000,
+      "scenes": 60,
+      "scene_duration_s": 5,
+      "v2_edited_scenes": [
+        0,
+        29,
+        59
+      ],
+      "v1_input_gb": 36.163,
+      "v2_input_gb": 35.74
+    },
+    "omega_binary": {
+      "path": "/home/drakestapleton/omega-bench-spark/omega_4k_merkle",
+      "bytes": 27440,
+      "sha256": "b965122f811697f1837b5a63fc729f0e13a7e9220d7db7cb5ca1492f030590e7",
+      "omc_sha256": "85b84c6de85083e4d9d2368015c1ddcab3d863aada922be0e63d774dddf23134",
+      "linking": "static AArch64 ELF, zero libc, zero Python"
+    },
+    "cold_v1": {
+      "traditional": {
+        "wall_s": 388.4304,
+        "fps": 23.17,
+        "realtime_x": 0.772,
+        "bytes": 1490267034,
+        "mbps": 39.74,
+        "loadavg_start": [
+          8.58,
+          14.32,
+          14.07
+        ],
+        "thermal_t0_start_c": 55.7,
+        "thermal_t0_end_c": 75.2,
+        "power": {
+          "samples": 189,
+          "mean_w": 129.05,
+          "min_w": 70.0,
+          "max_w": 140.0,
+          "joules": 50126.12
+        },
+        "probe": {
+          "width": 3840,
+          "height": 2160,
+          "pix_fmt": "yuv420p",
+          "color_space": "bt709",
+          "color_transfer": "bt709",
+          "color_primaries": "bt709",
+          "duration": "300.000000",
+          "bit_rate": "39738611",
+          "nb_frames": "9000"
+        },
+        "quality": {
+          "frames_checked": 9001,
+          "psnr_avg_db": 30.03941,
+          "psnr_min_frame_db": 22.55,
+          "ssim_all_avg": 0.826218,
+          "ssim_min_frame": 0.555116
+        }
+      },
+      "omega_merkle_20c": {
+        "wall_s": 364.5711,
+        "fps": 24.69,
+        "realtime_x": 0.823,
+        "bytes": 1589386226,
+        "mbps": 42.384,
+        "omega_stdout": "OMEGA_4K_MERKLE_PASS hash_ms=34347 encode_ms=320029 mux_ms=10193 total_ms=364570 hits=0 misses=60 x925_chunks=41 a725_chunks=19 merkle_root=1c7c98ea7991a3fc3c4b91692122080aadf7351437d3d5190bf55ed139dde645",
+        "omega_fields": {
+          "hash_ms": "34347",
+          "encode_ms": "320029",
+          "mux_ms": "10193",
+          "total_ms": "364570",
+          "hits": "0",
+          "misses": "60",
+          "x925_chunks": "41",
+          "a725_chunks": "19",
+          "merkle_root": "1c7c98ea7991a3fc3c4b91692122080aadf7351437d3d5190bf55ed139dde645"
+        },
+        "loadavg_start": [
+          15.99,
+          17.11,
+          15.63
+        ],
+        "thermal_t0_start_c": 74.4,
+        "thermal_t0_end_c": 60.0,
+        "power": {
+          "samples": 175,
+          "mean_w": 133.2,
+          "min_w": 60.0,
+          "max_w": 140.0,
+          "joules": 48560.92
+        },
+        "probe": {
+          "width": 3840,
+          "height": 2160,
+          "pix_fmt": "yuv420p",
+          "color_space": "bt2020nc",
+          "color_transfer": "bt2020-10",
+          "color_primaries": "bt2020",
+          "duration": "300.000000",
+          "bit_rate": "42379279",
+          "nb_frames": "9000"
+        },
+        "quality": {
+          "frames_checked": 9000,
+          "psnr_avg_db": 36.636553,
+          "psnr_min_frame_db": 32.32,
+          "ssim_all_avg": 0.841043,
+          "ssim_min_frame": 0.62427
+        }
+      }
+    },
+    "revision_v2_3of60_edited": {
+      "traditional": {
+        "wall_s": 386.3562,
+        "fps": 23.29,
+        "realtime_x": 0.776,
+        "bytes": 1484324216,
+        "mbps": 39.582,
+        "loadavg_start": [
+          17.71,
+          26.64,
+          21.73
+        ],
+        "thermal_t0_start_c": 58.5,
+        "thermal_t0_end_c": 80.0,
+        "power": {
+          "samples": 187,
+          "mean_w": 130.8,
+          "min_w": 70.0,
+          "max_w": 140.0,
+          "joules": 50536.27
+        },
+        "probe": {
+          "width": 3840,
+          "height": 2160,
+          "pix_fmt": "yuv420p",
+          "color_space": "bt709",
+          "color_transfer": "bt709",
+          "color_primaries": "bt709",
+          "duration": "300.000000",
+          "bit_rate": "39580144",
+          "nb_frames": "9000"
+        }
+      },
+      "omega_merkle_20c": {
+        "wall_s": 75.1497,
+        "fps": 119.76,
+        "realtime_x": 3.992,
+        "bytes": 1590073533,
+        "mbps": 42.402,
+        "omega_stdout": "OMEGA_4K_MERKLE_PASS hash_ms=26587 encode_ms=38348 mux_ms=10213 total_ms=75149 hits=57 misses=3 x925_chunks=3 a725_chunks=0 merkle_root=2f946a11c2e0ffd73a94434c983427c7abb5dbd5c9831a0379ef866e7e45b424",
+        "omega_fields": {
+          "hash_ms": "26587",
+          "encode_ms": "38348",
+          "mux_ms": "10213",
+          "total_ms": "75149",
+          "hits": "57",
+          "misses": "3",
+          "x925_chunks": "3",
+          "a725_chunks": "0",
+          "merkle_root": "2f946a11c2e0ffd73a94434c983427c7abb5dbd5c9831a0379ef866e7e45b424"
+        },
+        "loadavg_start": [
+          26.62,
+          29.84,
+          22.24
+        ],
+        "thermal_t0_start_c": 60.0,
+        "thermal_t0_end_c": 59.9,
+        "power": {
+          "samples": 37,
+          "mean_w": 114.05,
+          "min_w": 60.0,
+          "max_w": 130.0,
+          "joules": 8571.16
+        },
+        "probe": {
+          "width": 3840,
+          "height": 2160,
+          "pix_fmt": "yuv420p",
+          "color_space": "bt2020nc",
+          "color_transfer": "bt2020-10",
+          "color_primaries": "bt2020",
+          "duration": "300.000000",
+          "bit_rate": "42397610",
+          "nb_frames": "9000"
+        },
+        "quality": {
+          "frames_checked": 9000,
+          "psnr_avg_db": 36.847186,
+          "psnr_min_frame_db": 32.32,
+          "ssim_all_avg": 0.846769,
+          "ssim_min_frame": 0.62427
+        }
+      }
+    }
+  },
+  "gpu_zero_cuda_live_proof": {
+    "label": "MEASURED_DGX_SPARK_GB10",
+    "traditional_nvenc_result": "FAILED / BLOCKED_HARDWARE (CUDA_ERROR_NO_DEVICE: no CUDA-capable device is detected; /dev/nvidia* absent)",
+    "omega_aien_gpu_cmd": "/home/drakestapleton/work/helix-nvfp4-live/build/ollm-gb10 nvfp4 4096 4096 8192 20",
+    "omega_aien_gpu_output": "NVFP4 4096 4096 8192 20 12066284 45561 9112 8192 8192 68 0 INREG_OMMA_MICROBENCH PASS"
+  },
+  "ai_runtime_kernels_ab": {
+    "label": "MEASURED_DGX_SPARK_GRACE_A64",
+    "pinned_core": "CPU 5 (Cortex-X925 @ 3.90 GHz)",
+    "rounds": 5,
+    "q8_dot": [
+      {
+        "n": 4096,
+        "iters": 100000,
+        "bit_exact_parity": true,
+        "omega_om2_ns": 2861.26,
+        "gcc_o3_scalar_ns": 1060.33,
+        "gcc_o3_autovec_ns": 70.31,
+        "neon_sdot_ns": 33.79,
+        "gap_om_vs_scalar_x": 2.698,
+        "gap_om_vs_autovec_x": 40.697,
+        "gap_om_vs_sdot_x": 84.687,
+        "sink": 0
+      },
+      {
+        "n": 16384,
+        "iters": 25000,
+        "bit_exact_parity": true,
+        "omega_om2_ns": 11432.75,
+        "gcc_o3_scalar_ns": 4226.48,
+        "gcc_o3_autovec_ns": 267.94,
+        "neon_sdot_ns": 136.28,
+        "gap_om_vs_scalar_x": 2.705,
+        "gap_om_vs_autovec_x": 42.669,
+        "gap_om_vs_sdot_x": 83.891,
+        "sink": 0
+      }
+    ],
+    "rmsnorm_f32": {
+      "n": 4096,
+      "iters": 25000,
+      "zero_ulp_parity_vs_strict": true,
+      "fastmath_max_ulp_drift": 0,
+      "omega_om2_ns": 4233.44,
+      "gcc_o3_strict_ieee_ns": 2371.46,
+      "gcc_o3_fastmath_ns": 791.19,
+      "gap_om_vs_strict_x": 1.785,
+      "gap_om_vs_fastmath_x": 5.351,
+      "fm_scale": 1041148281,
+      "sink": 0
+    },
+    "arboris": {
+      "iters": 200000,
+      "table_bit_exact_parity": true,
+      "predict_bit_exact_parity": true,
+      "observe_ns": {
+        "omega_llamacpp": 34.77,
+        "omega_tensorfold": 38.91,
+        "omega_pytorch": 37.17,
+        "gcc_o3_native": 7.14,
+        "ratio_ggml_vs_gcc_x": 4.867
+      },
+      "predict_ns": {
+        "omega_llamacpp": 78.87,
+        "omega_tensorfold": 86.78,
+        "omega_pytorch": 80.26,
+        "gcc_o3_native": 25.44,
+        "ratio_ggml_vs_gcc_x": 3.1
+      },
+      "sink": 0
+    }
+  },
+  "spark_20core_output": "=== OMEGA ALL-20-CORE SPARK ENGINE (BRANCHLESS FAST-DOUBLING + PRE-PINNED CORE-SPECIFIC POOL) ===\nALGEBRAIC_FIB_50M_HOT: result_mod128=69 ns_per_call=49\nSEQ_1CORE_X925_2B: checksum=11349147012353814832 wall_us=515311\nALL20_PREPIN_UNIFORM_2B: checksum=11349147012353814832 wall_us=4154098 speedup_x100=12 gops_x10=14443 BIT_EXACT=PASS\nALL20_PREPIN_CORESPEC_HET_2B: checksum=4594169726663535108 wall_us=1818155 speedup_x100=28 gops_x10=33000 BIT_EXACT=PASS",
+  "scheduler_isolation_abc": {
+    "label": "MEASURED_DGX_SPARK_GRACE_A64",
+    "target_hz": 60,
+    "target_us": 16667,
+    "bg_threads": 24,
+    "rounds": 3,
+    "frames_per_arm": 900,
+    "arms": {
+      "stock_linux_cfs": {
+        "description": "Unpinned 60 FPS game loop + 24 OBS/Discord bg threads on all 20 cores (0-19)",
+        "frames": 900,
+        "p50_us": 16847,
+        "p95_us": 20000,
+        "p99_us": 25450,
+        "max_us": 85880,
+        "mean_us": 17613.41,
+        "avg_fps": 56.77,
+        "low_1pct_fps": 28.39,
+        "low_01pct_fps": 11.64,
+        "stutters_gt_25ms": 12,
+        "cpu_migrations": 27
+      },
+      "omega_grace_x925_isolation": {
+        "description": "Game pinned to physical X925 P-cores (5-9,15-19, 0xf83e0); 24 bg threads jailed to A725 E-cores (0-4,10-14, 0x07c1f)",
+        "frames": 900,
+        "p50_us": 16732,
+        "p95_us": 16876,
+        "p99_us": 17658,
+        "max_us": 20210,
+        "mean_us": 16763.5,
+        "avg_fps": 59.65,
+        "low_1pct_fps": 54.19,
+        "low_01pct_fps": 49.48,
+        "stutters_gt_25ms": 0,
+        "cpu_migrations": 266
+      },
+      "omega_play_legacy_contiguous_mask": {
+        "description": "Negative control: omega-play/om/sched_plan.om current hardcoded game=10-19 (0xffc00) / bg=0-9 (0x003ff)",
+        "frames": 900,
+        "p50_us": 16731,
+        "p95_us": 16755,
+        "p99_us": 17008,
+        "max_us": 22040,
+        "mean_us": 16754.15,
+        "avg_fps": 59.69,
+        "low_1pct_fps": 53.47,
+        "low_01pct_fps": 45.37,
+        "stutters_gt_25ms": 0,
+        "cpu_migrations": 182
+      }
+    }
+  },
+  "cross_platform_dist_sha256": [
+    "b965122f811697f1837b5a63fc729f0e13a7e9220d7db7cb5ca1492f030590e7  omega-4k-merkle-linux-aarch64",
+    "1818f82237a4bfb5a15e0e81b022248d5eed2f39a12e381a5701a7400e459b0d  omega-4k-merkle-linux-x86_64",
+    "f0c4aee6fdeae1f2e5d324dbb67757c58275ff700602957122d4f2e965f98574  omega-4k-merkle-macos-arm64",
+    "98831d8d1229ecb9d4a1ff3f71c3fdf9b2aaff3f604dc553371dbbaa471d2a3f  omega-4k-merkle-windows-x86_64.exe"
+  ],
+  "wolfram_verified_derived_metrics": {
+    "v1080_trad_med_s": 12.667,
+    "v1080_om_med_s": 16.239,
+    "v1080_psnr_avg_delta_db": 3.903,
+    "v1080_psnr_min_delta_db": 8.5,
+    "v1080_ssim_delta": 0.010985,
+    "v4k12_trad_med_s": 34.908,
+    "v4k12_om_med_s": 51.621,
+    "v4k12_psnr_avg_delta_db": 4.1716,
+    "v4k12_psnr_min_delta_db": 8.81,
+    "v4k12_ssim_delta": 0.01185,
+    "v5m_cold_speedup_x": 1.065,
+    "v5m_cold_enc_only_speedup_x": 1.214,
+    "v5m_cold_energy_saved_j": 1565.2,
+    "v5m_cold_psnr_avg_delta_db": 6.597,
+    "v5m_cold_psnr_min_delta_db": 9.77,
+    "v5m_rev2_speedup_x": 5.141,
+    "v5m_rev2_energy_ratio_x": 5.896,
+    "v5m_rev2_energy_saved_j": 41965.11,
+    "v5m_rev2_energy_saved_pct": 83.04,
+    "v5m_x925_to_a725_ratio": 2.158,
+    "v5m_sha_gbps_rev2": 1.344,
+    "sched_p99_reduction_pct": 30.62,
+    "sched_low1_ratio_x": 1.909,
+    "sched_low01_ratio_x": 4.251,
+    "sched_max_reduction_x": 4.249,
+    "rm3_sdot_vs_scalar_x": 31.38,
+    "rm3_om_vs_sdot_4096_x": 84.68,
+    "rm3_om_vs_sdot_16384_x": 83.89,
+    "cloud_36_16gb_upload_100mbps_min": 48.21
+  }
+}

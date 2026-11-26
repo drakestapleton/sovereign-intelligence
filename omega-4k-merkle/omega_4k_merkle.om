@@ -1,0 +1,966 @@
+om2
+note SPDX-License-Identifier: Apache-2.0
+note omega_4k_merkle.om: Pure seeded OM-2 20-Core Heterogeneous Cluster-Isolated
+note Merkle Closed-GOP 4K Render Engine for DGX Spark (10x X925 + 10x A725).
+note Zero libc, zero Python, zero shell loop: native FIPS 180-4 SHA-256 content
+note addressing + raw Linux fork/cpuset/pipefds/execprog/monons work-stealing pool.
+
+const MAX_SCENES ulong 60
+const N_WORKERS ulong 8
+const IO_CHUNK ulong 65536
+
+global gK uint 64
+global gSt uint 8
+global gBlk uchar 64
+global gW uint 64
+global gIo uchar 65536
+global gDig uchar 32
+global gRootIn uchar 1920
+global gRootDig uchar 32
+global gSceneHex uchar 3840
+global gDirty ulong 64
+global gDirtyCnt ulong 1
+global gHits ulong 1
+global gMisses ulong 1
+global gX925Done ulong 1
+global gA725Done ulong 1
+
+global gSceneDir uchar 256
+global gSceneDirLen ulong 1
+global gVaultDir uchar 256
+global gVaultDirLen ulong 1
+global gOutMp4 uchar 256
+global gOutMp4Len ulong 1
+global gConcatPath uchar 256
+global gConcatPathLen ulong 1
+global gPathA uchar 512
+global gPathB uchar 512
+global gStatBuf uchar 256
+global gPkt uchar 4096
+global gPktPos ulong 1
+global gPktArgc ulong 1
+global gConcatBuf uchar 16384
+global gNumBuf uchar 32
+global gHexBuf uchar 128
+
+global gPids long 8
+global gWorkRd int 8
+global gWorkWr int 8
+global gDoneRd int 1
+global gDoneWr int 1
+global gCpuMask ulong 8
+global gHPids long 20
+global gHRd int 20
+global gHChunk uchar 96
+
+text tHex "0123456789abcdef"
+text tSalt "omega4k30-x264fast-40m-aq3-bt2020-v1"
+text tScenePre "/scene_"
+text tMkv ".mkv"
+text tSlash "/"
+text tConcatFile "/concat.txt"
+text tFilePre "file '"
+text tFilePost "'\n"
+
+text tFfmpeg "/usr/bin/ffmpeg"
+text tDashY "-y"
+text tHide "-hide_banner"
+text tLogLvl "-loglevel"
+text tErr "error"
+text tDashI "-i"
+text tCv "-c:v"
+text tX264 "libx264"
+text tPreset "-preset"
+text tFast "fast"
+text tThreads "-threads"
+text tT3 "3"
+text tT4 "4"
+text tBv "-b:v"
+text t40M "40M"
+text tMaxR "-maxrate"
+text tBufS "-bufsize"
+text t80M "80M"
+text tX264P "-x264-params"
+text tParams "aq-mode=3:open-gop=0:keyint=60:min-keyint=30:scenecut=40"
+text tPixFmt "-pix_fmt"
+text tYuv420 "yuv420p"
+text tCP "-color_primaries"
+text tBt2020 "bt2020"
+text tCT "-color_trc"
+text tBt202010 "bt2020-10"
+text tCS "-colorspace"
+text tBt2020nc "bt2020nc"
+text tDashF "-f"
+text tConcat "concat"
+text tSafe "-safe"
+text tZero "0"
+text tDashC "-c"
+text tCopy "copy"
+text tMovF "-movflags"
+text tFastSt "+faststart"
+
+text tMsgUsage "usage: omega_4k_merkle <scenes_dir> <vault_dir> <out_mp4>\n"
+text tMsgRes "OMEGA_4K_MERKLE_PASS "
+text tKHash "hash_ms="
+text tKEnc " encode_ms="
+text tKMux " mux_ms="
+text tKTot " total_ms="
+text tKHits " hits="
+text tKMiss " misses="
+text tKX925 " x925_chunks="
+text tKA725 " a725_chunks="
+text tKRoot " merkle_root="
+text tNl "\n"
+
+fn say s view uchar * to void
+w = write 1 s 0 len s
+end
+
+fn sayU v ulong to void
+x = v
+p = ulong 32
+for i ulong 24
+p = sub p 1
+put gNumBuf p uchar add 48 rem x 10
+x = div x 10
+if eq x 0
+w = write 1 gNumBuf p sub 32 p
+ret
+end
+end
+end
+
+fn shaKInit to void
+put gK 0 0x428a2f98
+put gK 1 0x71374491
+put gK 2 0xb5c0fbcf
+put gK 3 0xe9b5dba5
+put gK 4 0x3956c25b
+put gK 5 0x59f111f1
+put gK 6 0x923f82a4
+put gK 7 0xab1c5ed5
+put gK 8 0xd807aa98
+put gK 9 0x12835b01
+put gK 10 0x243185be
+put gK 11 0x550c7dc3
+put gK 12 0x72be5d74
+put gK 13 0x80deb1fe
+put gK 14 0x9bdc06a7
+put gK 15 0xc19bf174
+put gK 16 0xe49b69c1
+put gK 17 0xefbe4786
+put gK 18 0x0fc19dc6
+put gK 19 0x240ca1cc
+put gK 20 0x2de92c6f
+put gK 21 0x4a7484aa
+put gK 22 0x5cb0a9dc
+put gK 23 0x76f988da
+put gK 24 0x983e5152
+put gK 25 0xa831c66d
+put gK 26 0xb00327c8
+put gK 27 0xbf597fc7
+put gK 28 0xc6e00bf3
+put gK 29 0xd5a79147
+put gK 30 0x06ca6351
+put gK 31 0x14292967
+put gK 32 0x27b70a85
+put gK 33 0x2e1b2138
+put gK 34 0x4d2c6dfc
+put gK 35 0x53380d13
+put gK 36 0x650a7354
+put gK 37 0x766a0abb
+put gK 38 0x81c2c92e
+put gK 39 0x92722c85
+put gK 40 0xa2bfe8a1
+put gK 41 0xa81a664b
+put gK 42 0xc24b8b70
+put gK 43 0xc76c51a3
+put gK 44 0xd192e819
+put gK 45 0xd6990624
+put gK 46 0xf40e3585
+put gK 47 0x106aa070
+put gK 48 0x19a4c116
+put gK 49 0x1e376c08
+put gK 50 0x2748774c
+put gK 51 0x34b0bcb5
+put gK 52 0x391c0cb3
+put gK 53 0x4ed8aa4a
+put gK 54 0x5b9cca4f
+put gK 55 0x682e6ff3
+put gK 56 0x748f82ee
+put gK 57 0x78a5636f
+put gK 58 0x84c87814
+put gK 59 0x8cc70208
+put gK 60 0x90befffa
+put gK 61 0xa4506ceb
+put gK 62 0xbef9a3f7
+put gK 63 0xc67178f2
+end
+
+fn shaInit to void
+put gSt 0 0x6a09e667
+put gSt 1 0xbb67ae85
+put gSt 2 0x3c6ef372
+put gSt 3 0xa54ff53a
+put gSt 4 0x510e527f
+put gSt 5 0x9b05688c
+put gSt 6 0x1f83d9ab
+put gSt 7 0x5be0cd19
+end
+
+fn shaSched to void
+for i ulong 16
+q = mul i 4
+b0 = shl uint get gBlk q 24
+b1 = shl uint get gBlk add q 1 16
+b2 = shl uint get gBlk add q 2 8
+b3 = uint get gBlk add q 3
+put gW i or or b0 b1 or b2 b3
+end
+for i ulong 48
+j = add i 16
+x = get gW sub j 15
+s0 = xor xor rotr x 7 rotr x 18 shr x 3
+y = get gW sub j 2
+s1 = xor xor rotr y 17 rotr y 19 shr y 10
+put gW j add add get gW sub j 16 s0 add get gW sub j 7 s1
+end
+end
+
+fn shaT1 e uint f uint g uint h uint ki uint wi uint to uint
+s1 = xor xor rotr e 6 rotr e 11 rotr e 25
+ch = xor and e f and xor e 0xffffffff g
+ret add add add h s1 ch add ki wi
+end
+
+fn shaT2 a uint b uint c uint to uint
+s0 = xor xor rotr a 2 rotr a 13 rotr a 22
+maj = or or and a b and a c and b c
+ret add s0 maj
+end
+
+fn shaCompress to void
+shaSched
+a = get gSt 0
+b = get gSt 1
+c = get gSt 2
+d = get gSt 3
+e = get gSt 4
+f = get gSt 5
+g = get gSt 6
+h = get gSt 7
+for i ulong 64
+t1 = shaT1 e f g h get gK i get gW i
+t2 = shaT2 a b c
+h = g
+g = f
+f = e
+e = add d t1
+d = c
+c = b
+b = a
+a = add t1 t2
+end
+put gSt 0 add get gSt 0 a
+put gSt 1 add get gSt 1 b
+put gSt 2 add get gSt 2 c
+put gSt 3 add get gSt 3 d
+put gSt 4 add get gSt 4 e
+put gSt 5 add get gSt 5 f
+put gSt 6 add get gSt 6 g
+put gSt 7 add get gSt 7 h
+end
+
+fn shaFeedSalt blen ulong to ulong
+bp = blen
+for i ulong len tSalt
+put gBlk bp get tSalt i
+bp = add bp 1
+if eq bp 64
+shaCompress
+bp = 0
+end
+end
+ret bp
+end
+
+fn shaFinish totalBytes ulong bp ulong to void
+put gBlk bp uchar 0x80
+bp = add bp 1
+if gt bp 56
+while lt bp 64 bound 65
+put gBlk bp 0
+bp = add bp 1
+end
+shaCompress
+bp = 0
+end
+while lt bp 56 bound 65
+put gBlk bp 0
+bp = add bp 1
+end
+bits = mul totalBytes 8
+for i ulong 8
+put gBlk add 56 i uchar and shr bits mul sub 7 i 8 255
+end
+shaCompress
+for i ulong 8
+w = get gSt i
+q = mul i 4
+put gDig q uchar and shr w 24 255
+put gDig add q 1 uchar and shr w 16 255
+put gDig add q 2 uchar and shr w 8 255
+put gDig add q 3 uchar and w 255
+end
+end
+
+fn shaFile pathLen ulong to bool
+fd = fopen gPathA 0 pathLen 0 0
+if lt fd 0
+ret false
+end
+shaInit
+tot = ulong 0
+bp = ulong 0
+for chunk ulong 65536 bound 65537
+n = read int fd gIo 0 IO_CHUNK
+if lt n 0
+c0 = fclose int fd
+ret false
+end
+if eq n 0
+break
+end
+un = ulong n
+tot = add tot un
+pos = ulong 0
+while lt pos un bound 65537
+put gBlk bp get gIo pos
+bp = add bp 1
+pos = add pos 1
+if eq bp 64
+shaCompress
+bp = 0
+end
+end
+end
+c1 = fclose int fd
+bp = shaFeedSalt bp
+tot = add tot len tSalt
+shaFinish tot bp
+ret true
+end
+
+fn shaRoot to void
+shaInit
+bp = ulong 0
+for i ulong 1920
+put gBlk bp get gRootIn i
+bp = add bp 1
+if eq bp 64
+shaCompress
+bp = 0
+end
+end
+shaFinish 1920 bp
+for i ulong 32
+put gRootDig i get gDig i
+end
+end
+
+fn buildScenePath idx ulong to ulong
+p = ulong 0
+dl = get gSceneDirLen 0
+for i ulong dl bound 257
+put gPathA p get gSceneDir i
+p = add p 1
+end
+for i ulong len tScenePre
+put gPathA p get tScenePre i
+p = add p 1
+end
+put gPathA p uchar add 48 div idx 10
+p = add p 1
+put gPathA p uchar add 48 rem idx 10
+p = add p 1
+for i ulong len tMkv
+put gPathA p get tMkv i
+p = add p 1
+end
+ret p
+end
+
+fn buildVaultPath idx ulong to ulong
+p = ulong 0
+vl = get gVaultDirLen 0
+for i ulong vl bound 257
+put gPathB p get gVaultDir i
+p = add p 1
+end
+put gPathB p uchar 47
+p = add p 1
+base = mul idx 64
+for i ulong 24
+put gPathB p get gSceneHex add base i
+p = add p 1
+end
+for i ulong len tMkv
+put gPathB p get tMkv i
+p = add p 1
+end
+ret p
+end
+
+fn storeSceneHex idx ulong to void
+base = mul idx 64
+rbase = mul idx 32
+for i ulong 32
+b = ulong get gDig i
+put gRootIn add rbase i uchar b
+put gSceneHex add base mul i 2 get tHex shr b 4
+put gSceneHex add base add mul i 2 1 get tHex and b 15
+end
+end
+
+fn pktReset to void
+put gPktPos 0 2
+put gPktArgc 0 0
+end
+
+fn pktAddText s view uchar * to void
+pos = get gPktPos 0
+n = len s
+put gPkt pos uchar and n 255
+put gPkt add pos 1 uchar shr n 8
+pos = add pos 2
+for i ulong n bound 256
+put gPkt pos get s i
+pos = add pos 1
+end
+put gPktPos 0 pos
+put gPktArgc 0 add get gPktArgc 0 1
+end
+
+fn pktAddPathA n ulong to void
+pos = get gPktPos 0
+put gPkt pos uchar and n 255
+put gPkt add pos 1 uchar shr n 8
+pos = add pos 2
+for i ulong n bound 513
+put gPkt pos get gPathA i
+pos = add pos 1
+end
+put gPktPos 0 pos
+put gPktArgc 0 add get gPktArgc 0 1
+end
+
+fn pktAddPathB n ulong to void
+pos = get gPktPos 0
+put gPkt pos uchar and n 255
+put gPkt add pos 1 uchar shr n 8
+pos = add pos 2
+for i ulong n bound 513
+put gPkt pos get gPathB i
+pos = add pos 1
+end
+put gPktPos 0 pos
+put gPktArgc 0 add get gPktArgc 0 1
+end
+
+fn pktAddOutMp4 to void
+pos = get gPktPos 0
+n = get gOutMp4Len 0
+put gPkt pos uchar and n 255
+put gPkt add pos 1 uchar shr n 8
+pos = add pos 2
+for i ulong n bound 257
+put gPkt pos get gOutMp4 i
+pos = add pos 1
+end
+put gPktPos 0 pos
+put gPktArgc 0 add get gPktArgc 0 1
+end
+
+fn pktAddConcatPath to void
+pos = get gPktPos 0
+n = get gConcatPathLen 0
+put gPkt pos uchar and n 255
+put gPkt add pos 1 uchar shr n 8
+pos = add pos 2
+for i ulong n bound 257
+put gPkt pos get gConcatPath i
+pos = add pos 1
+end
+put gPktPos 0 pos
+put gPktArgc 0 add get gPktArgc 0 1
+end
+
+fn pktSeal to ulong
+ac = get gPktArgc 0
+put gPkt 0 uchar and ac 255
+put gPkt 1 uchar shr ac 8
+ret get gPktPos 0
+end
+
+fn pinMask mask ulong to void
+m = new uchar 8 0
+for i ulong 8
+put m i uchar and shr mask mul i 8 255
+end
+r = cpuset 0 m 0 8
+end
+
+fn encodeOneScene idx ulong isX925 bool to int
+paLen = buildScenePath idx
+pbLen = buildVaultPath idx
+pktReset
+pktAddText tFfmpeg
+pktAddText tDashY
+pktAddText tHide
+pktAddText tLogLvl
+pktAddText tErr
+pktAddText tDashI
+pktAddPathA paLen
+pktAddText tCv
+pktAddText tX264
+pktAddText tPreset
+pktAddText tFast
+pktAddText tThreads
+if isX925
+pktAddText tT3
+else
+pktAddText tT4
+end
+pktAddText tBv
+pktAddText t40M
+pktAddText tMaxR
+pktAddText t40M
+pktAddText tBufS
+pktAddText t80M
+pktAddText tX264P
+pktAddText tParams
+pktAddText tPixFmt
+pktAddText tYuv420
+pktAddText tCP
+pktAddText tBt2020
+pktAddText tCT
+pktAddText tBt202010
+pktAddText tCS
+pktAddText tBt2020nc
+pktAddPathB pbLen
+plen = pktSeal
+pid = fork
+if lt pid 0
+ret 1
+end
+if eq pid 0
+er = execprog gPkt 0 plen
+exit 99
+end
+st = new uchar 4 0
+wr = waitpid int pid st 0 4 0
+if ne get st 0 0
+ret 2
+end
+ret int get st 1
+end
+
+fn workerLoop w ulong workRd int doneWr int to void
+pinMask get gCpuMask w
+isX925 = lt w 5
+b = new uchar 1 0
+put b 0 uchar w
+for step ulong 64 bound 65
+ws = write doneWr b 0 1
+rn = read workRd b 0 1
+if le rn 0
+exit 0
+end
+sid = ulong get b 0
+if eq sid 255
+exit 0
+end
+rc = encodeOneScene sid isX925
+if ne rc 0
+exit rc
+end
+put b 0 uchar w
+end
+exit 0
+end
+
+fn initCpuMasks to void
+note True physical DGX Spark topology (verified by lscpu -e):
+note   X925 P-cores: 5-9, 15-19 -> 5 disjoint 2-core workers
+note   A725 E-cores: 0-4, 10-14 -> 3 disjoint 3-4-core workers
+put gCpuMask 0 0x000060
+put gCpuMask 1 0x000180
+put gCpuMask 2 0x008200
+put gCpuMask 3 0x030000
+put gCpuMask 4 0x0c0000
+put gCpuMask 5 0x000007
+put gCpuMask 6 0x000418
+put gCpuMask 7 0x007800
+end
+
+fn getI32 b view uchar * off ulong to int
+b0 = uint get b off
+b1 = shl uint get b add off 1 8
+b2 = shl uint get b add off 2 16
+b3 = shl uint get b add off 3 24
+ret int or or b0 b1 or b2 b3
+end
+
+fn spawnWorkers nw ulong to int
+pDone = new uchar 8 0
+r0 = pipefds pDone 0 8 0
+if lt r0 0
+ret 21
+end
+put gDoneRd 0 getI32 pDone 0
+put gDoneWr 0 getI32 pDone 4
+pW = new uchar 8 0
+for w ulong nw bound 9
+r1 = pipefds pW 0 8 0
+if lt r1 0
+ret 22
+end
+rd = getI32 pW 0
+wr = getI32 pW 4
+put gWorkRd w rd
+put gWorkWr w wr
+pid = fork
+if lt pid 0
+ret 23
+end
+if eq pid 0
+c0 = fclose wr
+c1 = fclose get gDoneRd 0
+workerLoop w rd get gDoneWr 0
+end
+c2 = fclose rd
+put gPids w pid
+end
+c3 = fclose get gDoneWr 0
+ret 0
+end
+
+fn dispatchLoop nw ulong dc ulong to void
+nextIdx = ulong 0
+stopped = ulong 0
+msg = new uchar 1 0
+while lt stopped nw bound 256
+rn = read get gDoneRd 0 msg 0 1
+if le rn 0
+break
+end
+wid = ulong get msg 0
+if lt nextIdx dc
+sid = get gDirty nextIdx
+nextIdx = add nextIdx 1
+if lt wid 5
+put gX925Done 0 add get gX925Done 0 1
+else
+put gA725Done 0 add get gA725Done 0 1
+end
+put msg 0 uchar sid
+ws = write get gWorkWr wid msg 0 1
+else
+put msg 0 uchar 255
+ws = write get gWorkWr wid msg 0 1
+stopped = add stopped 1
+end
+end
+c4 = fclose get gDoneRd 0
+end
+
+fn reapWorkers nw ulong to int
+st = new uchar 4 0
+bad = int 0
+for w ulong nw bound 9
+c5 = fclose get gWorkWr w
+wp = waitpid int get gPids w st 0 4 0
+if or ne get st 0 0 ne get st 1 0
+bad = 24
+end
+end
+ret bad
+end
+
+fn runWorkStealing to int
+dc = get gDirtyCnt 0
+if eq dc 0
+ret 0
+end
+nw = N_WORKERS
+if le dc 5
+nw = dc
+end
+rs = spawnWorkers nw
+if ne rs 0
+ret rs
+end
+dispatchLoop nw dc
+ret reapWorkers nw
+end
+
+fn buildConcatBuf to ulong
+cb = ulong 0
+for i ulong MAX_SCENES
+for k ulong len tFilePre
+put gConcatBuf cb get tFilePre k
+cb = add cb 1
+end
+pbLen = buildVaultPath i
+for k ulong pbLen bound 513
+put gConcatBuf cb get gPathB k
+cb = add cb 1
+end
+for k ulong len tFilePost
+put gConcatBuf cb get tFilePost k
+cb = add cb 1
+end
+end
+ret cb
+end
+
+fn writeConcatFile cb ulong to int
+p = ulong 0
+vl = get gVaultDirLen 0
+for i ulong vl bound 257
+put gConcatPath p get gVaultDir i
+p = add p 1
+end
+for i ulong len tConcatFile
+put gConcatPath p get tConcatFile i
+p = add p 1
+end
+put gConcatPathLen 0 p
+fd = fopen gConcatPath 0 p 577 420
+if lt fd 0
+ret 31
+end
+wr = write int fd gConcatBuf 0 cb
+cf = fclose int fd
+if ne wr long cb
+ret 32
+end
+ret 0
+end
+
+fn writeConcatAndMux to int
+cb = buildConcatBuf
+rc = writeConcatFile cb
+if ne rc 0
+ret rc
+end
+pktReset
+pktAddText tFfmpeg
+pktAddText tDashY
+pktAddText tHide
+pktAddText tLogLvl
+pktAddText tErr
+pktAddText tDashF
+pktAddText tConcat
+pktAddText tSafe
+pktAddText tZero
+pktAddText tDashI
+pktAddConcatPath
+pktAddText tDashC
+pktAddText tCopy
+pktAddText tMovF
+pktAddText tFastSt
+pktAddOutMp4
+plen = pktSeal
+pid = fork
+if lt pid 0
+ret 33
+end
+if eq pid 0
+er = execprog gPkt 0 plen
+exit 99
+end
+st = new uchar 4 0
+wp = waitpid int pid st 0 4 0
+if ne get st 0 0
+ret 34
+end
+ret int get st 1
+end
+
+fn sayRootHex to void
+for i ulong 32
+b = ulong get gRootDig i
+put gHexBuf mul i 2 get tHex shr b 4
+put gHexBuf add mul i 2 1 get tHex and b 15
+end
+w = write 1 gHexBuf 0 64
+end
+
+fn hashWorker w ulong wrFd int to void
+pinMask shl ulong 1 w
+for k ulong 3
+idx = add mul w 3 k
+paLen = buildScenePath idx
+if not shaFile paLen
+exit 11
+end
+for j ulong 32
+put gHChunk add mul k 32 j get gDig j
+end
+end
+tot = ulong 0
+while lt tot 96 bound 256
+n = write wrFd gHChunk tot sub 96 tot
+if le n 0
+exit 12
+end
+tot = add tot ulong n
+end
+exit 0
+end
+
+fn spawnHashWorkers to int
+pH = new uchar 8 0
+for w ulong 20
+r = pipefds pH 0 8 0
+if lt r 0
+ret 13
+end
+rd = getI32 pH 0
+wr = getI32 pH 4
+put gHRd w rd
+pid = fork
+if lt pid 0
+ret 14
+end
+if eq pid 0
+c0 = fclose rd
+hashWorker w wr
+end
+c1 = fclose wr
+put gHPids w pid
+end
+ret 0
+end
+
+fn readFull fd int n ulong to bool
+tot = ulong 0
+while lt tot n bound 256
+r = read fd gHChunk tot sub n tot
+if le r 0
+ret false
+end
+tot = add tot ulong r
+end
+ret true
+end
+
+fn collectHashWorkers to int
+st = new uchar 4 0
+for w ulong 20
+if not readFull get gHRd w 96
+ret 15
+end
+c0 = fclose get gHRd w
+wp = waitpid int get gHPids w st 0 4 0
+if or ne get st 0 0 ne get st 1 0
+ret 16
+end
+for k ulong 3
+idx = add mul w 3 k
+for j ulong 32
+put gDig j get gHChunk add mul k 32 j
+end
+storeSceneHex idx
+pbLen = buildVaultPath idx
+sr = stat gPathB 0 pbLen gStatBuf 0 256
+if eq sr 0
+put gHits 0 add get gHits 0 1
+else
+dc = get gDirtyCnt 0
+put gDirty dc idx
+put gDirtyCnt 0 add dc 1
+put gMisses 0 add get gMisses 0 1
+end
+end
+end
+shaRoot
+ret 0
+end
+
+fn scanScenes to int
+rs = spawnHashWorkers
+if ne rs 0
+ret rs
+end
+ret collectHashWorkers
+end
+
+fn parseArgs to int
+ac = argcnt
+if lt ac 4
+say tMsgUsage
+ret 2
+end
+n1 = argread 1 gSceneDir 0 256
+n2 = argread 2 gVaultDir 0 256
+n3 = argread 3 gOutMp4 0 256
+if or le n1 0 or le n2 0 le n3 0
+ret 3
+end
+put gSceneDirLen 0 ulong n1
+put gVaultDirLen 0 ulong n2
+put gOutMp4Len 0 ulong n3
+ret 0
+end
+
+fn printReport t0 long t1 long t2 long t3 long to void
+say tMsgRes
+say tKHash
+sayU div ulong sub t1 t0 1000000
+say tKEnc
+sayU div ulong sub t2 t1 1000000
+say tKMux
+sayU div ulong sub t3 t2 1000000
+say tKTot
+sayU div ulong sub t3 t0 1000000
+say tKHits
+sayU get gHits 0
+say tKMiss
+sayU get gMisses 0
+say tKX925
+sayU get gX925Done 0
+say tKA725
+sayU get gA725Done 0
+say tKRoot
+sayRootHex
+say tNl
+end
+
+fn main to int
+ra = parseArgs
+if ne ra 0
+ret ra
+end
+shaKInit
+initCpuMasks
+t0 = monons
+r1 = scanScenes
+if ne r1 0
+ret r1
+end
+t1 = monons
+r2 = runWorkStealing
+if ne r2 0
+ret r2
+end
+t2 = monons
+r3 = writeConcatAndMux
+if ne r3 0
+ret r3
+end
+t3 = monons
+printReport t0 t1 t2 t3
+ret 0
+end

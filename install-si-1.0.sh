@@ -316,16 +316,26 @@ install_verified_bundle() {
         fi
     done
     IFS="$old_ifs"
+    # Wire host-matched single-file omega-4k-merkle alias when present in the verified bundle
+    host_merkle=""
+    case "$TOPOLOGY" in
+        linux-aarch64-gb10|linux-aarch64) host_merkle="omega-4k-merkle-linux-aarch64" ;;
+        linux-x86_64|wsl2-x86_64)         host_merkle="omega-4k-merkle-linux-x86_64" ;;
+        macos-arm64)                      host_merkle="omega-4k-merkle-macos-arm64" ;;
+    esac
+    if [ -n "$host_merkle" ] && [ -x "$pfx/bin/$host_merkle" ]; then
+        ln -sf "$host_merkle" "$pfx/bin/omega-4k-merkle"
+    fi
 }
 
 profile_components() {
     case "$PROFILE:$TOPOLOGY" in
-        core:linux-aarch64-gb10)  printf 'omc,si,om-route,omega-helix,omega-gpu-driver,omega-sm121-sass' ;;
-        studio:linux-aarch64-gb10) printf 'omc,si,om-route,omega-helix,omega-gpu-driver,omega-sm121-sass' ;;
-        full:linux-aarch64-gb10)  printf 'omc,si,om-route,omega-helix,omega-gpu-driver,omega-sm121-sass,omega-ng-egraph,omega-wattd,rtl8127-omega' ;;
-        core:*)                   printf 'omc,si,om-route,omega-helix' ;;
-        studio:*)                 printf 'omc,si,om-route,omega-helix' ;;
-        full:*)                   printf 'omc,si,om-route,omega-helix,omega-ng-egraph,omega-seats' ;;
+        core:linux-aarch64-gb10)  printf 'omc,si,om-route,omega-helix,omega-4k-merkle,omega-gpu-driver,omega-sm121-sass' ;;
+        studio:linux-aarch64-gb10) printf 'omc,si,om-route,omega-helix,omega-4k-merkle,omega-gpu-driver,omega-sm121-sass' ;;
+        full:linux-aarch64-gb10)  printf 'omc,si,om-route,omega-helix,omega-4k-merkle,omega-gpu-driver,omega-sm121-sass,omega-ng-egraph,omega-wattd,rtl8127-omega' ;;
+        core:*)                   printf 'omc,si,om-route,omega-helix,omega-4k-merkle' ;;
+        studio:*)                 printf 'omc,si,om-route,omega-helix,omega-4k-merkle' ;;
+        full:*)                   printf 'omc,si,om-route,omega-helix,omega-4k-merkle,omega-ng-egraph,omega-seats' ;;
     esac
 }
 
