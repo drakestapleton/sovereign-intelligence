@@ -1,0 +1,53 @@
+{
+  "manifest_version": 3,
+  "name": "Omega Play \u2014 Browser Game Pacer & VerdantUI Observer Bridge",
+  "short_name": "Omega Play",
+  "version": "1.0.0",
+  "description": "Zero-cheat browser game frame-time oscilloscope (p50/p95/p99/1% low), background-tab silencer, VerdantUI Observer bridge, and local AienOS omega-play connector.",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_title": "Omega Play & VerdantUI Observer",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "permissions": [
+    "storage",
+    "tabs",
+    "scripting"
+  ],
+  "optional_permissions": [
+    "nativeMessaging"
+  ],
+  "host_permissions": [
+    "https://afflom.github.io/VerdantUI/*",
+    "https://www.aienos.com/*"
+  ],
+  "optional_host_permissions": [
+    "https://*/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*"
+  ],
+  "background": {
+    "service_worker": "service-worker.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://afflom.github.io/VerdantUI/*"
+      ],
+      "js": [
+        "content-verdant.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
